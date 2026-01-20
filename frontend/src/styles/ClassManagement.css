@@ -1,7 +1,14 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .cm-page {
   max-width: 1100px;
 }
 
+/* Header */
 .cm-header {
   display: flex;
   justify-content: space-between;
@@ -14,11 +21,7 @@
   margin: 0;
 }
 
-.cm-subtitle {
-  margin: 6px 0 0;
-  opacity: 0.8;
-}
-
+/* Toolbar */
 .cm-toolbar {
   margin: 12px 0 18px;
 }
@@ -31,6 +34,7 @@
   border-radius: 8px;
 }
 
+/* Sections */
 .cm-section {
   margin-bottom: 20px;
 }
@@ -39,26 +43,43 @@
   margin: 0 0 10px;
 }
 
+/* Table wrap */
 .cm-table-wrap {
   overflow-x: auto;
   border: 1px solid rgba(0,0,0,0.2);
   border-radius: 10px;
 }
 
+/* Table */
 .cm-table {
   width: 100%;
   border-collapse: collapse;
   background: rgba(255,255,255,0.03);
+  table-layout: fixed;
 }
+
+/* ✅ Updated columns (Date added) */
+.cm-col-class { width: 20%; }
+.cm-col-coach { width: 16%; }
+.cm-col-days { width: 16%; }
+.cm-col-date { width: 12%; }
+.cm-col-duration { width: 10%; }
+.cm-col-capacity { width: 8%; }
+.cm-col-actions { width: 18%; }
 
 .cm-table th,
 .cm-table td {
   padding: 10px;
   border-bottom: 1px solid rgba(0,0,0,0.12);
+  text-align: left;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cm-table th {
-  text-align: left;
+  font-weight: 800;
 }
 
 .cm-center {
@@ -72,6 +93,7 @@
   opacity: 0.8;
 }
 
+/* Top page button */
 .cm-primary-btn {
   padding: 10px 12px;
   border: none;
@@ -79,31 +101,29 @@
   cursor: pointer;
   background: #000;
   color: #fff;
+  font-weight: 700;
 }
 
-.cm-secondary-btn {
-  padding: 10px 12px;
-  border: 2px solid #000;
+/* Actions buttons (project standard) */
+.cm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cm-action-btn {
+  padding: 8px 14px;
   border-radius: 10px;
   cursor: pointer;
-  background: transparent;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 700;
 }
 
-.cm-link-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px 6px;
-  text-decoration: underline;
-}
-
-.cm-link-btn.danger {
-  color: #ff6b6b;
-}
-
-.cm-sep {
-  margin: 0 6px;
-  opacity: 0.7;
+.cm-action-btn.danger {
+  border-color: #b00020;
+  color: #b00020;
+  background: #fff;
 }
 
 /* MODAL */
@@ -120,12 +140,13 @@
 
 .cm-modal {
   width: 100%;
-  max-width: 640px;
+  max-width: 720px;
   background: #1e1e1e;
   color: #fff;
   border: 2px solid rgba(255,255,255,0.15);
   border-radius: 14px;
   padding: 16px;
+  overflow: hidden;
 }
 
 .cm-modal-header {
@@ -144,6 +165,7 @@
   font-size: 18px;
 }
 
+/* Form */
 .cm-form {
   display: flex;
   flex-direction: column;
@@ -154,6 +176,11 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  align-items: start;
+}
+
+.cm-field {
+  min-width: 0;
 }
 
 .cm-field label {
@@ -176,16 +203,78 @@
   grid-column: 1 / -1;
 }
 
+/* ✅ Make calendar/time icons white (Chrome/Edge) */
+.cm-field input[type="date"]::-webkit-calendar-picker-indicator,
+.cm-field input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.9;
+  cursor: pointer;
+}
+
+/* Days picker */
+.cm-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: #2a2a2a;
+}
+
+.cm-days.is-disabled {
+  opacity: 0.5;
+}
+
+.cm-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.cm-day input {
+  width: 16px;
+  height: 16px;
+}
+
+/* One-time toggle */
+.cm-onetime {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.cm-onetime input {
+  width: 16px;
+  height: 16px;
+}
+
+/* Duration line */
+.cm-duration {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: #2a2a2a;
+}
+
+/* Modal buttons: white bg + black text */
 .cm-form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 }
 
-.cm-hint {
-  margin: 0;
-  font-size: 12px;
-  opacity: 0.85;
+.cm-modal-btn {
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
 }
 
 /* Mobile */
@@ -201,5 +290,10 @@
 
   .cm-search {
     max-width: 100%;
+  }
+
+  .cm-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

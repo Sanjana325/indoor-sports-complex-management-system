@@ -67,6 +67,8 @@ export default function UserManagement() {
   const [qualifications, setQualifications] = useState("");
   const [specialization, setSpecialization] = useState("");
 
+  const [tempPassword, setTempPassword] = useState("");
+
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -111,6 +113,7 @@ export default function UserManagement() {
     setEmail("");
     setQualifications("");
     setSpecialization("");
+    setTempPassword("");
     setEditingId(null);
   }
 
@@ -133,6 +136,8 @@ export default function UserManagement() {
     setQualifications(user.qualifications || "");
     setSpecialization(user.specialization || "");
 
+    setTempPassword("");
+
     setIsModalOpen(true);
   }
 
@@ -153,6 +158,11 @@ export default function UserManagement() {
     if (!email.trim()) return "Email is required";
     if (!email.includes("@")) return "Enter a valid email";
     if (!ROLES.includes(role)) return "Role must be Player/Staff/Coach";
+
+    if (mode === "ADD") {
+      if (!tempPassword.trim()) return "Temporary password is required";
+      if (tempPassword.trim().length < 6) return "Temporary password must be at least 6 characters";
+    }
 
     if (role === "COACH") {
       if (!qualifications.trim()) return "Qualifications is required for Coach";
@@ -203,6 +213,7 @@ export default function UserManagement() {
         id: makeId("U"),
         ...base,
         ...coachExtra,
+        tempPassword: tempPassword.trim(),
         createdAt: nowIso(),
       };
       setUsers((prev) => [newUser, ...prev]);
@@ -211,7 +222,6 @@ export default function UserManagement() {
       return;
     }
 
-    // EDIT
     setUsers((prev) =>
       prev.map((u) =>
         u.id === editingId
@@ -261,12 +271,7 @@ export default function UserManagement() {
 
       <section className="um-section">
         <h3 className="um-section-title">Coaches</h3>
-        <UserTable
-          rows={latestCoaches}
-          onEdit={openEditModal}
-          onRemove={handleRemove}
-          showCoachCols
-        />
+        <UserTable rows={latestCoaches} onEdit={openEditModal} onRemove={handleRemove} showCoachCols />
       </section>
 
       {isModalOpen && (
@@ -330,6 +335,18 @@ export default function UserManagement() {
                   />
                 </div>
 
+                {mode === "ADD" && (
+                  <div className="um-field um-full">
+                    <label>Temporary Password</label>
+                    <input
+                      type="password"
+                      placeholder="Enter temporary password"
+                      value={tempPassword}
+                      onChange={(e) => setTempPassword(e.target.value)}
+                    />
+                  </div>
+                )}
+
                 {role === "COACH" && (
                   <>
                     <div className="um-field um-full">
@@ -355,11 +372,12 @@ export default function UserManagement() {
                 )}
               </div>
 
+              {/* ✅ Only these 2 modal buttons become white */}
               <div className="um-form-actions">
-                <button className="um-secondary-btn" type="button" onClick={closeModal}>
+                <button className="um-modal-btn" type="button" onClick={closeModal}>
                   Cancel
                 </button>
-                <button className="um-primary-btn" type="submit">
+                <button className="um-modal-btn" type="submit">
                   {mode === "ADD" ? "Add User" : "Save Changes"}
                 </button>
               </div>
@@ -432,11 +450,7 @@ function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
                     <button className="um-action-btn" type="button" onClick={() => onEdit(u)}>
                       Edit
                     </button>
-                    <button
-                      className="um-action-btn danger"
-                      type="button"
-                      onClick={() => onRemove(u.id)}
-                    >
+                    <button className="um-action-btn danger" type="button" onClick={() => onRemove(u.id)}>
                       Remove
                     </button>
                   </div>

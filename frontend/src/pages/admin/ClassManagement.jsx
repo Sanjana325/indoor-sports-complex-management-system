@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import "../../styles/ClassManagement.css";
 
 const SPORTS = ["CRICKET", "KARATE", "FUTSAL", "CHESS", "BADMINTON"];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function makeId(prefix = "CL") {
   const n = Math.floor(100000 + Math.random() * 900000);
@@ -12,24 +13,51 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function sportLabel(s) {
-  if (s === "CRICKET") return "Cricket";
-  if (s === "KARATE") return "Karate";
-  if (s === "FUTSAL") return "Futsal";
-  if (s === "CHESS") return "Chess";
-  if (s === "BADMINTON") return "Badminton";
-  return s;
+function formatDays(days) {
+  if (!days || days.length === 0) return "-";
+  return days.join(", ");
+}
+
+function timeToMinutes(t) {
+  if (!t || !t.includes(":")) return null;
+  const [hh, mm] = t.split(":").map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  return hh * 60 + mm;
+}
+
+function durationLabel(startTime, endTime) {
+  const s = timeToMinutes(startTime);
+  const e = timeToMinutes(endTime);
+  if (s === null || e === null) return "-";
+  const diff = e - s;
+  if (diff <= 0) return "-";
+
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+function formatDate(dateStr) {
+  // dateStr: "YYYY-MM-DD"
+  if (!dateStr) return "-";
+  return dateStr;
 }
 
 export default function ClassManagement() {
-  // UI-only mock classes (later: fetch from backend)
   const [classes, setClasses] = useState([
     {
       id: "CL-300001",
       sport: "CRICKET",
       className: "Beginner Cricket",
       coachName: "Sahan Fernando",
-      schedule: "Mon/Wed 6:00 PM - 7:30 PM",
+      scheduleType: "WEEKLY",
+      days: ["Mon", "Wed"],
+      oneTimeDate: "",
+      startTime: "18:00",
+      endTime: "19:30",
       capacity: 20,
       createdAt: "2026-01-18T10:00:00.000Z",
     },
@@ -38,7 +66,11 @@ export default function ClassManagement() {
       sport: "KARATE",
       className: "Karate Basics",
       coachName: "Nimal Perera",
-      schedule: "Tue/Thu 5:30 PM - 7:00 PM",
+      scheduleType: "WEEKLY",
+      days: ["Tue", "Thu"],
+      oneTimeDate: "",
+      startTime: "17:30",
+      endTime: "19:00",
       capacity: 25,
       createdAt: "2026-01-18T12:00:00.000Z",
     },
@@ -47,7 +79,11 @@ export default function ClassManagement() {
       sport: "FUTSAL",
       className: "Futsal Training",
       coachName: "Kasun Silva",
-      schedule: "Sat 4:00 PM - 6:00 PM",
+      scheduleType: "WEEKLY",
+      days: ["Sat"],
+      oneTimeDate: "",
+      startTime: "16:00",
+      endTime: "18:00",
       capacity: 18,
       createdAt: "2026-01-19T08:00:00.000Z",
     },
@@ -56,7 +92,11 @@ export default function ClassManagement() {
       sport: "CHESS",
       className: "Chess for Beginners",
       coachName: "Ishan Fernando",
-      schedule: "Sun 9:00 AM - 11:00 AM",
+      scheduleType: "WEEKLY",
+      days: ["Sun"],
+      oneTimeDate: "",
+      startTime: "09:00",
+      endTime: "11:00",
       capacity: 30,
       createdAt: "2026-01-19T09:30:00.000Z",
     },
@@ -65,56 +105,70 @@ export default function ClassManagement() {
       sport: "BADMINTON",
       className: "Badminton Intermediate",
       coachName: "Dilani Jayasinghe",
-      schedule: "Fri 6:00 PM - 7:30 PM",
+      scheduleType: "WEEKLY",
+      days: ["Fri"],
+      oneTimeDate: "",
+      startTime: "18:00",
+      endTime: "19:30",
       capacity: 16,
       createdAt: "2026-01-19T10:15:00.000Z",
     },
   ]);
 
-  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD"); // ADD | EDIT
   const [editingId, setEditingId] = useState(null);
 
-  // Form state
   const [sport, setSport] = useState("CRICKET");
   const [className, setClassName] = useState("");
   const [coachName, setCoachName] = useState("");
-  const [schedule, setSchedule] = useState("");
   const [capacity, setCapacity] = useState("");
 
-  // Search
-  const [search, setSearch] = useState("");
+  const [scheduleType, setScheduleType] = useState("WEEKLY"); // WEEKLY | ONETIME
+  const [days, setDays] = useState([]);
+  const [oneTimeDate, setOneTimeDate] = useState("");
 
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+
+  const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
   const filteredClasses = useMemo(() => {
     if (!normalizedSearch) return classes;
     return classes.filter((c) => {
-      const hay = `${c.id} ${c.sport} ${c.className} ${c.coachName} ${c.schedule} ${c.capacity}`.toLowerCase();
+      const hay =
+        `${c.id} ${c.sport} ${c.className} ${c.coachName} ` +
+        `${(c.days || []).join(" ")} ${c.oneTimeDate || ""} ${c.startTime} ${c.endTime} ${c.capacity}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [classes, normalizedSearch]);
 
-  function lastFiveBySport(sportKey) {
+  function bySport(sportKey) {
     return filteredClasses
       .filter((c) => c.sport === sportKey)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  const latestCricket = useMemo(() => lastFiveBySport("CRICKET"), [filteredClasses]);
-  const latestKarate = useMemo(() => lastFiveBySport("KARATE"), [filteredClasses]);
-  const latestFutsal = useMemo(() => lastFiveBySport("FUTSAL"), [filteredClasses]);
-  const latestChess = useMemo(() => lastFiveBySport("CHESS"), [filteredClasses]);
-  const latestBadminton = useMemo(() => lastFiveBySport("BADMINTON"), [filteredClasses]);
+  const cricketRows = useMemo(() => bySport("CRICKET"), [filteredClasses]);
+  const karateRows = useMemo(() => bySport("KARATE"), [filteredClasses]);
+  const futsalRows = useMemo(() => bySport("FUTSAL"), [filteredClasses]);
+  const chessRows = useMemo(() => bySport("CHESS"), [filteredClasses]);
+  const badmintonRows = useMemo(() => bySport("BADMINTON"), [filteredClasses]);
 
   function resetForm() {
     setSport("CRICKET");
     setClassName("");
     setCoachName("");
-    setSchedule("");
     setCapacity("");
+
+    setScheduleType("WEEKLY");
+    setDays([]);
+    setOneTimeDate("");
+
+    setStartTime("");
+    setEndTime("");
+
     setEditingId(null);
   }
 
@@ -127,11 +181,19 @@ export default function ClassManagement() {
   function openEditModal(item) {
     setMode("EDIT");
     setEditingId(item.id);
+
     setSport(item.sport);
     setClassName(item.className);
     setCoachName(item.coachName);
-    setSchedule(item.schedule);
     setCapacity(String(item.capacity));
+
+    setScheduleType(item.scheduleType || "WEEKLY");
+    setDays(Array.isArray(item.days) ? item.days : []);
+    setOneTimeDate(item.oneTimeDate || "");
+
+    setStartTime(item.startTime || "");
+    setEndTime(item.endTime || "");
+
     setIsModalOpen(true);
   }
 
@@ -145,13 +207,45 @@ export default function ClassManagement() {
     setClasses((prev) => prev.filter((c) => c.id !== id));
   }
 
+  function toggleDay(d) {
+    setDays((prev) => {
+      if (prev.includes(d)) return prev.filter((x) => x !== d);
+      return [...prev, d];
+    });
+  }
+
+  function handleOneTimeToggle(checked) {
+    if (checked) {
+      setScheduleType("ONETIME");
+      setDays([]);
+    } else {
+      setScheduleType("WEEKLY");
+      setOneTimeDate("");
+    }
+  }
+
   function validateForm() {
     if (!SPORTS.includes(sport)) return "Select a valid sport";
     if (!className.trim()) return "Class name is required";
     if (!coachName.trim()) return "Coach name is required";
-    if (!schedule.trim()) return "Schedule is required";
+
     const capNum = Number(capacity);
     if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
+
+    if (scheduleType === "WEEKLY") {
+      if (!Array.isArray(days) || days.length === 0) return "Select at least one day";
+    } else {
+      if (!oneTimeDate) return "Select a date for the one-time class";
+    }
+
+    if (!startTime) return "Start time is required";
+    if (!endTime) return "End time is required";
+
+    const s = timeToMinutes(startTime);
+    const e = timeToMinutes(endTime);
+    if (s === null || e === null) return "Select valid start/end time";
+    if (e <= s) return "End time must be after start time";
+
     return null;
   }
 
@@ -166,14 +260,22 @@ export default function ClassManagement() {
 
     const capNum = Number(capacity);
 
+    const payload = {
+      sport,
+      className: className.trim(),
+      coachName: coachName.trim(),
+      scheduleType,
+      days: scheduleType === "WEEKLY" ? [...days] : [],
+      oneTimeDate: scheduleType === "ONETIME" ? oneTimeDate : "",
+      startTime,
+      endTime,
+      capacity: capNum,
+    };
+
     if (mode === "ADD") {
       const newClass = {
         id: makeId("CL"),
-        sport,
-        className: className.trim(),
-        coachName: coachName.trim(),
-        schedule: schedule.trim(),
-        capacity: capNum,
+        ...payload,
         createdAt: nowIso(),
       };
       setClasses((prev) => [newClass, ...prev]);
@@ -183,20 +285,7 @@ export default function ClassManagement() {
     }
 
     if (mode === "EDIT") {
-      setClasses((prev) =>
-        prev.map((c) =>
-          c.id === editingId
-            ? {
-                ...c,
-                sport,
-                className: className.trim(),
-                coachName: coachName.trim(),
-                schedule: schedule.trim(),
-                capacity: capNum,
-              }
-            : c
-        )
-      );
+      setClasses((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...payload } : c)));
       closeModal();
       resetForm();
     }
@@ -207,10 +296,9 @@ export default function ClassManagement() {
       <div className="cm-header">
         <div>
           <h2 className="cm-title">Class Management</h2>
-          <p className="cm-subtitle">Manage classes by sport (UI-only for now).</p>
         </div>
 
-        <button className="cm-primary-btn" onClick={openAddModal}>
+        <button className="cm-primary-btn" type="button" onClick={openAddModal}>
           + Add Class
         </button>
       </div>
@@ -218,39 +306,37 @@ export default function ClassManagement() {
       <div className="cm-toolbar">
         <input
           className="cm-search"
-          placeholder="Search by class name, coach, sport, schedule..."
+          placeholder="Search by class name, coach, sport, day, date..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* 5 TABLES */}
       <section className="cm-section">
-        <h3 className="cm-section-title">Cricket Classes (Last 5 Added)</h3>
-        <ClassTable rows={latestCricket} onEdit={openEditModal} onRemove={handleRemove} />
+        <h3 className="cm-section-title">Cricket Classes</h3>
+        <ClassTable rows={cricketRows} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
       <section className="cm-section">
-        <h3 className="cm-section-title">Karate Classes (Last 5 Added)</h3>
-        <ClassTable rows={latestKarate} onEdit={openEditModal} onRemove={handleRemove} />
+        <h3 className="cm-section-title">Karate Classes</h3>
+        <ClassTable rows={karateRows} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
       <section className="cm-section">
-        <h3 className="cm-section-title">Futsal Classes (Last 5 Added)</h3>
-        <ClassTable rows={latestFutsal} onEdit={openEditModal} onRemove={handleRemove} />
+        <h3 className="cm-section-title">Futsal Classes</h3>
+        <ClassTable rows={futsalRows} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
       <section className="cm-section">
-        <h3 className="cm-section-title">Chess Classes (Last 5 Added)</h3>
-        <ClassTable rows={latestChess} onEdit={openEditModal} onRemove={handleRemove} />
+        <h3 className="cm-section-title">Chess Classes</h3>
+        <ClassTable rows={chessRows} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
       <section className="cm-section">
-        <h3 className="cm-section-title">Badminton Classes (Last 5 Added)</h3>
-        <ClassTable rows={latestBadminton} onEdit={openEditModal} onRemove={handleRemove} />
+        <h3 className="cm-section-title">Badminton Classes</h3>
+        <ClassTable rows={badmintonRows} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
-      {/* MODAL */}
       {isModalOpen && (
         <div className="cm-modal-backdrop" onMouseDown={closeModal}>
           <div className="cm-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -305,28 +391,68 @@ export default function ClassManagement() {
                 </div>
 
                 <div className="cm-field cm-full">
-                  <label>Schedule</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mon/Wed 6:00 PM - 7:30 PM"
-                    value={schedule}
-                    onChange={(e) => setSchedule(e.target.value)}
-                  />
+                  <label>Day / Days (Every week)</label>
+
+                  <div className={`cm-days ${scheduleType === "ONETIME" ? "is-disabled" : ""}`}>
+                    {DAYS.map((d) => (
+                      <label key={d} className="cm-day">
+                        <input
+                          type="checkbox"
+                          checked={days.includes(d)}
+                          onChange={() => toggleDay(d)}
+                          disabled={scheduleType === "ONETIME"}
+                        />
+                        <span>{d}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <label className="cm-onetime">
+                    <input
+                      type="checkbox"
+                      checked={scheduleType === "ONETIME"}
+                      onChange={(e) => handleOneTimeToggle(e.target.checked)}
+                    />
+                    One-time class / No fixed schedule
+                  </label>
+                </div>
+
+                {scheduleType === "ONETIME" && (
+                  <div className="cm-field cm-full">
+                    <label>Select Date</label>
+                    <input
+                      type="date"
+                      value={oneTimeDate}
+                      onChange={(e) => setOneTimeDate(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="cm-field">
+                  <label>Start Time</label>
+                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                </div>
+
+                <div className="cm-field">
+                  <label>End Time</label>
+                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                </div>
+
+                <div className="cm-field cm-full">
+                  <div className="cm-duration">
+                    Duration: <strong>{durationLabel(startTime, endTime)}</strong>
+                  </div>
                 </div>
               </div>
 
               <div className="cm-form-actions">
-                <button className="cm-secondary-btn" type="button" onClick={closeModal}>
+                <button className="cm-modal-btn" type="button" onClick={closeModal}>
                   Cancel
                 </button>
-                <button className="cm-primary-btn" type="submit">
+                <button className="cm-modal-btn" type="submit">
                   {mode === "ADD" ? "Add Class" : "Save Changes"}
                 </button>
               </div>
-
-              <p className="cm-hint">
-                Note: UI-only. Backend will connect classes, coaches, and schedules properly later.
-              </p>
             </form>
           </div>
         </div>
@@ -341,35 +467,42 @@ function ClassTable({ rows, onEdit, onRemove }) {
       <table className="cm-table">
         <thead>
           <tr>
-            <th>Class Name</th>
-            <th>Coach Name</th>
-            <th>Schedule</th>
-            <th>Capacity</th>
-            <th className="cm-center">Actions</th>
+            <th className="cm-col-class">Class Name</th>
+            <th className="cm-col-coach">Coach Name</th>
+            <th className="cm-col-days">Day(s)</th>
+            <th className="cm-col-date">Date</th>
+            <th className="cm-col-duration">Duration</th>
+            <th className="cm-col-capacity">Capacity</th>
+            <th className="cm-col-actions cm-center">Actions</th>
           </tr>
         </thead>
+
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan="5" className="cm-empty">
+              <td colSpan="7" className="cm-empty">
                 No classes to show.
               </td>
             </tr>
           ) : (
             rows.map((c) => (
               <tr key={c.id}>
-                <td>{c.className}</td>
-                <td>{c.coachName}</td>
-                <td>{c.schedule}</td>
-                <td>{c.capacity}</td>
-                <td className="cm-center">
-                  <button className="cm-link-btn" type="button" onClick={() => onEdit(c)}>
-                    Edit
-                  </button>
-                  <span className="cm-sep">|</span>
-                  <button className="cm-link-btn danger" type="button" onClick={() => onRemove(c.id)}>
-                    Remove
-                  </button>
+                <td className="cm-col-class">{c.className}</td>
+                <td className="cm-col-coach">{c.coachName}</td>
+                <td className="cm-col-days">{formatDays(c.days)}</td>
+                <td className="cm-col-date">{formatDate(c.oneTimeDate)}</td>
+                <td className="cm-col-duration">{durationLabel(c.startTime, c.endTime)}</td>
+                <td className="cm-col-capacity">{c.capacity}</td>
+
+                <td className="cm-col-actions cm-center">
+                  <div className="cm-actions">
+                    <button className="cm-action-btn" type="button" onClick={() => onEdit(c)}>
+                      Edit
+                    </button>
+                    <button className="cm-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
+                      Remove
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))
