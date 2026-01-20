@@ -14,11 +14,6 @@
   margin: 0;
 }
 
-.bk-subtitle {
-  margin: 6px 0 0;
-  opacity: 0.8;
-}
-
 .bk-toolbar {
   display: flex;
   gap: 10px;
@@ -32,32 +27,32 @@
   min-width: 240px;
   max-width: 540px;
   padding: 10px;
-  border: 1px solid rgba(0,0,0,0.3);
+  border: 1px solid rgba(0, 0, 0, 0.3);
   border-radius: 8px;
 }
 
 .bk-filter {
   padding: 10px;
-  border: 1px solid rgba(0,0,0,0.3);
+  border: 1px solid rgba(0, 0, 0, 0.3);
   border-radius: 8px;
 }
 
 .bk-table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(0,0,0,0.2);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 10px;
 }
 
 .bk-table {
   width: 100%;
   border-collapse: collapse;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .bk-table th,
 .bk-table td {
   padding: 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .bk-table th {
@@ -75,14 +70,6 @@
   opacity: 0.8;
 }
 
-.bk-secondary-btn {
-  padding: 10px 12px;
-  border: 2px solid #000;
-  border-radius: 10px;
-  cursor: pointer;
-  background: transparent;
-}
-
 .bk-delete-btn {
   padding: 8px 10px;
   border: 2px solid #000;
@@ -91,19 +78,13 @@
   background: transparent;
 }
 
-.bk-hint {
-  margin-top: 12px;
-  font-size: 12px;
-  opacity: 0.85;
-}
-
 /* Status badges */
 .bk-badge {
   display: inline-block;
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 12px;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .bk-badge.pending_payment {

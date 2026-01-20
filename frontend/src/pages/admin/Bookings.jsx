@@ -1,13 +1,7 @@
 import { useMemo, useState } from "react";
 import "../../styles/Bookings.css";
 
-function makeId(prefix = "B") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
-
 export default function Bookings() {
-  // UI-only mock bookings (later: fetch from backend)
   const [bookings, setBookings] = useState([
     {
       id: "B-500001",
@@ -35,7 +29,6 @@ export default function Bookings() {
     },
   ]);
 
-  // Search/filter (optional but useful)
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -68,30 +61,12 @@ export default function Bookings() {
     setBookings((prev) => prev.filter((b) => b.id !== id));
   }
 
-  // Optional: quick add fake booking (helps demo)
-  function addDemoBooking() {
-    const newBooking = {
-      id: makeId("B"),
-      playerName: "Demo Player",
-      court: "Cricket - B",
-      date: "2026-01-24",
-      time: "02:00 PM - 03:00 PM",
-      status: "PENDING_PAYMENT",
-    };
-    setBookings((prev) => [newBooking, ...prev]);
-  }
-
   return (
     <div className="bk-page">
       <div className="bk-header">
         <div>
           <h2 className="bk-title">Bookings</h2>
-          <p className="bk-subtitle">View and manage bookings (delete only in admin UI).</p>
         </div>
-
-        <button className="bk-secondary-btn" type="button" onClick={addDemoBooking}>
-          + Add Demo Booking
-        </button>
       </div>
 
       <div className="bk-toolbar">
@@ -147,11 +122,7 @@ export default function Bookings() {
                     </span>
                   </td>
                   <td className="bk-center">
-                    <button
-                      className="bk-delete-btn"
-                      type="button"
-                      onClick={() => handleDelete(b.id)}
-                    >
+                    <button className="bk-delete-btn" type="button" onClick={() => handleDelete(b.id)}>
                       Delete
                     </button>
                   </td>
@@ -161,10 +132,6 @@ export default function Bookings() {
           </tbody>
         </table>
       </div>
-
-      <p className="bk-hint">
-        Note: UI-only. In the real system, booking status updates come from payments and availability rules.
-      </p>
     </div>
   );
 }
