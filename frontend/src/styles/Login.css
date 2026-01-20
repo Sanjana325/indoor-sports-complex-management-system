@@ -1,0 +1,77 @@
+/* Page centering */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card */
+.login-card {
+  width: 360px;
+  border: 3px solid #000;
+  padding: 24px;
+
+  /* CENTER ALL CONTENT INSIDE */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Title */
+.login-title {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Labels */
+.login-card label {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+/* Inputs & select */
+.login-card input,
+.login-card select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+/* Role select box */
+.role-box {
+  width: 100%;
+  border: 2px solid #000;
+  padding: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Buttons */
+.login-btn,
+.secondary-btn {
+  width: 100%;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.login-btn {
+  background: #000;
+  color: #fff;
+  border: none;
+}
+
+.secondary-btn {
+  margin-top: 10px;
+  background: #fff;
+  border: 2px solid #000;
+}
+
+/* Register text */
+.register-text {
+  margin-top: 16px;
+  text-align: center;
+}

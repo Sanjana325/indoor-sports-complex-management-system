@@ -1,24 +1,51 @@
 import { Routes, Route } from "react-router-dom";
+
 import Login from "../pages/Login";
 import Register from "../pages/Register";
-import AdminDashboard from "../pages/AdminDashboard";
+
+// Admin
+import AdminLayout from "../layouts/AdminLayout";
+import AdminHome from "../pages/admin/AdminHome";
+import UserManagement from "../pages/admin/UserManagement";
+import Courts from "../pages/admin/Courts";
+import ClassManagement from "../pages/admin/ClassManagement";
+import Bookings from "../pages/admin/Bookings";
+import Payments from "../pages/admin/Payments";
+import BlockedSlots from "../pages/admin/BlockedSlots";
+import Enrollments from "../pages/admin/Enrollments";
+import Attendance from "../pages/admin/Attendance";
+import Reports from "../pages/admin/Reports";
+
+// Other dashboards (keep for later)
 import StaffDashboard from "../pages/StaffDashboard";
 import CoachDashboard from "../pages/CoachDashboard";
 import PlayerDashboard from "../pages/PlayerDashboard";
-import AppLayout from "../layouts/AppLayout";
 
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      <Route element={<AppLayout />}>
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/staff" element={<StaffDashboard />} />
-        <Route path="/coach" element={<CoachDashboard />} />
-        <Route path="/player" element={<PlayerDashboard />} />
+      {/* Admin */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminHome />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="courts" element={<Courts />} />
+        <Route path="classes" element={<ClassManagement />} />
+        <Route path="bookings" element={<Bookings />} />
+        <Route path="payments" element={<Payments />} />
+        <Route path="blocked-slots" element={<BlockedSlots />} />
+        <Route path="enrollments" element={<Enrollments />} />
+        <Route path="attendance" element={<Attendance />} />
+        <Route path="reports" element={<Reports />} />
       </Route>
+
+      {/* TEMP other roles */}
+      <Route path="/staff" element={<StaffDashboard />} />
+      <Route path="/coach" element={<CoachDashboard />} />
+      <Route path="/player" element={<PlayerDashboard />} />
     </Routes>
   );
 }
