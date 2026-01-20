@@ -13,7 +13,6 @@ function nowIso() {
 }
 
 export default function UserManagement() {
-  // UI-only mock data (later connect to backend)
   const [users, setUsers] = useState([
     {
       id: "U-100001",
@@ -40,6 +39,8 @@ export default function UserManagement() {
       lastName: "Fernando",
       phone: "0755555555",
       email: "sahan.coach@sports.com",
+      qualifications: "Diploma in Sports Coaching",
+      specialization: "Cricket",
       createdAt: "2026-01-18T12:00:00.000Z",
     },
     {
@@ -53,57 +54,54 @@ export default function UserManagement() {
     },
   ]);
 
-  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD"); // ADD | EDIT
   const [editingId, setEditingId] = useState(null);
 
-  // Form state
   const [role, setRole] = useState("PLAYER");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // quick filter
-  const [search, setSearch] = useState("");
+  const [qualifications, setQualifications] = useState("");
+  const [specialization, setSpecialization] = useState("");
 
+  const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
   const filteredUsers = useMemo(() => {
     if (!normalizedSearch) return users;
+
     return users.filter((u) => {
-      const haystack = `${u.id} ${u.role} ${u.firstName} ${u.lastName} ${u.phone} ${u.email}`.toLowerCase();
+      const haystack =
+        `${u.id} ${u.role} ${u.firstName} ${u.lastName} ${u.phone} ${u.email} ` +
+        `${u.qualifications ?? ""} ${u.specialization ?? ""}`.toLowerCase();
+
       return haystack.includes(normalizedSearch);
     });
   }, [users, normalizedSearch]);
 
-  const latestPlayers = useMemo(
-    () =>
-      filteredUsers
-        .filter((u) => u.role === "PLAYER")
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5),
-    [filteredUsers]
-  );
+  const latestPlayers = useMemo(() => {
+    return filteredUsers
+      .filter((u) => u.role === "PLAYER")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
+  }, [filteredUsers]);
 
-  const latestStaff = useMemo(
-    () =>
-      filteredUsers
-        .filter((u) => u.role === "STAFF")
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5),
-    [filteredUsers]
-  );
+  const latestStaff = useMemo(() => {
+    return filteredUsers
+      .filter((u) => u.role === "STAFF")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
+  }, [filteredUsers]);
 
-  const latestCoaches = useMemo(
-    () =>
-      filteredUsers
-        .filter((u) => u.role === "COACH")
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5),
-    [filteredUsers]
-  );
+  const latestCoaches = useMemo(() => {
+    return filteredUsers
+      .filter((u) => u.role === "COACH")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
+  }, [filteredUsers]);
 
   function resetForm() {
     setRole("PLAYER");
@@ -111,6 +109,8 @@ export default function UserManagement() {
     setLastName("");
     setPhone("");
     setEmail("");
+    setQualifications("");
+    setSpecialization("");
     setEditingId(null);
   }
 
@@ -123,11 +123,16 @@ export default function UserManagement() {
   function openEditModal(user) {
     setMode("EDIT");
     setEditingId(user.id);
+
     setRole(user.role);
-    setFirstName(user.firstName);
-    setLastName(user.lastName);
-    setPhone(user.phone);
-    setEmail(user.email);
+    setFirstName(user.firstName || "");
+    setLastName(user.lastName || "");
+    setPhone(user.phone || "");
+    setEmail(user.email || "");
+
+    setQualifications(user.qualifications || "");
+    setSpecialization(user.specialization || "");
+
     setIsModalOpen(true);
   }
 
@@ -136,7 +141,7 @@ export default function UserManagement() {
   }
 
   function handleRemove(id) {
-    const ok = window.confirm("Are you sure you want to remove this user?");
+    const ok = window.confirm("Remove this user?");
     if (!ok) return;
     setUsers((prev) => prev.filter((u) => u.id !== id));
   }
@@ -148,7 +153,21 @@ export default function UserManagement() {
     if (!email.trim()) return "Email is required";
     if (!email.includes("@")) return "Enter a valid email";
     if (!ROLES.includes(role)) return "Role must be Player/Staff/Coach";
+
+    if (role === "COACH") {
+      if (!qualifications.trim()) return "Qualifications is required for Coach";
+      if (!specialization.trim()) return "Specialization is required for Coach";
+    }
+
     return null;
+  }
+
+  function handleRoleChange(newRole) {
+    setRole(newRole);
+    if (newRole !== "COACH") {
+      setQualifications("");
+      setSpecialization("");
+    }
   }
 
   function handleSubmit(e) {
@@ -160,14 +179,30 @@ export default function UserManagement() {
       return;
     }
 
+    const base = {
+      role,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+    };
+
+    const coachExtra =
+      role === "COACH"
+        ? {
+            qualifications: qualifications.trim(),
+            specialization: specialization.trim(),
+          }
+        : {
+            qualifications: undefined,
+            specialization: undefined,
+          };
+
     if (mode === "ADD") {
       const newUser = {
         id: makeId("U"),
-        role,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone.trim(),
-        email: email.trim(),
+        ...base,
+        ...coachExtra,
         createdAt: nowIso(),
       };
       setUsers((prev) => [newUser, ...prev]);
@@ -176,24 +211,21 @@ export default function UserManagement() {
       return;
     }
 
-    if (mode === "EDIT") {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingId
-            ? {
-                ...u,
-                role,
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                phone: phone.trim(),
-                email: email.trim(),
-              }
-            : u
-        )
-      );
-      closeModal();
-      resetForm();
-    }
+    // EDIT
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === editingId
+          ? {
+              ...u,
+              ...base,
+              ...coachExtra,
+            }
+          : u
+      )
+    );
+
+    closeModal();
+    resetForm();
   }
 
   return (
@@ -201,10 +233,9 @@ export default function UserManagement() {
       <div className="um-header">
         <div>
           <h2 className="um-title">User Management</h2>
-          <p className="um-subtitle">Add, edit, and remove users (UI-only for now).</p>
         </div>
 
-        <button className="um-primary-btn" onClick={openAddModal}>
+        <button className="um-primary-btn" type="button" onClick={openAddModal}>
           + Add User
         </button>
       </div>
@@ -212,34 +243,37 @@ export default function UserManagement() {
       <div className="um-toolbar">
         <input
           className="um-search"
-          placeholder="Search by name, email, phone, id, role..."
+          placeholder="Search by name, email, phone, user id..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* 3 TABLES */}
       <section className="um-section">
-        <h3 className="um-section-title">Players (Last 5 Added)</h3>
+        <h3 className="um-section-title">Players</h3>
         <UserTable rows={latestPlayers} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
       <section className="um-section">
-        <h3 className="um-section-title">Staff (Last 5 Added)</h3>
+        <h3 className="um-section-title">Staff</h3>
         <UserTable rows={latestStaff} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
       <section className="um-section">
-        <h3 className="um-section-title">Coaches (Last 5 Added)</h3>
-        <UserTable rows={latestCoaches} onEdit={openEditModal} onRemove={handleRemove} />
+        <h3 className="um-section-title">Coaches</h3>
+        <UserTable
+          rows={latestCoaches}
+          onEdit={openEditModal}
+          onRemove={handleRemove}
+          showCoachCols
+        />
       </section>
 
-      {/* MODAL */}
       {isModalOpen && (
         <div className="um-modal-backdrop" onMouseDown={closeModal}>
           <div className="um-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="um-modal-header">
-              <h3>{mode === "ADD" ? "Add User" : "Edit User"}</h3>
+              <h3 className="um-modal-title">{mode === "ADD" ? "Add User" : "Edit User"}</h3>
               <button className="um-icon-btn" type="button" onClick={closeModal} aria-label="Close">
                 ✕
               </button>
@@ -249,7 +283,7 @@ export default function UserManagement() {
               <div className="um-grid">
                 <div className="um-field">
                   <label>Role</label>
-                  <select value={role} onChange={(e) => setRole(e.target.value)}>
+                  <select value={role} onChange={(e) => handleRoleChange(e.target.value)}>
                     <option value="PLAYER">Player</option>
                     <option value="STAFF">Staff</option>
                     <option value="COACH">Coach</option>
@@ -295,6 +329,30 @@ export default function UserManagement() {
                     onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
+
+                {role === "COACH" && (
+                  <>
+                    <div className="um-field um-full">
+                      <label>Qualifications</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Diploma in Sports Coaching"
+                        value={qualifications}
+                        onChange={(e) => setQualifications(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="um-field um-full">
+                      <label>Specialization</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Cricket / Badminton / Chess"
+                        value={specialization}
+                        onChange={(e) => setSpecialization(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="um-form-actions">
@@ -305,10 +363,6 @@ export default function UserManagement() {
                   {mode === "ADD" ? "Add User" : "Save Changes"}
                 </button>
               </div>
-
-              <p className="um-hint">
-                Note: This is UI-only. Backend integration will enforce rules (e.g., players can self-register).
-              </p>
             </form>
           </div>
         </div>
@@ -317,41 +371,75 @@ export default function UserManagement() {
   );
 }
 
-function UserTable({ rows, onEdit, onRemove }) {
+function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
   return (
     <div className="um-table-wrap">
-      <table className="um-table">
+      <table className={`um-table ${showCoachCols ? "um-table--coach" : ""}`}>
         <thead>
           <tr>
-            <th>User ID</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th className="um-center">Actions</th>
+            <th className="um-col-id">User ID</th>
+            <th className="um-col-name">Name</th>
+
+            {showCoachCols ? (
+              <>
+                <th className="um-col-phone">Phone</th>
+                <th className="um-col-email">Email</th>
+                <th className="um-col-qual">Qualifications</th>
+                <th className="um-col-spec">Specialization</th>
+              </>
+            ) : (
+              <>
+                <th className="um-col-phone">Phone</th>
+                <th className="um-col-email">Email</th>
+              </>
+            )}
+
+            <th className="um-col-actions um-center">Actions</th>
           </tr>
         </thead>
+
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan="5" className="um-empty">
-                No users to show.
+              <td colSpan={showCoachCols ? 7 : 5} className="um-empty">
+                No users found.
               </td>
             </tr>
           ) : (
             rows.map((u) => (
               <tr key={u.id}>
-                <td>{u.id}</td>
-                <td>{u.firstName} {u.lastName}</td>
-                <td>{u.phone}</td>
-                <td>{u.email}</td>
-                <td className="um-center">
-                  <button className="um-link-btn" type="button" onClick={() => onEdit(u)}>
-                    Edit
-                  </button>
-                  <span className="um-sep">|</span>
-                  <button className="um-link-btn danger" type="button" onClick={() => onRemove(u.id)}>
-                    Remove
-                  </button>
+                <td className="um-col-id">{u.id}</td>
+                <td className="um-col-name">
+                  {u.firstName} {u.lastName}
+                </td>
+
+                {showCoachCols ? (
+                  <>
+                    <td className="um-col-phone">{u.phone}</td>
+                    <td className="um-col-email">{u.email}</td>
+                    <td className="um-col-qual">{u.qualifications || "-"}</td>
+                    <td className="um-col-spec">{u.specialization || "-"}</td>
+                  </>
+                ) : (
+                  <>
+                    <td className="um-col-phone">{u.phone}</td>
+                    <td className="um-col-email">{u.email}</td>
+                  </>
+                )}
+
+                <td className="um-col-actions um-center">
+                  <div className="um-actions">
+                    <button className="um-action-btn" type="button" onClick={() => onEdit(u)}>
+                      Edit
+                    </button>
+                    <button
+                      className="um-action-btn danger"
+                      type="button"
+                      onClick={() => onRemove(u.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))
