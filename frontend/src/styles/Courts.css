@@ -1,0 +1,226 @@
+.courts-page {
+  max-width: 1100px;
+}
+
+.courts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.courts-title {
+  margin: 0;
+}
+
+.courts-subtitle {
+  margin: 6px 0 0;
+  opacity: 0.8;
+}
+
+.courts-toolbar {
+  margin: 12px 0 18px;
+}
+
+.courts-search {
+  width: 100%;
+  max-width: 540px;
+  padding: 10px;
+  border: 1px solid rgba(0,0,0,0.3);
+  border-radius: 8px;
+}
+
+.courts-section {
+  margin-bottom: 20px;
+}
+
+.courts-section-title {
+  margin: 0 0 10px;
+}
+
+.courts-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 10px;
+}
+
+.courts-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255,255,255,0.03);
+}
+
+.courts-table th,
+.courts-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+
+.courts-table th {
+  text-align: left;
+}
+
+.courts-center {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.courts-empty {
+  text-align: center;
+  padding: 18px;
+  opacity: 0.8;
+}
+
+.courts-primary-btn {
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #000;
+  color: #fff;
+}
+
+.courts-secondary-btn {
+  padding: 10px 12px;
+  border: 2px solid #000;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.courts-link-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  text-decoration: underline;
+}
+
+.courts-link-btn.danger {
+  color: #ff6b6b;
+}
+
+.courts-sep {
+  margin: 0 6px;
+  opacity: 0.7;
+}
+
+/* Status badges */
+.courts-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.courts-badge.available {
+  opacity: 0.95;
+}
+
+.courts-badge.booked {
+  opacity: 0.95;
+}
+
+.courts-badge.maintenance {
+  opacity: 0.95;
+}
+
+/* MODAL */
+.courts-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 999;
+}
+
+.courts-modal {
+  width: 100%;
+  max-width: 640px;
+  background: #1e1e1e;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.courts-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.courts-icon-btn {
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.courts-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.courts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.courts-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.courts-field input,
+.courts-field select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.courts-full {
+  grid-column: 1 / -1;
+}
+
+.courts-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.courts-hint {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .courts-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .courts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .courts-search {
+    max-width: 100%;
+  }
+}
