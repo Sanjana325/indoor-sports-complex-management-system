@@ -11,7 +11,6 @@ function nowIso() {
 }
 
 export default function BlockedSlots() {
-  // UI-only mock data (later: fetch from backend)
   const [blockedSlots, setBlockedSlots] = useState([
     {
       id: "BS-400001",
@@ -33,7 +32,6 @@ export default function BlockedSlots() {
     },
   ]);
 
-  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD"); // ADD | EDIT
   const [editingId, setEditingId] = useState(null);
@@ -45,10 +43,8 @@ export default function BlockedSlots() {
   const [endTime, setEndTime] = useState("");
   const [reason, setReason] = useState("");
 
-  // Search (optional)
   const [search, setSearch] = useState("");
 
-  // UI-only list of courts (later comes from DB)
   const COURT_OPTIONS = useMemo(
     () => ["Cricket - A", "Cricket - B", "Badminton - A", "Futsal - A"],
     []
@@ -59,7 +55,7 @@ export default function BlockedSlots() {
   const filtered = useMemo(() => {
     if (!normalizedSearch) return blockedSlots;
     return blockedSlots.filter((b) => {
-      const hay = `${b.court} ${b.date} ${b.startTime} ${b.endTime} ${b.reason}`.toLowerCase();
+      const hay = `${b.court} ${b.date} ${b.startTime} ${b.endTime} ${b.reason} ${b.id}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [blockedSlots, normalizedSearch]);
@@ -111,7 +107,6 @@ export default function BlockedSlots() {
     if (!startTime) return "Start time is required";
     if (!endTime) return "End time is required";
     if (!reason.trim()) return "Reason is required";
-
     if (endTime <= startTime) return "End time must be after start time";
     return null;
   }
@@ -141,24 +136,23 @@ export default function BlockedSlots() {
       return;
     }
 
-    if (mode === "EDIT") {
-      setBlockedSlots((prev) =>
-        prev.map((b) =>
-          b.id === editingId
-            ? {
-                ...b,
-                court: court.trim(),
-                date,
-                startTime,
-                endTime,
-                reason: reason.trim(),
-              }
-            : b
-        )
-      );
-      closeModal();
-      resetForm();
-    }
+    // EDIT
+    setBlockedSlots((prev) =>
+      prev.map((b) =>
+        b.id === editingId
+          ? {
+              ...b,
+              court: court.trim(),
+              date,
+              startTime,
+              endTime,
+              reason: reason.trim(),
+            }
+          : b
+      )
+    );
+    closeModal();
+    resetForm();
   }
 
   return (
@@ -166,10 +160,9 @@ export default function BlockedSlots() {
       <div className="bs-header">
         <div>
           <h2 className="bs-title">Blocked Slots</h2>
-          <p className="bs-subtitle">Block courts for maintenance/events (UI-only for now).</p>
         </div>
 
-        <button className="bs-primary-btn" onClick={openAddModal}>
+        <button className="bs-primary-btn" type="button" onClick={openAddModal}>
           + Block Slot
         </button>
       </div>
@@ -187,12 +180,12 @@ export default function BlockedSlots() {
         <table className="bs-table">
           <thead>
             <tr>
-              <th>Court</th>
-              <th>Date</th>
-              <th>Start Time</th>
-              <th>End Time</th>
-              <th>Reason</th>
-              <th className="bs-center">Actions</th>
+              <th className="bs-col-court">Court</th>
+              <th className="bs-col-date">Date</th>
+              <th className="bs-col-start">Start Time</th>
+              <th className="bs-col-end">End Time</th>
+              <th className="bs-col-reason">Reason</th>
+              <th className="bs-col-actions bs-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -205,19 +198,25 @@ export default function BlockedSlots() {
             ) : (
               sorted.map((b) => (
                 <tr key={b.id}>
-                  <td>{b.court}</td>
-                  <td>{b.date}</td>
-                  <td>{b.startTime}</td>
-                  <td>{b.endTime}</td>
-                  <td>{b.reason}</td>
-                  <td className="bs-center">
-                    <button className="bs-link-btn" type="button" onClick={() => openEditModal(b)}>
-                      Edit
-                    </button>
-                    <span className="bs-sep">|</span>
-                    <button className="bs-link-btn danger" type="button" onClick={() => handleRemove(b.id)}>
-                      Remove
-                    </button>
+                  <td className="bs-col-court">{b.court}</td>
+                  <td className="bs-col-date">{b.date}</td>
+                  <td className="bs-col-start">{b.startTime}</td>
+                  <td className="bs-col-end">{b.endTime}</td>
+                  <td className="bs-col-reason">{b.reason}</td>
+
+                  <td className="bs-col-actions bs-center">
+                    <div className="bs-actions">
+                      <button className="bs-action-btn" type="button" onClick={() => openEditModal(b)}>
+                        Edit
+                      </button>
+                      <button
+                        className="bs-action-btn danger"
+                        type="button"
+                        onClick={() => handleRemove(b.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -226,7 +225,6 @@ export default function BlockedSlots() {
         </table>
       </div>
 
-      {/* MODAL */}
       {isModalOpen && (
         <div className="bs-modal-backdrop" onMouseDown={closeModal}>
           <div className="bs-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -277,17 +275,13 @@ export default function BlockedSlots() {
               </div>
 
               <div className="bs-form-actions">
-                <button className="bs-secondary-btn" type="button" onClick={closeModal}>
+                <button className="bs-modal-btn" type="button" onClick={closeModal}>
                   Cancel
                 </button>
-                <button className="bs-primary-btn" type="submit">
+                <button className="bs-modal-btn" type="submit">
                   {mode === "ADD" ? "Block Slot" : "Save Changes"}
                 </button>
               </div>
-
-              <p className="bs-hint">
-                Note: UI-only. Backend will prevent bookings in blocked time ranges.
-              </p>
             </form>
           </div>
         </div>

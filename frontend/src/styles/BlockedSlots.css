@@ -1,7 +1,14 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .bs-page {
   max-width: 1100px;
 }
 
+/* ================= HEADER ================= */
 .bs-header {
   display: flex;
   justify-content: space-between;
@@ -14,11 +21,6 @@
   margin: 0;
 }
 
-.bs-subtitle {
-  margin: 6px 0 0;
-  opacity: 0.8;
-}
-
 .bs-toolbar {
   margin: 12px 0 18px;
 }
@@ -27,35 +29,55 @@
   width: 100%;
   max-width: 540px;
   padding: 10px;
-  border: 1px solid rgba(0,0,0,0.3);
+  border: 1px solid rgba(0, 0, 0, 0.3);
   border-radius: 8px;
 }
 
+/* ================= TABLE ================= */
 .bs-table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(0,0,0,0.2);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 10px;
 }
 
 .bs-table {
   width: 100%;
   border-collapse: collapse;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
+  table-layout: fixed;
 }
 
+/* Column widths */
+.bs-col-court { width: 26%; }
+.bs-col-date { width: 14%; }
+.bs-col-start { width: 12%; }
+.bs-col-end { width: 12%; }
+.bs-col-reason { width: 20%; }
+.bs-col-actions { width: 16%; }
+
+/* Cells */
 .bs-table th,
 .bs-table td {
   padding: 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bs-table th {
-  text-align: left;
+  font-weight: 800;
 }
 
 .bs-center {
   text-align: center;
-  white-space: nowrap;
+}
+
+/* IMPORTANT: prevent action buttons being cut */
+.bs-col-actions,
+.bs-col-actions td {
+  overflow: visible;
 }
 
 .bs-empty {
@@ -64,6 +86,9 @@
   opacity: 0.8;
 }
 
+/* ================= BUTTONS ================= */
+
+/* Page button (top right) */
 .bs-primary-btn {
   padding: 10px 12px;
   border: none;
@@ -71,38 +96,38 @@
   cursor: pointer;
   background: #000;
   color: #fff;
+  font-weight: 700;
 }
 
-.bs-secondary-btn {
-  padding: 10px 12px;
-  border: 2px solid #000;
+/* Action buttons (Edit / Remove – project standard) */
+.bs-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.bs-action-btn {
+  padding: 8px 14px;
   border-radius: 10px;
   cursor: pointer;
-  background: transparent;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 700;
+  line-height: 1.1;
 }
 
-.bs-link-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px 6px;
-  text-decoration: underline;
+.bs-action-btn.danger {
+  border-color: #b00020;
+  color: #b00020;
+  background: #fff;
 }
 
-.bs-link-btn.danger {
-  color: #ff6b6b;
-}
-
-.bs-sep {
-  margin: 0 6px;
-  opacity: 0.7;
-}
-
-/* MODAL */
+/* ================= MODAL ================= */
 .bs-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -115,9 +140,10 @@
   max-width: 640px;
   background: #1e1e1e;
   color: #fff;
-  border: 2px solid rgba(255,255,255,0.15);
+  border: 2px solid rgba(255, 255, 255, 0.15);
   border-radius: 14px;
   padding: 16px;
+  overflow: hidden;
 }
 
 .bs-modal-header {
@@ -136,6 +162,7 @@
   font-size: 18px;
 }
 
+/* ================= FORM ================= */
 .bs-form {
   display: flex;
   flex-direction: column;
@@ -146,6 +173,11 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  align-items: start;
+}
+
+.bs-field {
+  min-width: 0;
 }
 
 .bs-field label {
@@ -159,27 +191,57 @@
   width: 100%;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   background: #2a2a2a;
   color: #fff;
 }
 
+/* Full width field */
 .bs-full {
   grid-column: 1 / -1;
 }
 
+/* ================= DATE & TIME ICON FIX ================= */
+
+/* Firefox */
+.bs-field input[type="date"],
+.bs-field input[type="time"] {
+  color-scheme: dark;
+}
+
+/* Chrome / Edge / Safari */
+.bs-field input[type="date"]::-webkit-calendar-picker-indicator,
+.bs-field input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.8);
+  opacity: 1;
+  cursor: pointer;
+}
+
+/* Extra Chrome safety */
+.bs-field input[type="date"]::-webkit-inner-spin-button,
+.bs-field input[type="time"]::-webkit-inner-spin-button {
+  filter: invert(1);
+}
+
+/* ================= FORM ACTIONS ================= */
 .bs-form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
 }
 
-.bs-hint {
-  margin: 0;
-  font-size: 12px;
-  opacity: 0.85;
+/* Cancel + Block Slot buttons (white bg) */
+.bs-modal-btn {
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
 }
 
+/* ================= MOBILE ================= */
 @media (max-width: 640px) {
   .bs-header {
     flex-direction: column;
@@ -192,5 +254,14 @@
 
   .bs-search {
     max-width: 100%;
+  }
+
+  .bs-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bs-col-actions {
+    width: 22%;
   }
 }
