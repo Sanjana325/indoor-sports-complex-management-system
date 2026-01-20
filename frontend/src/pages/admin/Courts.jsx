@@ -13,13 +13,6 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function sportLabel(s) {
-  if (s === "CRICKET") return "Cricket";
-  if (s === "BADMINTON") return "Badminton";
-  if (s === "FUTSAL") return "Futsal";
-  return s;
-}
-
 function statusLabel(s) {
   if (s === "AVAILABLE") return "Available";
   if (s === "BOOKED") return "Booked";
@@ -28,12 +21,10 @@ function statusLabel(s) {
 }
 
 export default function Courts() {
-  // UI-only mock courts (later: fetch from backend)
   const [courts, setCourts] = useState([
     {
       id: "C-200001",
       sport: "CRICKET",
-      code: "CR-A",
       name: "Cricket - A",
       capacity: 22,
       status: "AVAILABLE",
@@ -42,7 +33,6 @@ export default function Courts() {
     {
       id: "C-200002",
       sport: "CRICKET",
-      code: "CR-B",
       name: "Cricket - B",
       capacity: 22,
       status: "MAINTENANCE",
@@ -51,7 +41,6 @@ export default function Courts() {
     {
       id: "C-200003",
       sport: "BADMINTON",
-      code: "BD-A",
       name: "Badminton - A",
       capacity: 4,
       status: "AVAILABLE",
@@ -60,7 +49,6 @@ export default function Courts() {
     {
       id: "C-200004",
       sport: "FUTSAL",
-      code: "FT-A",
       name: "Futsal - A",
       capacity: 12,
       status: "BOOKED",
@@ -68,27 +56,23 @@ export default function Courts() {
     },
   ]);
 
-  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD"); // ADD | EDIT
   const [editingId, setEditingId] = useState(null);
 
-  // Form state
   const [sport, setSport] = useState("CRICKET");
-  const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
   const [status, setStatus] = useState("AVAILABLE");
 
-  // Filter (optional but useful)
   const [search, setSearch] = useState("");
-
   const normalizedSearch = search.trim().toLowerCase();
 
   const filteredCourts = useMemo(() => {
     if (!normalizedSearch) return courts;
+
     return courts.filter((c) => {
-      const hay = `${c.id} ${c.sport} ${c.code} ${c.name} ${c.capacity} ${c.status}`.toLowerCase();
+      const hay = `${c.id} ${c.sport} ${c.name} ${c.capacity} ${c.status}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [courts, normalizedSearch]);
@@ -122,7 +106,6 @@ export default function Courts() {
 
   function resetForm() {
     setSport("CRICKET");
-    setCode("");
     setName("");
     setCapacity("");
     setStatus("AVAILABLE");
@@ -139,7 +122,6 @@ export default function Courts() {
     setMode("EDIT");
     setEditingId(court.id);
     setSport(court.sport);
-    setCode(court.code);
     setName(court.name);
     setCapacity(String(court.capacity));
     setStatus(court.status);
@@ -158,7 +140,6 @@ export default function Courts() {
 
   function validateForm() {
     if (!SPORTS.includes(sport)) return "Select a valid sport";
-    if (!code.trim()) return "Court code is required (e.g., CR-A)";
     if (!name.trim()) return "Court name is required (e.g., Cricket - A)";
     const capNum = Number(capacity);
     if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
@@ -181,7 +162,6 @@ export default function Courts() {
       const newCourt = {
         id: makeId("C"),
         sport,
-        code: code.trim().toUpperCase(),
         name: name.trim(),
         capacity: capNum,
         status,
@@ -200,7 +180,6 @@ export default function Courts() {
             ? {
                 ...c,
                 sport,
-                code: code.trim().toUpperCase(),
                 name: name.trim(),
                 capacity: capNum,
                 status,
@@ -218,10 +197,9 @@ export default function Courts() {
       <div className="courts-header">
         <div>
           <h2 className="courts-title">Courts</h2>
-          <p className="courts-subtitle">Manage courts by sport (UI-only for now).</p>
         </div>
 
-        <button className="courts-primary-btn" onClick={openAddModal}>
+        <button className="courts-primary-btn" type="button" onClick={openAddModal}>
           + Add Court
         </button>
       </div>
@@ -229,13 +207,12 @@ export default function Courts() {
       <div className="courts-toolbar">
         <input
           className="courts-search"
-          placeholder="Search by code, name, sport, status..."
+          placeholder="Search by id, name, sport, status..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* 3 TABLES */}
       <section className="courts-section">
         <h3 className="courts-section-title">Cricket Courts (Last 5 Added)</h3>
         <CourtTable rows={latestCricket} onEdit={openEditModal} onRemove={handleRemove} />
@@ -251,7 +228,6 @@ export default function Courts() {
         <CourtTable rows={latestFutsal} onEdit={openEditModal} onRemove={handleRemove} />
       </section>
 
-      {/* MODAL */}
       {isModalOpen && (
         <div className="courts-modal-backdrop" onMouseDown={closeModal}>
           <div className="courts-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -282,17 +258,7 @@ export default function Courts() {
                   </select>
                 </div>
 
-                <div className="courts-field">
-                  <label>Court Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CR-A"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                  />
-                </div>
-
-                <div className="courts-field">
+                <div className="courts-field courts-full">
                   <label>Court Name</label>
                   <input
                     type="text"
@@ -317,14 +283,11 @@ export default function Courts() {
                 <button className="courts-secondary-btn" type="button" onClick={closeModal}>
                   Cancel
                 </button>
-                <button className="courts-primary-btn" type="submit">
+
+                <button className="courts-primary-btn courts-modal-primary" type="submit">
                   {mode === "ADD" ? "Add Court" : "Save Changes"}
                 </button>
               </div>
-
-              <p className="courts-hint">
-                Note: This is UI-only. Backend will enforce booking availability and status updates.
-              </p>
             </form>
           </div>
         </div>
@@ -339,13 +302,14 @@ function CourtTable({ rows, onEdit, onRemove }) {
       <table className="courts-table">
         <thead>
           <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Capacity</th>
-            <th>Status</th>
-            <th className="courts-center">Actions</th>
+            <th className="courts-col-id">Court ID</th>
+            <th className="courts-col-name">Name</th>
+            <th className="courts-col-capacity">Capacity</th>
+            <th className="courts-col-status">Status</th>
+            <th className="courts-col-actions courts-center">Actions</th>
           </tr>
         </thead>
+
         <tbody>
           {rows.length === 0 ? (
             <tr>
@@ -356,22 +320,24 @@ function CourtTable({ rows, onEdit, onRemove }) {
           ) : (
             rows.map((c) => (
               <tr key={c.id}>
-                <td>{c.code}</td>
-                <td>{c.name}</td>
-                <td>{c.capacity}</td>
-                <td>
+                <td className="courts-col-id">{c.id}</td>
+                <td className="courts-col-name">{c.name}</td>
+                <td className="courts-col-capacity">{c.capacity}</td>
+                <td className="courts-col-status">
                   <span className={`courts-badge ${c.status.toLowerCase()}`}>
                     {statusLabel(c.status)}
                   </span>
                 </td>
-                <td className="courts-center">
-                  <button className="courts-link-btn" type="button" onClick={() => onEdit(c)}>
-                    Edit
-                  </button>
-                  <span className="courts-sep">|</span>
-                  <button className="courts-link-btn danger" type="button" onClick={() => onRemove(c.id)}>
-                    Remove
-                  </button>
+
+                <td className="courts-col-actions courts-center">
+                  <div className="courts-actions">
+                    <button className="courts-action-btn" type="button" onClick={() => onEdit(c)}>
+                      Edit
+                    </button>
+                    <button className="courts-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
+                      Remove
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))

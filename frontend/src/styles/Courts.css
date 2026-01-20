@@ -1,7 +1,14 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .courts-page {
   max-width: 1100px;
 }
 
+/* Header */
 .courts-header {
   display: flex;
   justify-content: space-between;
@@ -14,11 +21,7 @@
   margin: 0;
 }
 
-.courts-subtitle {
-  margin: 6px 0 0;
-  opacity: 0.8;
-}
-
+/* Toolbar */
 .courts-toolbar {
   margin: 12px 0 18px;
 }
@@ -31,6 +34,7 @@
   border-radius: 8px;
 }
 
+/* Sections */
 .courts-section {
   margin-bottom: 20px;
 }
@@ -39,39 +43,70 @@
   margin: 0 0 10px;
 }
 
+/* Table wrapper */
 .courts-table-wrap {
   overflow-x: auto;
   border: 1px solid rgba(0,0,0,0.2);
   border-radius: 10px;
 }
 
+/* Table */
 .courts-table {
   width: 100%;
   border-collapse: collapse;
   background: rgba(255,255,255,0.03);
+  table-layout: fixed;
 }
 
+/* ✅ Balanced column widths (FIXED) */
+.courts-col-id {
+  width: 20%;
+}
+
+.courts-col-name {
+  width: 36%;
+}
+
+.courts-col-capacity {
+  width: 12%;
+}
+
+.courts-col-status {
+  width: 14%;
+}
+
+.courts-col-actions {
+  width: 18%;
+}
+
+/* Cells */
 .courts-table th,
 .courts-table td {
   padding: 10px;
   border-bottom: 1px solid rgba(0,0,0,0.12);
+  text-align: left;
+
+  /* ✅ Important: prevents button borders being cut */
+  overflow: visible;
+  white-space: nowrap;
 }
 
 .courts-table th {
-  text-align: left;
+  font-weight: 800;
 }
 
 .courts-center {
   text-align: center;
-  white-space: nowrap;
 }
 
+/* Empty state */
 .courts-empty {
   text-align: center;
   padding: 18px;
   opacity: 0.8;
 }
 
+/* Top add button */
 .courts-primary-btn {
   padding: 10px 12px;
   border: none;
@@ -79,34 +114,48 @@
   cursor: pointer;
   background: #000;
   color: #fff;
+  font-weight: 700;
 }
 
+/* Modal buttons */
 .courts-secondary-btn {
   padding: 10px 12px;
-  border: 2px solid #000;
+  border: none;
   border-radius: 10px;
   cursor: pointer;
-  background: transparent;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
 }
 
-.courts-link-btn {
-  background: transparent;
-  border: none;
+.courts-modal-primary {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* ✅ Actions buttons (STANDARD ACROSS PROJECT) */
+.courts-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.courts-action-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
   cursor: pointer;
-  padding: 4px 6px;
-  text-decoration: underline;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 700;
 }
 
-.courts-link-btn.danger {
-  color: #ff6b6b;
+.courts-action-btn.danger {
+  border-color: #b00020;
+  color: #b00020;
+  background: #fff;
 }
 
-.courts-sep {
-  margin: 0 6px;
-  opacity: 0.7;
-}
-
-/* Status badges */
+/* Status badge */
 .courts-badge {
   display: inline-block;
   padding: 4px 8px;
@@ -127,7 +176,7 @@
   opacity: 0.95;
 }
 
-/* MODAL */
+/* Modal */
 .courts-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -165,6 +214,7 @@
   font-size: 18px;
 }
 
+/* Form */
 .courts-form {
   display: flex;
   flex-direction: column;
@@ -175,6 +225,10 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.courts-field {
+  min-width: 0;
 }
 
 .courts-field label {
@@ -203,12 +257,6 @@
   gap: 10px;
 }
 
-.courts-hint {
-  margin: 0;
-  font-size: 12px;
-  opacity: 0.85;
-}
-
 /* Mobile */
 @media (max-width: 640px) {
   .courts-header {
@@ -222,5 +270,10 @@
 
   .courts-search {
     max-width: 100%;
+  }
+
+  .courts-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
