@@ -1,94 +1,45 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/Register.css";
 
 export default function Register() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
-  function handleRegister(e) {
-    e.preventDefault();
-
-    // UI-only validation for now
-    if (password !== confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
-
-    alert("Player registered (UI only)");
-  }
-
   return (
-    <div className="register-container">
-      <form className="register-card" onSubmit={handleRegister}>
-        <h2 className="register-title">Player Registration</h2>
+    <div className="reg-page">
+      <div className="reg-card">
+        <h2 className="reg-title">Player Registration</h2>
 
-        <label>First Name</label>
-        <input
-          type="text"
-          placeholder="Enter first name"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          required
-        />
+        <div className="reg-field">
+          <label>First Name</label>
+          <input placeholder="First name" />
+        </div>
 
-        <label>Last Name</label>
-        <input
-          type="text"
-          placeholder="Enter last name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          required
-        />
+        <div className="reg-field">
+          <label>Last Name</label>
+          <input placeholder="Last name" />
+        </div>
 
-        <label>Phone Number</label>
-        <input
-          type="tel"
-          placeholder="e.g. 0771234567"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          required
-        />
+        <div className="reg-field">
+          <label>Phone Number</label>
+          <input placeholder="07X XXX XXXX" />
+        </div>
 
-        <label>Email</label>
-        <input
-          type="email"
-          placeholder="e.g. nuwan.perera@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <div className="reg-field">
+          <label>Email</label>
+          <input placeholder="example@email.com" />
+        </div>
 
-        <label>Password</label>
-        <input
-          type="password"
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="reg-field">
+          <label>Password</label>
+          <input type="password" placeholder="Enter password" />
+        </div>
 
-        <label>Confirm Password</label>
-        <input
-          type="password"
-          placeholder="Re-enter password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-        />
-
-        <button type="submit" className="register-btn">
+        <button className="reg-btn" type="button">
           Register
         </button>
 
-        <p className="login-text">
+        <p className="reg-link">
           Already have an account? <Link to="/">Login</Link>
         </p>
-      </form>
+      </div>
     </div>
   );
 }
