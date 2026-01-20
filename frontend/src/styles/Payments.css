@@ -1,0 +1,137 @@
+.pay-page {
+  max-width: 1100px;
+}
+
+.pay-header {
+  margin-bottom: 12px;
+}
+
+.pay-title {
+  margin: 0;
+}
+
+.pay-subtitle {
+  margin: 6px 0 0;
+  opacity: 0.8;
+}
+
+.pay-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+}
+
+.pay-search {
+  flex: 1;
+  min-width: 240px;
+  max-width: 540px;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.pay-filter {
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+}
+
+.pay-section {
+  margin-bottom: 20px;
+}
+
+.pay-section-title {
+  margin: 0 0 10px;
+}
+
+.pay-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.pay-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pay-table th,
+.pay-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.pay-table th {
+  text-align: left;
+}
+
+.pay-center {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pay-empty {
+  text-align: center;
+  padding: 18px;
+  opacity: 0.8;
+}
+
+/* Buttons */
+.pay-link-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pay-verify-btn {
+  padding: 6px 10px;
+  margin-right: 6px;
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pay-reject-btn {
+  padding: 6px 10px;
+  border: 2px solid #000;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Status badge */
+.pay-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+/* (No colors specified on purpose) */
+.pay-badge.pending,
+.pay-badge.verified,
+.pay-badge.completed,
+.pay-badge.cancelled {
+  opacity: 0.9;
+}
+
+.pay-hint {
+  margin-top: 12px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+@media (max-width: 640px) {
+  .pay-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pay-search {
+    max-width: 100%;
+  }
+}

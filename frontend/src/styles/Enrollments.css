@@ -1,0 +1,101 @@
+.enr-page {
+  max-width: 1100px;
+}
+
+.enr-header {
+  margin-bottom: 14px;
+}
+
+.enr-title {
+  margin: 0;
+}
+
+.enr-subtitle {
+  margin: 6px 0 0;
+  opacity: 0.8;
+}
+
+.enr-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+}
+
+.enr-label {
+  font-weight: 600;
+}
+
+.enr-filter {
+  padding: 10px;
+  border: 1px solid rgba(0,0,0,0.3);
+  border-radius: 8px;
+  min-width: 260px;
+}
+
+.enr-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 10px;
+}
+
+.enr-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.enr-table th,
+.enr-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+
+.enr-table th {
+  text-align: left;
+}
+
+.enr-center {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.enr-empty {
+  text-align: center;
+  padding: 18px;
+  opacity: 0.8;
+}
+
+.enr-remove-btn {
+  padding: 8px 10px;
+  border: 2px solid #000;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+}
+
+/* Status badge */
+.enr-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid rgba(0,0,0,0.3);
+  opacity: 0.9;
+}
+
+.enr-hint {
+  margin-top: 12px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+@media (max-width: 640px) {
+  .enr-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .enr-filter {
+    min-width: 100%;
+  }
+}
