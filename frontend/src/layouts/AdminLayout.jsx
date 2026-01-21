@@ -1,37 +1,51 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "../styles/AdminLayout.css";
 
+function getInitials(firstName = "", lastName = "") {
+  const a = (firstName || "").trim().charAt(0).toUpperCase();
+  const b = (lastName || "").trim().charAt(0).toUpperCase();
+  return (a + b) || "U";
+}
+
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ Get user details from localStorage (fallbacks if empty)
+  // ✅ User from localStorage
   const user = useMemo(() => {
     const firstName = localStorage.getItem("firstName") || "Admin";
     const lastName = localStorage.getItem("lastName") || "";
     const role = localStorage.getItem("role") || "ADMIN";
     const email = localStorage.getItem("email") || "admin@sports.com";
     const phone = localStorage.getItem("phone") || "07XXXXXXXX";
-    return { firstName, lastName, role, email, phone };
+
+    const qualifications = localStorage.getItem("qualifications") || "";
+    const specialization = localStorage.getItem("specialization") || "";
+
+    return { firstName, lastName, role, email, phone, qualifications, specialization };
   }, []);
 
   const displayName = `${user.firstName} ${user.lastName}`.trim();
+  const initials = getInitials(user.firstName, user.lastName);
 
-  // Profile dropdown
+  // Dropdown
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
   useEffect(() => {
     function handleOutsideClick(e) {
       if (!profileRef.current) return;
-      if (!profileRef.current.contains(e.target)) {
-        setIsProfileOpen(false);
-      }
+      if (!profileRef.current.contains(e.target)) setIsProfileOpen(false);
     }
-
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
+
+  useEffect(() => {
+    // Close dropdown on route change
+    setIsProfileOpen(false);
+  }, [location.pathname]);
 
   function handleLogout() {
     localStorage.removeItem("email");
@@ -39,6 +53,8 @@ export default function AdminLayout() {
     localStorage.removeItem("firstName");
     localStorage.removeItem("lastName");
     localStorage.removeItem("phone");
+    localStorage.removeItem("qualifications");
+    localStorage.removeItem("specialization");
 
     navigate("/");
   }
@@ -50,7 +66,7 @@ export default function AdminLayout() {
         <h2 className="sidebar-title">Admin Panel</h2>
 
         <nav className="sidebar-nav">
-          <NavLink to="/admin" className={({ isActive }) => (isActive ? "active" : "")}>
+          <NavLink to="/admin" end className={({ isActive }) => (isActive ? "active" : "")}>
             Home
           </NavLink>
 
@@ -101,29 +117,40 @@ export default function AdminLayout() {
           <div className="topbar-right" ref={profileRef}>
             <button
               type="button"
-              className="profile-btn"
+              className="profile-trigger"
               onClick={() => setIsProfileOpen((p) => !p)}
+              aria-haspopup="menu"
+              aria-expanded={isProfileOpen}
             >
-              Profile ▾
+              <span className="profile-avatar">{initials}</span>
+              <span className="profile-name-mini">{displayName || "User"}</span>
+              <span className="profile-caret">▾</span>
             </button>
 
             {isProfileOpen && (
-              <div className="profile-dropdown">
-                <div className="profile-row">
-                  <div className="profile-name">{displayName}</div>
-                  <div className="profile-role">{user.role}</div>
+              <div className="profile-menu" role="menu">
+                <div className="profile-menu-head">
+                  <div className="profile-menu-left">
+                    <div className="profile-menu-avatar">{initials}</div>
+                    <div className="profile-menu-meta">
+                      <div className="profile-menu-name">{displayName || "User"}</div>
+                      <div className="profile-menu-email">{user.email}</div>
+                    </div>
+                  </div>
+                  <div className="profile-role-pill">{user.role}</div>
                 </div>
 
-                <div className="profile-info">
-                  <div>
-                    <span>Email:</span> {user.email}
-                  </div>
-                  <div>
-                    <span>Phone:</span> {user.phone}
-                  </div>
+                <div className="profile-menu-list">
+                  <Link className="profile-menu-item" to="/admin/profile" role="menuitem">
+                    My Profile
+                  </Link>
+
+                  <Link className="profile-menu-item" to="/admin/settings" role="menuitem">
+                    Settings
+                  </Link>
                 </div>
 
-                <div className="profile-actions">
+                <div className="profile-menu-footer">
                   <button type="button" className="profile-logout-btn" onClick={handleLogout}>
                     Logout
                   </button>
