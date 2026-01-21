@@ -3,6 +3,7 @@
   min-height: 100vh;
 }
 
+/* SIDEBAR */
 .admin-sidebar {
   width: 240px;
   background: #1e1e1e;
@@ -24,8 +25,8 @@
 .sidebar-nav a {
   color: #fff;
   text-decoration: none;
-  padding: 8px;
-  border-radius: 6px;
+  padding: 10px 10px;
+  border-radius: 8px;
   background: #333;
 }
 
@@ -33,12 +34,19 @@
   background: #555;
 }
 
+.sidebar-nav a.active {
+  background: #444;
+  outline: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+/* MAIN */
 .admin-main {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
+/* TOP BAR */
 .admin-topbar {
   padding: 12px 20px;
   border-bottom: 1px solid #ddd;
@@ -47,10 +55,85 @@
   align-items: center;
 }
 
-.logout-link {
-  text-decoration: none;
+.topbar-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
+/* Profile button */
+.profile-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 700;
+}
+
+/* Dropdown */
+.profile-dropdown {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  width: 260px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.profile-name {
+  font-weight: 800;
+}
+
+.profile-role {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.profile-info {
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.profile-info span {
+  font-weight: 700;
+}
+
+/* Logout inside dropdown */
+.profile-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.profile-logout-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 700;
+}
+
+/* CONTENT */
 .admin-content {
   padding: 20px;
 }
+

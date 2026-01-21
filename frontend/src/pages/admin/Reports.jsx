@@ -570,10 +570,6 @@ export default function Reports() {
               )}
             </div>
           </div>
-
-          <div className="repPro-note">
-            ✅ PDF uses browser Print → Save as PDF. ✅ Excel export downloads CSV (opens in Excel).
-          </div>
         </div>
       )}
     </div>

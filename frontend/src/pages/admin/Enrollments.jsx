@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import "../../styles/Enrollments.css";
 
 export default function Enrollments() {
-  // UI-only mock enrollments (later: fetch from backend)
   const [enrollments, setEnrollments] = useState([
     {
       id: "ENR-600001",
@@ -34,7 +33,6 @@ export default function Enrollments() {
     },
   ]);
 
-  // Dropdown filter by class
   const classOptions = useMemo(() => {
     const unique = Array.from(new Set(enrollments.map((e) => e.className)));
     unique.sort((a, b) => a.localeCompare(b));
@@ -64,15 +62,9 @@ export default function Enrollments() {
   return (
     <div className="enr-page">
       <div className="enr-header">
-        <div>
-          <h2 className="enr-title">Enrollments</h2>
-          <p className="enr-subtitle">
-            View class enrollments and remove if needed (UI-only).
-          </p>
-        </div>
+        <h2 className="enr-title">Enrollments</h2>
       </div>
 
-      {/* Filter */}
       <div className="enr-toolbar">
         <label className="enr-label">Filter by Class:</label>
         <select
@@ -88,7 +80,6 @@ export default function Enrollments() {
         </select>
       </div>
 
-      {/* Table */}
       <div className="enr-table-wrap">
         <table className="enr-table">
           <thead>
@@ -134,11 +125,6 @@ export default function Enrollments() {
           </tbody>
         </table>
       </div>
-
-      <p className="enr-hint">
-        Note: UI-only. In the final system, enrollment status changes will be tied to class payments and attendance.
-      </p>
     </div>
   );
 }
-

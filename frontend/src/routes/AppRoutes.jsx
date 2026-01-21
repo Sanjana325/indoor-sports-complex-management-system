@@ -16,11 +16,6 @@ import Enrollments from "../pages/admin/Enrollments";
 import Attendance from "../pages/admin/Attendance";
 import Reports from "../pages/admin/Reports";
 
-// Other dashboards (keep for later)
-import StaffDashboard from "../pages/StaffDashboard";
-import CoachDashboard from "../pages/CoachDashboard";
-import PlayerDashboard from "../pages/PlayerDashboard";
-
 export default function AppRoutes() {
   return (
     <Routes>
@@ -41,11 +36,6 @@ export default function AppRoutes() {
         <Route path="attendance" element={<Attendance />} />
         <Route path="reports" element={<Reports />} />
       </Route>
-
-      {/* TEMP other roles */}
-      <Route path="/staff" element={<StaffDashboard />} />
-      <Route path="/coach" element={<CoachDashboard />} />
-      <Route path="/player" element={<PlayerDashboard />} />
     </Routes>
   );
 }

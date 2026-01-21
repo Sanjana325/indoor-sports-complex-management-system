@@ -223,9 +223,7 @@ export default function Attendance() {
         )}
       </div>
 
-      <div className="att-footer-note">
-        ✅ Business Rule: Only enrolled students appear for the selected class.
-      </div>
+      
     </div>
   );
 }
