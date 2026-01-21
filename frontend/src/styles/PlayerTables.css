@@ -1,0 +1,135 @@
+.pt-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.pt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.pt-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+/* ✅ Card wrapper for multiple tables */
+.pt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.pt-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.pt-card-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+/* ✅ Sort dropdown (outlined black) */
+.pt-sort {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Table wrap */
+.pt-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  width: 100%;
+}
+
+.pt-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.pt-table th,
+.pt-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pt-table th {
+  font-weight: 900;
+}
+
+.pt-empty {
+  text-align: center;
+  padding: 18px;
+  opacity: 0.8;
+}
+
+/* Status pills */
+.pt-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+/* Verified */
+.pt-pill.confirmed {
+  border-color: #1a7f37;
+  color: #1a7f37;
+}
+
+/* Pending */
+.pt-pill.pending {
+  border-color: #b26a00;
+  color: #b26a00;
+}
+
+/* Cancelled/Failed (kept in case you need later) */
+.pt-pill.cancelled {
+  border-color: #b00020;
+  color: #b00020;
+}
+
+.pt-placeholder {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  padding: 14px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+/* Upload bank slip button */
+.pt-upload-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
