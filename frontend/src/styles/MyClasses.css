@@ -1,0 +1,125 @@
+.mc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.mc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.mc-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.mc-sub {
+  margin: 6px 0 0;
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+/* ✅ Cancel Class Session button (white + red border) */
+.mc-cancel-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid #b00020;
+  background: #fff;
+  color: #b00020;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* Table wrap */
+.mc-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  width: 100%;
+}
+
+.mc-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.mc-table th,
+.mc-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  text-align: left;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mc-table th {
+  font-weight: 900;
+}
+
+.mc-col-name { width: 16%; }
+.mc-col-class { width: 26%; }
+.mc-col-dates { width: 18%; }
+.mc-col-duration { width: 12%; }
+.mc-col-fee { width: 14%; }
+.mc-col-enrolled { width: 14%; }
+
+.mc-empty {
+  text-align: center;
+  padding: 18px;
+  opacity: 0.8;
+}
+
+.mc-class-main {
+  font-weight: 900;
+}
+
+.mc-class-sub {
+  font-size: 12px;
+  opacity: 0.7;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.mc-cancel-log {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+}
+
+.mc-cancel-log-title {
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.mc-cancel-log-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mc-reason {
+  opacity: 0.8;
+}
+
+@media (max-width: 800px) {
+  .mc-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mc-cancel-btn {
+    width: fit-content;
+  }
+}

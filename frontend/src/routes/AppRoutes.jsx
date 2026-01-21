@@ -20,6 +20,11 @@ import Reports from "../pages/admin/Reports";
 import StaffLayout from "../layouts/StaffLayout";
 import StaffHome from "../pages/staff/StaffHome";
 
+// Coach
+import CoachLayout from "../layouts/CoachLayout";
+import CoachHome from "../pages/coach/CoachHome";
+import MyClasses from "../pages/coach/MyClasses";
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -44,9 +49,14 @@ export default function AppRoutes() {
       {/* Staff */}
       <Route path="/staff" element={<StaffLayout />}>
         <Route index element={<StaffHome />} />
-        {/* ✅ Reuse Admin pages directly */}
         <Route path="attendance" element={<Attendance />} />
         <Route path="payments" element={<Payments />} />
+      </Route>
+
+      {/* Coach */}
+      <Route path="/coach" element={<CoachLayout />}>
+        <Route index element={<CoachHome />} />
+        <Route path="my-classes" element={<MyClasses />} />
       </Route>
     </Routes>
   );

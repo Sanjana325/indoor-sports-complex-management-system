@@ -1,0 +1,97 @@
+.ccm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 999;
+}
+
+.ccm-modal {
+  width: 100%;
+  max-width: 720px;
+  background: #1e1e1e;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.ccm-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ccm-title {
+  margin: 0;
+  font-weight: 900;
+}
+
+.ccm-x {
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.ccm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ccm-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.ccm-field input,
+.ccm-field select,
+.ccm-field textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.ccm-field textarea {
+  resize: vertical;
+}
+
+.ccm-field input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.9;
+  cursor: pointer;
+}
+
+.ccm-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.ccm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Modal buttons: white bg + black text (your standard) */
+.ccm-btn {
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 800;
+}
