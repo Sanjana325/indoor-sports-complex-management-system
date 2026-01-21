@@ -7,6 +7,7 @@
 .admin-layout {
   display: flex;
   min-height: 100vh;
+  width: 100%;
 }
 
 /* SIDEBAR */
@@ -15,6 +16,7 @@
   background: #1e1e1e;
   color: #fff;
   padding: 16px;
+  flex-shrink: 0;
 }
 
 .sidebar-title {
@@ -50,6 +52,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-width: 0; /* ✅ important for flex children so content can stretch properly */
 }
 
 /* TOP BAR */
@@ -59,6 +63,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .topbar-right {
@@ -226,6 +232,9 @@
 /* CONTENT */
 .admin-content {
   padding: 20px;
+  width: 100%;
+  min-width: 0; /* ✅ prevents content from shrinking weirdly */
+  overflow-x: auto; /* ✅ fixes wide tables causing layout issues */
 }
 
 /* Mobile */
@@ -247,4 +256,3 @@
     right: 0;
   }
 }
-

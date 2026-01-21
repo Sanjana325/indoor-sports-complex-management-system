@@ -15,18 +15,6 @@ export default function AvailabilityPanel({ title = "Availability", courts = [] 
           </div>
         ))}
       </div>
-
-      <div className="ah-side-note">
-        <div className="ah-note-row">
-          <span className="ah-mini available" /> Available
-        </div>
-        <div className="ah-note-row">
-          <span className="ah-mini booked" /> Booked
-        </div>
-        <div className="ah-note-row">
-          <span className="ah-mini blocked" /> Blocked
-        </div>
-      </div>
     </div>
   );
 }

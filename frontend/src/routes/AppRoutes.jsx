@@ -16,6 +16,10 @@ import Enrollments from "../pages/admin/Enrollments";
 import Attendance from "../pages/admin/Attendance";
 import Reports from "../pages/admin/Reports";
 
+// Staff
+import StaffLayout from "../layouts/StaffLayout";
+import StaffHome from "../pages/staff/StaffHome";
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -35,6 +39,14 @@ export default function AppRoutes() {
         <Route path="enrollments" element={<Enrollments />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="reports" element={<Reports />} />
+      </Route>
+
+      {/* Staff */}
+      <Route path="/staff" element={<StaffLayout />}>
+        <Route index element={<StaffHome />} />
+        {/* ✅ Reuse Admin pages directly */}
+        <Route path="attendance" element={<Attendance />} />
+        <Route path="payments" element={<Payments />} />
       </Route>
     </Routes>
   );
