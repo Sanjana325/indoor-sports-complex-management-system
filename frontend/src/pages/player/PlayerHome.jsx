@@ -148,7 +148,7 @@ export default function PlayerHome() {
   }
 
   function onViewClasses() {
-    alert("View Available Classes (UI only) — you’ll define this flow later 🙂");
+    navigate("/player/available-classes");
   }
 
   return (

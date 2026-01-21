@@ -12,6 +12,21 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function splitQualificationsToList(q) {
+  // Accepts "A, B, C" OR "A; B" OR "A | B" etc. -> clean array
+  if (!q) return [""];
+  const parts = String(q)
+    .split(/[,;|]/g)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  return parts.length ? parts : [""];
+}
+
+function joinQualifications(list) {
+  const cleaned = (list || []).map((x) => String(x || "").trim()).filter(Boolean);
+  return cleaned.join(", ");
+}
+
 export default function UserManagement() {
   const [users, setUsers] = useState([
     {
@@ -64,7 +79,8 @@ export default function UserManagement() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  const [qualifications, setQualifications] = useState("");
+  // ✅ Changed: qualifications is now an array (dynamic inputs)
+  const [qualificationsList, setQualificationsList] = useState([""]);
   const [specialization, setSpecialization] = useState("");
 
   const [tempPassword, setTempPassword] = useState("");
@@ -111,8 +127,10 @@ export default function UserManagement() {
     setLastName("");
     setPhone("");
     setEmail("");
-    setQualifications("");
+
+    setQualificationsList([""]);
     setSpecialization("");
+
     setTempPassword("");
     setEditingId(null);
   }
@@ -133,7 +151,8 @@ export default function UserManagement() {
     setPhone(user.phone || "");
     setEmail(user.email || "");
 
-    setQualifications(user.qualifications || "");
+    // ✅ Convert existing string to array inputs
+    setQualificationsList(splitQualificationsToList(user.qualifications || ""));
     setSpecialization(user.specialization || "");
 
     setTempPassword("");
@@ -165,7 +184,8 @@ export default function UserManagement() {
     }
 
     if (role === "COACH") {
-      if (!qualifications.trim()) return "Qualifications is required for Coach";
+      const qJoined = joinQualifications(qualificationsList);
+      if (!qJoined.trim()) return "Qualifications is required for Coach";
       if (!specialization.trim()) return "Specialization is required for Coach";
     }
 
@@ -175,9 +195,25 @@ export default function UserManagement() {
   function handleRoleChange(newRole) {
     setRole(newRole);
     if (newRole !== "COACH") {
-      setQualifications("");
+      setQualificationsList([""]);
       setSpecialization("");
     }
+  }
+
+  // ✅ Qualifications handlers
+  function addQualificationRow() {
+    setQualificationsList((prev) => [...prev, ""]);
+  }
+
+  function updateQualificationRow(idx, value) {
+    setQualificationsList((prev) => prev.map((q, i) => (i === idx ? value : q)));
+  }
+
+  function removeQualificationRow(idx) {
+    setQualificationsList((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      return next.length ? next : [""];
+    });
   }
 
   function handleSubmit(e) {
@@ -200,7 +236,7 @@ export default function UserManagement() {
     const coachExtra =
       role === "COACH"
         ? {
-            qualifications: qualifications.trim(),
+            qualifications: joinQualifications(qualificationsList),
             specialization: specialization.trim(),
           }
         : {
@@ -349,14 +385,47 @@ export default function UserManagement() {
 
                 {role === "COACH" && (
                   <>
+                    {/* ✅ Qualifications (dynamic list with +) */}
                     <div className="um-field um-full">
-                      <label>Qualifications</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Diploma in Sports Coaching"
-                        value={qualifications}
-                        onChange={(e) => setQualifications(e.target.value)}
-                      />
+                      <div className="um-label-row">
+                        <label>Qualifications</label>
+                        <button
+                          type="button"
+                          className="um-qual-add-btn"
+                          onClick={addQualificationRow}
+                          aria-label="Add qualification"
+                          title="Add qualification"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <div className="um-qual-list">
+                        {qualificationsList.map((q, idx) => (
+                          <div key={idx} className="um-qual-row">
+                            <input
+                              type="text"
+                              placeholder="e.g., Diploma in Sports Coaching"
+                              value={q}
+                              onChange={(e) => updateQualificationRow(idx, e.target.value)}
+                            />
+
+                            <button
+                              type="button"
+                              className="um-action-btn danger um-qual-remove"
+                              onClick={() => removeQualificationRow(idx)}
+                              aria-label="Remove qualification"
+                              title="Remove"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="um-qual-hint">
+                        Add one or more qualifications (use + to add more).
+                      </div>
                     </div>
 
                     <div className="um-field um-full">

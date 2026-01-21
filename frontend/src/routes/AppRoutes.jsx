@@ -32,6 +32,7 @@ import PlayerMyBookings from "../pages/player/PlayerMyBookings";
 import PlayerMyClasses from "../pages/player/PlayerMyClasses";
 import PlayerMyPayments from "../pages/player/PlayerMyPayments";
 import PlayerBookCourt from "../pages/player/PlayerBookCourt";
+import PlayerAvailableClasses from "../pages/player/PlayerAvailableClasses";
 
 export default function AppRoutes() {
   return (
@@ -71,6 +72,7 @@ export default function AppRoutes() {
       <Route path="/player" element={<PlayerLayout />}>
         <Route index element={<PlayerHome />} />
         <Route path="book-court" element={<PlayerBookCourt />} />
+        <Route path="available-classes" element={<PlayerAvailableClasses />} />
         <Route path="my-bookings" element={<PlayerMyBookings />} />
         <Route path="my-classes" element={<PlayerMyClasses />} />
         <Route path="my-payments" element={<PlayerMyPayments />} />
