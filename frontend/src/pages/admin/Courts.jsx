@@ -20,6 +20,12 @@ function statusLabel(s) {
   return s;
 }
 
+function formatLKR(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "-";
+  return `LKR ${n.toLocaleString()}`;
+}
+
 export default function Courts() {
   const [courts, setCourts] = useState([
     {
@@ -27,6 +33,7 @@ export default function Courts() {
       sport: "CRICKET",
       name: "Cricket - A",
       capacity: 22,
+      pricePerHour: 2500,
       status: "AVAILABLE",
       createdAt: "2026-01-18T10:00:00.000Z",
     },
@@ -35,6 +42,7 @@ export default function Courts() {
       sport: "CRICKET",
       name: "Cricket - B",
       capacity: 22,
+      pricePerHour: 2500,
       status: "MAINTENANCE",
       createdAt: "2026-01-18T12:00:00.000Z",
     },
@@ -43,6 +51,7 @@ export default function Courts() {
       sport: "BADMINTON",
       name: "Badminton - A",
       capacity: 4,
+      pricePerHour: 2000,
       status: "AVAILABLE",
       createdAt: "2026-01-19T08:00:00.000Z",
     },
@@ -51,6 +60,7 @@ export default function Courts() {
       sport: "FUTSAL",
       name: "Futsal - A",
       capacity: 12,
+      pricePerHour: 3500,
       status: "BOOKED",
       createdAt: "2026-01-19T09:30:00.000Z",
     },
@@ -63,6 +73,7 @@ export default function Courts() {
   const [sport, setSport] = useState("CRICKET");
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [pricePerHour, setPricePerHour] = useState("");
   const [status, setStatus] = useState("AVAILABLE");
 
   const [search, setSearch] = useState("");
@@ -72,7 +83,7 @@ export default function Courts() {
     if (!normalizedSearch) return courts;
 
     return courts.filter((c) => {
-      const hay = `${c.id} ${c.sport} ${c.name} ${c.capacity} ${c.status}`.toLowerCase();
+      const hay = `${c.id} ${c.sport} ${c.name} ${c.capacity} ${c.pricePerHour ?? ""} ${c.status}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [courts, normalizedSearch]);
@@ -108,6 +119,7 @@ export default function Courts() {
     setSport("CRICKET");
     setName("");
     setCapacity("");
+    setPricePerHour("");
     setStatus("AVAILABLE");
     setEditingId(null);
   }
@@ -124,6 +136,7 @@ export default function Courts() {
     setSport(court.sport);
     setName(court.name);
     setCapacity(String(court.capacity));
+    setPricePerHour(String(court.pricePerHour ?? ""));
     setStatus(court.status);
     setIsModalOpen(true);
   }
@@ -141,8 +154,13 @@ export default function Courts() {
   function validateForm() {
     if (!SPORTS.includes(sport)) return "Select a valid sport";
     if (!name.trim()) return "Court name is required (e.g., Cricket - A)";
+
     const capNum = Number(capacity);
     if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
+
+    const priceNum = Number(pricePerHour);
+    if (!Number.isFinite(priceNum) || priceNum <= 0) return "Price per hour must be a positive number";
+
     if (!STATUSES.includes(status)) return "Select a valid status";
     return null;
   }
@@ -157,6 +175,7 @@ export default function Courts() {
     }
 
     const capNum = Number(capacity);
+    const priceNum = Number(pricePerHour);
 
     if (mode === "ADD") {
       const newCourt = {
@@ -164,6 +183,7 @@ export default function Courts() {
         sport,
         name: name.trim(),
         capacity: capNum,
+        pricePerHour: priceNum,
         status,
         createdAt: nowIso(),
       };
@@ -182,6 +202,7 @@ export default function Courts() {
                 sport,
                 name: name.trim(),
                 capacity: capNum,
+                pricePerHour: priceNum,
                 status,
               }
             : c
@@ -268,13 +289,23 @@ export default function Courts() {
                   />
                 </div>
 
-                <div className="courts-field courts-full">
+                <div className="courts-field">
                   <label>Capacity</label>
                   <input
                     type="number"
                     placeholder="e.g. 22"
                     value={capacity}
                     onChange={(e) => setCapacity(e.target.value)}
+                  />
+                </div>
+
+                <div className="courts-field">
+                  <label>Price per Hour (LKR)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 2500"
+                    value={pricePerHour}
+                    onChange={(e) => setPricePerHour(e.target.value)}
                   />
                 </div>
               </div>
@@ -305,6 +336,7 @@ function CourtTable({ rows, onEdit, onRemove }) {
             <th className="courts-col-id">Court ID</th>
             <th className="courts-col-name">Name</th>
             <th className="courts-col-capacity">Capacity</th>
+            <th className="courts-col-price">Price / Hour</th>
             <th className="courts-col-status">Status</th>
             <th className="courts-col-actions courts-center">Actions</th>
           </tr>
@@ -313,7 +345,7 @@ function CourtTable({ rows, onEdit, onRemove }) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan="5" className="courts-empty">
+              <td colSpan="6" className="courts-empty">
                 No courts to show.
               </td>
             </tr>
@@ -323,10 +355,9 @@ function CourtTable({ rows, onEdit, onRemove }) {
                 <td className="courts-col-id">{c.id}</td>
                 <td className="courts-col-name">{c.name}</td>
                 <td className="courts-col-capacity">{c.capacity}</td>
+                <td className="courts-col-price">{formatLKR(c.pricePerHour)}</td>
                 <td className="courts-col-status">
-                  <span className={`courts-badge ${c.status.toLowerCase()}`}>
-                    {statusLabel(c.status)}
-                  </span>
+                  <span className={`courts-badge ${c.status.toLowerCase()}`}>{statusLabel(c.status)}</span>
                 </td>
 
                 <td className="courts-col-actions courts-center">

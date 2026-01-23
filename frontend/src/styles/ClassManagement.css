@@ -5,7 +5,8 @@
 }
 
 .cm-page {
-  max-width: 1100px;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Header */
@@ -58,14 +59,15 @@
   table-layout: fixed;
 }
 
-/* ✅ Updated columns (Date added) */
-.cm-col-class { width: 20%; }
+/* Columns */
+.cm-col-class { width: 18%; }
 .cm-col-coach { width: 16%; }
-.cm-col-days { width: 16%; }
-.cm-col-date { width: 12%; }
+.cm-col-days { width: 14%; }
+.cm-col-date { width: 10%; }
 .cm-col-duration { width: 10%; }
 .cm-col-capacity { width: 8%; }
-.cm-col-actions { width: 18%; }
+.cm-col-fee { width: 10%; }
+.cm-col-actions { width: 14%; }
 
 .cm-table th,
 .cm-table td {
@@ -104,11 +106,12 @@
   font-weight: 700;
 }
 
-/* Actions buttons (project standard) */
+/* Actions buttons */
 .cm-actions {
   display: flex;
   gap: 12px;
   justify-content: center;
+  flex-wrap: nowrap;
 }
 
 .cm-action-btn {
@@ -203,7 +206,6 @@
   grid-column: 1 / -1;
 }
 
-/* ✅ Make calendar/time icons white (Chrome/Edge) */
 .cm-field input[type="date"]::-webkit-calendar-picker-indicator,
 .cm-field input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
@@ -260,7 +262,7 @@
   background: #2a2a2a;
 }
 
-/* Modal buttons: white bg + black text */
+/* Modal buttons */
 .cm-form-actions {
   display: flex;
   justify-content: flex-end;

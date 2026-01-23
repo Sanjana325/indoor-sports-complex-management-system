@@ -41,9 +41,14 @@ function durationLabel(startTime, endTime) {
 }
 
 function formatDate(dateStr) {
-  // dateStr: "YYYY-MM-DD"
   if (!dateStr) return "-";
   return dateStr;
+}
+
+function formatLKR(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "-";
+  return `LKR ${num.toLocaleString("en-LK")}`;
 }
 
 export default function ClassManagement() {
@@ -59,6 +64,7 @@ export default function ClassManagement() {
       startTime: "18:00",
       endTime: "19:30",
       capacity: 20,
+      fee: 2500,
       createdAt: "2026-01-18T10:00:00.000Z",
     },
     {
@@ -72,6 +78,7 @@ export default function ClassManagement() {
       startTime: "17:30",
       endTime: "19:00",
       capacity: 25,
+      fee: 3000,
       createdAt: "2026-01-18T12:00:00.000Z",
     },
     {
@@ -85,6 +92,7 @@ export default function ClassManagement() {
       startTime: "16:00",
       endTime: "18:00",
       capacity: 18,
+      fee: 3500,
       createdAt: "2026-01-19T08:00:00.000Z",
     },
     {
@@ -98,6 +106,7 @@ export default function ClassManagement() {
       startTime: "09:00",
       endTime: "11:00",
       capacity: 30,
+      fee: 2000,
       createdAt: "2026-01-19T09:30:00.000Z",
     },
     {
@@ -111,20 +120,22 @@ export default function ClassManagement() {
       startTime: "18:00",
       endTime: "19:30",
       capacity: 16,
+      fee: 2800,
       createdAt: "2026-01-19T10:15:00.000Z",
     },
   ]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState("ADD"); // ADD | EDIT
+  const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
   const [sport, setSport] = useState("CRICKET");
   const [className, setClassName] = useState("");
   const [coachName, setCoachName] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [fee, setFee] = useState("");
 
-  const [scheduleType, setScheduleType] = useState("WEEKLY"); // WEEKLY | ONETIME
+  const [scheduleType, setScheduleType] = useState("WEEKLY");
   const [days, setDays] = useState([]);
   const [oneTimeDate, setOneTimeDate] = useState("");
 
@@ -139,7 +150,7 @@ export default function ClassManagement() {
     return classes.filter((c) => {
       const hay =
         `${c.id} ${c.sport} ${c.className} ${c.coachName} ` +
-        `${(c.days || []).join(" ")} ${c.oneTimeDate || ""} ${c.startTime} ${c.endTime} ${c.capacity}`.toLowerCase();
+        `${(c.days || []).join(" ")} ${c.oneTimeDate || ""} ${c.startTime} ${c.endTime} ${c.capacity} ${c.fee}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [classes, normalizedSearch]);
@@ -161,6 +172,7 @@ export default function ClassManagement() {
     setClassName("");
     setCoachName("");
     setCapacity("");
+    setFee("");
 
     setScheduleType("WEEKLY");
     setDays([]);
@@ -186,6 +198,7 @@ export default function ClassManagement() {
     setClassName(item.className);
     setCoachName(item.coachName);
     setCapacity(String(item.capacity));
+    setFee(String(item.fee ?? ""));
 
     setScheduleType(item.scheduleType || "WEEKLY");
     setDays(Array.isArray(item.days) ? item.days : []);
@@ -232,6 +245,9 @@ export default function ClassManagement() {
     const capNum = Number(capacity);
     if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
 
+    const feeNum = Number(fee);
+    if (!Number.isFinite(feeNum) || feeNum <= 0) return "Class fee must be a positive number";
+
     if (scheduleType === "WEEKLY") {
       if (!Array.isArray(days) || days.length === 0) return "Select at least one day";
     } else {
@@ -259,6 +275,7 @@ export default function ClassManagement() {
     }
 
     const capNum = Number(capacity);
+    const feeNum = Number(fee);
 
     const payload = {
       sport,
@@ -270,6 +287,7 @@ export default function ClassManagement() {
       startTime,
       endTime,
       capacity: capNum,
+      fee: feeNum,
     };
 
     if (mode === "ADD") {
@@ -367,6 +385,16 @@ export default function ClassManagement() {
                     placeholder="e.g. 20"
                     value={capacity}
                     onChange={(e) => setCapacity(e.target.value)}
+                  />
+                </div>
+
+                <div className="cm-field">
+                  <label>Class Fee</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 2500"
+                    value={fee}
+                    onChange={(e) => setFee(e.target.value)}
                   />
                 </div>
 
@@ -473,6 +501,7 @@ function ClassTable({ rows, onEdit, onRemove }) {
             <th className="cm-col-date">Date</th>
             <th className="cm-col-duration">Duration</th>
             <th className="cm-col-capacity">Capacity</th>
+            <th className="cm-col-fee">Fee</th>
             <th className="cm-col-actions cm-center">Actions</th>
           </tr>
         </thead>
@@ -480,7 +509,7 @@ function ClassTable({ rows, onEdit, onRemove }) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan="7" className="cm-empty">
+              <td colSpan="8" className="cm-empty">
                 No classes to show.
               </td>
             </tr>
@@ -493,6 +522,7 @@ function ClassTable({ rows, onEdit, onRemove }) {
                 <td className="cm-col-date">{formatDate(c.oneTimeDate)}</td>
                 <td className="cm-col-duration">{durationLabel(c.startTime, c.endTime)}</td>
                 <td className="cm-col-capacity">{c.capacity}</td>
+                <td className="cm-col-fee">{formatLKR(c.fee)}</td>
 
                 <td className="cm-col-actions cm-center">
                   <div className="cm-actions">
