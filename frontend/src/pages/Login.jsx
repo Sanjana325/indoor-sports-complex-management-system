@@ -2,26 +2,72 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Login.css";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 export default function Login() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("ADMIN"); // demo only
 
-  function handleLogin(e) {
+  // UI-only: keep visible for now, but do not use it to authenticate
+  const [role, setRole] = useState("ADMIN");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleLogin(e) {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    if (role === "ADMIN") navigate("/admin");
-    if (role === "STAFF") navigate("/staff");
-    if (role === "COACH") navigate("/coach");
-    if (role === "PLAYER") navigate("/player");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      const token = data.token;
+      const user = data.user;
+
+      if (!token || !user || !user.role) {
+        setError("Invalid response from server");
+        return;
+      }
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("userId", String(user.userId || ""));
+      localStorage.setItem("firstName", user.firstName || "");
+      localStorage.setItem("lastName", user.lastName || "");
+      localStorage.setItem("email", user.email || email);
+      localStorage.setItem("role", user.role);
+
+      if (user.role === "ADMIN") navigate("/admin");
+      else if (user.role === "STAFF") navigate("/staff");
+      else if (user.role === "COACH") navigate("/coach");
+      else if (user.role === "PLAYER") navigate("/player");
+      else navigate("/");
+    } catch (err) {
+      setError("Cannot connect to backend. Make sure the server is running.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="login-container">
       <form className="login-card" onSubmit={handleLogin}>
         <h2 className="login-title">Login Page</h2>
+
+        {error ? <div className="login-error">{error}</div> : null}
 
         <label>Email</label>
         <input
@@ -43,10 +89,7 @@ export default function Login() {
 
         <div className="role-box">
           <label>Select Role to Login As</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
+          <select value={role} onChange={(e) => setRole(e.target.value)} disabled>
             <option value="ADMIN">Admin</option>
             <option value="STAFF">Staff</option>
             <option value="COACH">Coach</option>
@@ -54,8 +97,8 @@ export default function Login() {
           </select>
         </div>
 
-        <button type="submit" className="login-btn">
-          Login
+        <button type="submit" className="login-btn" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
         </button>
 
         <button type="button" className="secondary-btn">
