@@ -161,7 +161,10 @@ export default function Courts() {
     const priceNum = Number(pricePerHour);
     if (!Number.isFinite(priceNum) || priceNum <= 0) return "Price per hour must be a positive number";
 
-    if (!STATUSES.includes(status)) return "Select a valid status";
+    if (mode === "EDIT") {
+      if (!STATUSES.includes(status)) return "Select a valid status";
+    }
+
     return null;
   }
 
@@ -184,7 +187,7 @@ export default function Courts() {
         name: name.trim(),
         capacity: capNum,
         pricePerHour: priceNum,
-        status,
+        status: "AVAILABLE",
         createdAt: nowIso(),
       };
       setCourts((prev) => [newCourt, ...prev]);
@@ -270,14 +273,21 @@ export default function Courts() {
                   </select>
                 </div>
 
-                <div className="courts-field">
-                  <label>Status</label>
-                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="AVAILABLE">Available</option>
-                    <option value="BOOKED">Booked</option>
-                    <option value="MAINTENANCE">Maintenance</option>
-                  </select>
-                </div>
+                {mode === "EDIT" ? (
+                  <div className="courts-field">
+                    <label>Status</label>
+                    <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                      <option value="AVAILABLE">Available</option>
+                      <option value="BOOKED">Booked</option>
+                      <option value="MAINTENANCE">Maintenance</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="courts-field">
+                    <label>Status</label>
+                    <input type="text" value="Available" disabled />
+                  </div>
+                )}
 
                 <div className="courts-field courts-full">
                   <label>Court Name</label>

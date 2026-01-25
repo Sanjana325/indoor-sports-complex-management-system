@@ -55,12 +55,15 @@
 .pay-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 980px;
 }
 
 .pay-table th,
 .pay-table td {
   padding: 10px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .pay-table th {
@@ -78,12 +81,23 @@
   opacity: 0.8;
 }
 
+/* Placeholders and consistent time formatting */
+.pay-dash {
+  text-align: center;
+  opacity: 0.75;
+}
+
+.pay-mono {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Buttons */
 .pay-link-btn {
   background: transparent;
   border: none;
   cursor: pointer;
   text-decoration: underline;
+  padding: 0;
 }
 
 .pay-verify-btn {
@@ -111,7 +125,6 @@
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
 
-/* (No colors specified on purpose) */
 .pay-badge.pending,
 .pay-badge.verified,
 .pay-badge.completed,
