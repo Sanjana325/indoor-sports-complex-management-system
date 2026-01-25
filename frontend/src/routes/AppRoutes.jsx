@@ -3,9 +3,6 @@ import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 
-import Profile from "../pages/common/Profile";
-import Settings from "../pages/common/Settings";
-
 // Admin
 import AdminLayout from "../layouts/AdminLayout";
 import AdminHome from "../pages/admin/AdminHome";
@@ -56,9 +53,6 @@ export default function AppRoutes() {
         <Route path="enrollments" element={<Enrollments />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="reports" element={<Reports />} />
-
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Staff */}
@@ -66,18 +60,12 @@ export default function AppRoutes() {
         <Route index element={<StaffHome />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="payments" element={<Payments />} />
-
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Coach */}
       <Route path="/coach" element={<CoachLayout />}>
         <Route index element={<CoachHome />} />
         <Route path="my-classes" element={<MyClasses />} />
-
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Player */}
@@ -88,9 +76,6 @@ export default function AppRoutes() {
         <Route path="my-bookings" element={<PlayerMyBookings />} />
         <Route path="my-classes" element={<PlayerMyClasses />} />
         <Route path="my-payments" element={<PlayerMyPayments />} />
-
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
   );
