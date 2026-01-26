@@ -2,7 +2,7 @@ const { pool } = require("../config/db");
 
 async function findByEmail(email) {
   const [rows] = await pool.query(
-    `SELECT UserID, FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, IsActive, CreatedAt
+    `SELECT UserID, FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, IsActive, CreatedAt, MustChangePassword
      FROM UserAccount
      WHERE Email = ?`,
     [email]
@@ -12,7 +12,7 @@ async function findByEmail(email) {
 
 async function findById(userId) {
   const [rows] = await pool.query(
-    `SELECT UserID, FirstName, LastName, Email, PhoneNumber, Role, IsActive, CreatedAt
+    `SELECT UserID, FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, IsActive, CreatedAt, MustChangePassword
      FROM UserAccount
      WHERE UserID = ?`,
     [userId]
@@ -28,11 +28,19 @@ async function emailExists(email) {
   return rows.length > 0;
 }
 
-async function createUser({ firstName, lastName, email, passwordHash, phoneNumber, role }) {
+async function createUser({
+  firstName,
+  lastName,
+  email,
+  passwordHash,
+  phoneNumber,
+  role,
+  mustChangePassword = false
+}) {
   const [result] = await pool.query(
-    `INSERT INTO UserAccount (FirstName, LastName, Email, PasswordHash, PhoneNumber, Role)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [firstName, lastName, email, passwordHash, phoneNumber, role]
+    `INSERT INTO UserAccount (FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, MustChangePassword)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword ? 1 : 0]
   );
   return result.insertId;
 }

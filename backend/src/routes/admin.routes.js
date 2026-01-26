@@ -49,7 +49,8 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN"), async (req, res, 
       email,
       passwordHash,
       phoneNumber,
-      role
+      role,
+      mustChangePassword: true
     });
 
     let coachId = null;
@@ -60,6 +61,7 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN"), async (req, res, 
     res.status(201).json({
       message: "User created",
       user: { userId, role, email, coachId },
+      mustChangePassword: true,
       tempPassword
     });
   } catch (err) {

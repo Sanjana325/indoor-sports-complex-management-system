@@ -10,7 +10,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // UI-only: keep visible for now, but do not use it to authenticate
   const [role, setRole] = useState("ADMIN");
 
   const [loading, setLoading] = useState(false);
@@ -37,6 +36,7 @@ export default function Login() {
 
       const token = data.token;
       const user = data.user;
+      const mustChangePassword = Boolean(data.mustChangePassword);
 
       if (!token || !user || !user.role) {
         setError("Invalid response from server");
@@ -49,6 +49,16 @@ export default function Login() {
       localStorage.setItem("lastName", user.lastName || "");
       localStorage.setItem("email", user.email || email);
       localStorage.setItem("role", user.role);
+      localStorage.setItem("mustChangePassword", mustChangePassword ? "true" : "false");
+
+      if (mustChangePassword) {
+        if (user.role === "ADMIN") navigate("/admin/profile");
+        else if (user.role === "STAFF") navigate("/staff/profile");
+        else if (user.role === "COACH") navigate("/coach/profile");
+        else if (user.role === "PLAYER") navigate("/player/profile");
+        else navigate("/profile");
+        return;
+      }
 
       if (user.role === "ADMIN") navigate("/admin");
       else if (user.role === "STAFF") navigate("/staff");

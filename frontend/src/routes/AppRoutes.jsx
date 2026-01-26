@@ -40,11 +40,9 @@ import PlayerAvailableClasses from "../pages/player/PlayerAvailableClasses";
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Admin */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminHome />} />
         <Route path="users" element={<UserManagement />} />
@@ -56,31 +54,25 @@ export default function AppRoutes() {
         <Route path="enrollments" element={<Enrollments />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="reports" element={<Reports />} />
-
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
-      {/* Staff */}
       <Route path="/staff" element={<StaffLayout />}>
         <Route index element={<StaffHome />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="payments" element={<Payments />} />
-
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
-      {/* Coach */}
       <Route path="/coach" element={<CoachLayout />}>
         <Route index element={<CoachHome />} />
         <Route path="my-classes" element={<MyClasses />} />
-
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
-      {/* Player */}
       <Route path="/player" element={<PlayerLayout />}>
         <Route index element={<PlayerHome />} />
         <Route path="book-court" element={<PlayerBookCourt />} />
@@ -88,7 +80,6 @@ export default function AppRoutes() {
         <Route path="my-bookings" element={<PlayerMyBookings />} />
         <Route path="my-classes" element={<PlayerMyClasses />} />
         <Route path="my-payments" element={<PlayerMyPayments />} />
-
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>

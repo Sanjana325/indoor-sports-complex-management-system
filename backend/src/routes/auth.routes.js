@@ -5,6 +5,7 @@ const userModel = require("../models/user.model");
 const { hashPassword, verifyPassword } = require("../utils/password");
 const { signToken } = require("../utils/jwt");
 const requireAuth = require("../middleware/requireAuth");
+const { pool } = require("../config/db");
 
 function isValidEmail(email) {
   return typeof email === "string" && email.includes("@") && email.includes(".");
@@ -37,7 +38,8 @@ router.post("/auth/register", async (req, res, next) => {
       email,
       passwordHash,
       phoneNumber,
-      role: "PLAYER"
+      role: "PLAYER",
+      mustChangePassword: false
     });
 
     const token = signToken({ userId, role: "PLAYER" });
@@ -45,6 +47,7 @@ router.post("/auth/register", async (req, res, next) => {
     res.status(201).json({
       message: "Registration successful",
       token,
+      mustChangePassword: false,
       user: {
         userId,
         firstName,
@@ -78,6 +81,7 @@ router.post("/auth/login", async (req, res, next) => {
 
     res.json({
       token,
+      mustChangePassword: Boolean(user.MustChangePassword),
       user: {
         userId: user.UserID,
         firstName: user.FirstName,
@@ -99,9 +103,38 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       lastName: req.user.LastName,
       email: req.user.Email,
       phoneNumber: req.user.PhoneNumber,
-      role: req.user.Role
+      role: req.user.Role,
+      mustChangePassword: Boolean(req.user.MustChangePassword)
     }
   });
+});
+
+router.post("/auth/change-password", requireAuth, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current password and new password are required" });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const ok = await verifyPassword(currentPassword, req.user.PasswordHash);
+    if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
+
+    const newHash = await hashPassword(newPassword);
+
+    await pool.query(
+      "UPDATE UserAccount SET PasswordHash = ?, MustChangePassword = FALSE WHERE UserID = ?",
+      [newHash, req.user.UserID]
+    );
+
+    res.json({ message: "Password updated successfully", mustChangePassword: false });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;
