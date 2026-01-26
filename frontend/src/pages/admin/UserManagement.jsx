@@ -1,19 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/UserManagement.css";
 
-const ROLES = ["PLAYER", "STAFF", "COACH"];
-
-function makeId(prefix = "U") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function splitQualificationsToList(q) {
-  // Accepts "A, B, C" OR "A; B" OR "A | B" etc. -> clean array
   if (!q) return [""];
   const parts = String(q)
     .split(/[,;|]/g)
@@ -27,112 +17,151 @@ function joinQualifications(list) {
   return cleaned.join(", ");
 }
 
+function displayUserId(userId) {
+  const n = Number(userId);
+  if (!Number.isFinite(n)) return String(userId || "-");
+  return `U-${String(n).padStart(6, "0")}`;
+}
+
+function mapDbUserToUi(u) {
+  return {
+    id: displayUserId(u.UserID),
+    role: u.Role,
+    firstName: u.FirstName || "",
+    lastName: u.LastName || "",
+    phone: u.PhoneNumber || "",
+    email: u.Email || "",
+    createdAt: u.CreatedAt,
+    specialization: u.Specialization || "",
+    qualifications: ""
+  };
+}
+
+function s(v) {
+  return String(v ?? "").trim();
+}
+
+function buildHaystack(u) {
+  const id = s(u.id);
+  const role = s(u.role);
+  const first = s(u.firstName);
+  const last = s(u.lastName);
+  const phone = s(u.phone);
+  const email = s(u.email);
+  const qual = s(u.qualifications);
+  const spec = s(u.specialization);
+
+  const fullName = `${first} ${last}`.trim();
+  const swappedName = `${last} ${first}`.trim();
+
+  return `${id} ${role} ${first} ${last} ${fullName} ${swappedName} ${phone} ${email} ${qual} ${spec}`.toLowerCase();
+}
+
 export default function UserManagement() {
-  const [users, setUsers] = useState([
-    {
-      id: "U-100001",
-      role: "PLAYER",
-      firstName: "Kavindi",
-      lastName: "Silva",
-      phone: "0771234567",
-      email: "kavindi.player@sports.com",
-      createdAt: "2026-01-18T10:00:00.000Z",
-    },
-    {
-      id: "U-100002",
-      role: "STAFF",
-      firstName: "Nuwan",
-      lastName: "Perera",
-      phone: "0712345678",
-      email: "nuwan.staff@sports.com",
-      createdAt: "2026-01-18T11:00:00.000Z",
-    },
-    {
-      id: "U-100003",
-      role: "COACH",
-      firstName: "Sahan",
-      lastName: "Fernando",
-      phone: "0755555555",
-      email: "sahan.coach@sports.com",
-      qualifications: "Diploma in Sports Coaching",
-      specialization: "Cricket",
-      createdAt: "2026-01-18T12:00:00.000Z",
-    },
-    {
-      id: "U-100004",
-      role: "PLAYER",
-      firstName: "Tharushi",
-      lastName: "Sanjana",
-      phone: "0760000000",
-      email: "tharushi.player@sports.com",
-      createdAt: "2026-01-19T08:00:00.000Z",
-    },
-  ]);
+  const currentRole = localStorage.getItem("role") || "";
+  const isSuperAdmin = currentRole === "SUPER_ADMIN";
+
+  const ROLES = isSuperAdmin ? ["ADMIN", "PLAYER", "STAFF", "COACH"] : ["PLAYER", "STAFF", "COACH"];
+
+  const [users, setUsers] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState("ADD"); // ADD | EDIT
+  const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  const [role, setRole] = useState("PLAYER");
+  const [role, setRole] = useState(ROLES[0] || "PLAYER");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // ✅ Changed: qualifications is now an array (dynamic inputs)
   const [qualificationsList, setQualificationsList] = useState([""]);
   const [specialization, setSpecialization] = useState("");
-
-  const [tempPassword, setTempPassword] = useState("");
 
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [listError, setListError] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const [tempModalOpen, setTempModalOpen] = useState(false);
+  const [createdTempPassword, setCreatedTempPassword] = useState("");
+  const [createdEmail, setCreatedEmail] = useState("");
+
+  async function fetchUsersFromDb() {
+    setLoadingUsers(true);
+    setListError("");
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setListError("Not logged in. Please login again.");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/api/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setListError(data.message || "Failed to load users");
+        return;
+      }
+
+      const rows = Array.isArray(data.users) ? data.users : [];
+      setUsers(rows.map(mapDbUserToUi));
+    } catch (err) {
+      setListError("Cannot connect to backend. Make sure the server is running.");
+    } finally {
+      setLoadingUsers(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchUsersFromDb();
+  }, []);
+
   const filteredUsers = useMemo(() => {
     if (!normalizedSearch) return users;
-
-    return users.filter((u) => {
-      const haystack =
-        `${u.id} ${u.role} ${u.firstName} ${u.lastName} ${u.phone} ${u.email} ` +
-        `${u.qualifications ?? ""} ${u.specialization ?? ""}`.toLowerCase();
-
-      return haystack.includes(normalizedSearch);
-    });
+    return users.filter((u) => buildHaystack(u).includes(normalizedSearch));
   }, [users, normalizedSearch]);
 
   const latestPlayers = useMemo(() => {
     return filteredUsers
       .filter((u) => u.role === "PLAYER")
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
+      .slice(0, 50);
   }, [filteredUsers]);
 
   const latestStaff = useMemo(() => {
     return filteredUsers
       .filter((u) => u.role === "STAFF")
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
+      .slice(0, 50);
   }, [filteredUsers]);
 
   const latestCoaches = useMemo(() => {
     return filteredUsers
       .filter((u) => u.role === "COACH")
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
+      .slice(0, 50);
   }, [filteredUsers]);
 
   function resetForm() {
-    setRole("PLAYER");
+    setRole(ROLES[0] || "PLAYER");
     setFirstName("");
     setLastName("");
     setPhone("");
     setEmail("");
-
     setQualificationsList([""]);
     setSpecialization("");
-
-    setTempPassword("");
     setEditingId(null);
+    setFormError("");
   }
 
   function openAddModal() {
@@ -151,23 +180,22 @@ export default function UserManagement() {
     setPhone(user.phone || "");
     setEmail(user.email || "");
 
-    // ✅ Convert existing string to array inputs
     setQualificationsList(splitQualificationsToList(user.qualifications || ""));
     setSpecialization(user.specialization || "");
 
-    setTempPassword("");
-
+    setFormError("");
     setIsModalOpen(true);
   }
 
   function closeModal() {
+    if (submitting) return;
     setIsModalOpen(false);
   }
 
-  function handleRemove(id) {
-    const ok = window.confirm("Remove this user?");
-    if (!ok) return;
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+  function closeTempModal() {
+    setTempModalOpen(false);
+    setCreatedTempPassword("");
+    setCreatedEmail("");
   }
 
   function validateForm() {
@@ -176,12 +204,7 @@ export default function UserManagement() {
     if (!phone.trim()) return "Phone number is required";
     if (!email.trim()) return "Email is required";
     if (!email.includes("@")) return "Enter a valid email";
-    if (!ROLES.includes(role)) return "Role must be Player/Staff/Coach";
-
-    if (mode === "ADD") {
-      if (!tempPassword.trim()) return "Temporary password is required";
-      if (tempPassword.trim().length < 6) return "Temporary password must be at least 6 characters";
-    }
+    if (!ROLES.includes(role)) return "Role must be valid";
 
     if (role === "COACH") {
       const qJoined = joinQualifications(qualificationsList);
@@ -200,7 +223,6 @@ export default function UserManagement() {
     }
   }
 
-  // ✅ Qualifications handlers
   function addQualificationRow() {
     setQualificationsList((prev) => [...prev, ""]);
   }
@@ -216,62 +238,86 @@ export default function UserManagement() {
     });
   }
 
-  function handleSubmit(e) {
+  async function createUserOnBackend(payload) {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Not logged in. Please login again.");
+
+    const res = await fetch(`${API_BASE}/api/admin/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = data.message || "Failed to create user";
+      throw new Error(msg);
+    }
+
+    return data;
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
+    setFormError("");
 
     const err = validateForm();
     if (err) {
-      alert(err);
+      setFormError(err);
       return;
     }
 
-    const base = {
-      role,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-    };
+    if (mode === "EDIT") {
+      setFormError("Edit is UI-only for now. We will add backend update next.");
+      return;
+    }
 
-    const coachExtra =
+    const payload =
       role === "COACH"
         ? {
-            qualifications: joinQualifications(qualificationsList),
-            specialization: specialization.trim(),
+            role,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: email.trim(),
+            phoneNumber: phone.trim(),
+            specialization: specialization.trim()
           }
         : {
-            qualifications: undefined,
-            specialization: undefined,
+            role,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: email.trim(),
+            phoneNumber: phone.trim()
           };
 
-    if (mode === "ADD") {
-      const newUser = {
-        id: makeId("U"),
-        ...base,
-        ...coachExtra,
-        tempPassword: tempPassword.trim(),
-        createdAt: nowIso(),
-      };
-      setUsers((prev) => [newUser, ...prev]);
-      closeModal();
+    setSubmitting(true);
+    try {
+      const result = await createUserOnBackend(payload);
+
+      setCreatedEmail(payload.email);
+      setCreatedTempPassword(result.tempPassword || "");
+      setTempModalOpen(true);
+
+      setIsModalOpen(false);
       resetForm();
-      return;
+
+      await fetchUsersFromDb();
+    } catch (ex) {
+      setFormError(ex.message || "Failed to create user");
+    } finally {
+      setSubmitting(false);
     }
+  }
 
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === editingId
-          ? {
-              ...u,
-              ...base,
-              ...coachExtra,
-            }
-          : u
-      )
-    );
-
-    closeModal();
-    resetForm();
+  async function copyTempPassword() {
+    if (!createdTempPassword) return;
+    try {
+      await navigator.clipboard.writeText(createdTempPassword);
+    } catch (e) {}
   }
 
   return (
@@ -281,10 +327,17 @@ export default function UserManagement() {
           <h2 className="um-title">User Management</h2>
         </div>
 
-        <button className="um-primary-btn" type="button" onClick={openAddModal}>
-          + Add User
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="um-secondary-btn" type="button" onClick={fetchUsersFromDb} disabled={loadingUsers}>
+            {loadingUsers ? "Refreshing..." : "Refresh"}
+          </button>
+          <button className="um-primary-btn" type="button" onClick={openAddModal}>
+            + Add User
+          </button>
+        </div>
       </div>
+
+      {listError ? <div className="um-alert um-alert--error">{listError}</div> : null}
 
       <div className="um-toolbar">
         <input
@@ -297,17 +350,17 @@ export default function UserManagement() {
 
       <section className="um-section">
         <h3 className="um-section-title">Players</h3>
-        <UserTable rows={latestPlayers} onEdit={openEditModal} onRemove={handleRemove} />
+        <UserTable rows={latestPlayers} onEdit={openEditModal} onRemove={() => {}} />
       </section>
 
       <section className="um-section">
         <h3 className="um-section-title">Staff</h3>
-        <UserTable rows={latestStaff} onEdit={openEditModal} onRemove={handleRemove} />
+        <UserTable rows={latestStaff} onEdit={openEditModal} onRemove={() => {}} />
       </section>
 
       <section className="um-section">
         <h3 className="um-section-title">Coaches</h3>
-        <UserTable rows={latestCoaches} onEdit={openEditModal} onRemove={handleRemove} showCoachCols />
+        <UserTable rows={latestCoaches} onEdit={openEditModal} onRemove={() => {}} showCoachCols />
       </section>
 
       {isModalOpen && (
@@ -320,14 +373,18 @@ export default function UserManagement() {
               </button>
             </div>
 
+            {formError ? <div className="um-alert um-alert--error">{formError}</div> : null}
+
             <form className="um-form" onSubmit={handleSubmit}>
               <div className="um-grid">
                 <div className="um-field">
                   <label>Role</label>
-                  <select value={role} onChange={(e) => handleRoleChange(e.target.value)}>
-                    <option value="PLAYER">Player</option>
-                    <option value="STAFF">Staff</option>
-                    <option value="COACH">Coach</option>
+                  <select value={role} onChange={(e) => handleRoleChange(e.target.value)} disabled={submitting}>
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r === "SUPER_ADMIN" ? "Super Admin" : r.charAt(0) + r.slice(1).toLowerCase()}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -338,6 +395,7 @@ export default function UserManagement() {
                     placeholder="name@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={submitting}
                   />
                 </div>
 
@@ -348,6 +406,7 @@ export default function UserManagement() {
                     placeholder="First name"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    disabled={submitting}
                   />
                 </div>
 
@@ -358,6 +417,7 @@ export default function UserManagement() {
                     placeholder="Last name"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    disabled={submitting}
                   />
                 </div>
 
@@ -368,24 +428,16 @@ export default function UserManagement() {
                     placeholder="07XXXXXXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    disabled={submitting}
                   />
                 </div>
 
-                {mode === "ADD" && (
-                  <div className="um-field um-full">
-                    <label>Temporary Password</label>
-                    <input
-                      type="password"
-                      placeholder="Enter temporary password"
-                      value={tempPassword}
-                      onChange={(e) => setTempPassword(e.target.value)}
-                    />
-                  </div>
-                )}
+                <div className="um-alert um-alert--info um-full">
+                  Temporary password will be generated by the system after creating the user.
+                </div>
 
                 {role === "COACH" && (
                   <>
-                    {/* ✅ Qualifications (dynamic list with +) */}
                     <div className="um-field um-full">
                       <div className="um-label-row">
                         <label>Qualifications</label>
@@ -393,8 +445,7 @@ export default function UserManagement() {
                           type="button"
                           className="um-qual-add-btn"
                           onClick={addQualificationRow}
-                          aria-label="Add qualification"
-                          title="Add qualification"
+                          disabled={submitting}
                         >
                           +
                         </button>
@@ -408,14 +459,13 @@ export default function UserManagement() {
                               placeholder="e.g., Diploma in Sports Coaching"
                               value={q}
                               onChange={(e) => updateQualificationRow(idx, e.target.value)}
+                              disabled={submitting}
                             />
-
                             <button
                               type="button"
                               className="um-action-btn danger um-qual-remove"
                               onClick={() => removeQualificationRow(idx)}
-                              aria-label="Remove qualification"
-                              title="Remove"
+                              disabled={submitting}
                             >
                               Remove
                             </button>
@@ -423,34 +473,70 @@ export default function UserManagement() {
                         ))}
                       </div>
 
-                      <div className="um-qual-hint">
-                        Add one or more qualifications (use + to add more).
-                      </div>
+                      <div className="um-qual-hint">Qualifications shown in UI for now; DB sync can be added next.</div>
                     </div>
 
                     <div className="um-field um-full">
                       <label>Specialization</label>
                       <input
                         type="text"
-                        placeholder="e.g., Cricket / Badminton / Chess"
+                        placeholder="e.g., Cricket / Badminton"
                         value={specialization}
                         onChange={(e) => setSpecialization(e.target.value)}
+                        disabled={submitting}
                       />
                     </div>
                   </>
                 )}
               </div>
 
-              {/* ✅ Only these 2 modal buttons become white */}
               <div className="um-form-actions">
-                <button className="um-modal-btn" type="button" onClick={closeModal}>
+                <button className="um-modal-btn" type="button" onClick={closeModal} disabled={submitting}>
                   Cancel
                 </button>
-                <button className="um-modal-btn" type="submit">
-                  {mode === "ADD" ? "Add User" : "Save Changes"}
+                <button className="um-modal-btn" type="submit" disabled={submitting}>
+                  {submitting ? "Saving..." : "Add User"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {tempModalOpen && (
+        <div className="um-modal-backdrop" onMouseDown={closeTempModal}>
+          <div className="um-modal um-modal--small" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="um-modal-header">
+              <h3 className="um-modal-title">Temporary Password</h3>
+              <button className="um-icon-btn" type="button" onClick={closeTempModal} aria-label="Close">
+                ✕
+              </button>
+            </div>
+
+            <div className="um-alert um-alert--info">
+              Copy this password now and share it with the user. The system will not show it again.
+            </div>
+
+            <div className="um-temp-box">
+              <div className="um-temp-row">
+                <div className="um-temp-label">User Email</div>
+                <div className="um-temp-value">{createdEmail || "-"}</div>
+              </div>
+
+              <div className="um-temp-row">
+                <div className="um-temp-label">Temporary Password</div>
+                <div className="um-temp-value um-temp-password">{createdTempPassword || "-"}</div>
+              </div>
+
+              <div className="um-temp-actions">
+                <button className="um-action-btn" type="button" onClick={copyTempPassword}>
+                  Copy Password
+                </button>
+                <button className="um-action-btn danger" type="button" onClick={closeTempModal}>
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

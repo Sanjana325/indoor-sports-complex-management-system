@@ -4,6 +4,22 @@ import "../styles/Login.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+function profileRouteForRole(role) {
+  if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin/profile";
+  if (role === "STAFF") return "/staff/profile";
+  if (role === "COACH") return "/coach/profile";
+  if (role === "PLAYER") return "/player/profile";
+  return "/profile";
+}
+
+function homeRouteForRole(role) {
+  if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin";
+  if (role === "STAFF") return "/staff";
+  if (role === "COACH") return "/coach";
+  if (role === "PLAYER") return "/player";
+  return "/";
+}
+
 export default function Login() {
   const navigate = useNavigate();
 
@@ -52,19 +68,11 @@ export default function Login() {
       localStorage.setItem("mustChangePassword", mustChangePassword ? "true" : "false");
 
       if (mustChangePassword) {
-        if (user.role === "ADMIN") navigate("/admin/profile");
-        else if (user.role === "STAFF") navigate("/staff/profile");
-        else if (user.role === "COACH") navigate("/coach/profile");
-        else if (user.role === "PLAYER") navigate("/player/profile");
-        else navigate("/profile");
+        navigate(profileRouteForRole(user.role));
         return;
       }
 
-      if (user.role === "ADMIN") navigate("/admin");
-      else if (user.role === "STAFF") navigate("/staff");
-      else if (user.role === "COACH") navigate("/coach");
-      else if (user.role === "PLAYER") navigate("/player");
-      else navigate("/");
+      navigate(homeRouteForRole(user.role));
     } catch (err) {
       setError("Cannot connect to backend. Make sure the server is running.");
     } finally {

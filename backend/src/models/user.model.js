@@ -45,9 +45,30 @@ async function createUser({
   return result.insertId;
 }
 
+async function listAllForAdmin() {
+  const [rows] = await pool.query(
+    `SELECT 
+        ua.UserID,
+        ua.FirstName,
+        ua.LastName,
+        ua.Email,
+        ua.PhoneNumber,
+        ua.Role,
+        ua.IsActive,
+        ua.CreatedAt,
+        ua.MustChangePassword,
+        c.Specialization
+     FROM UserAccount ua
+     LEFT JOIN Coach c ON c.UserID = ua.UserID
+     ORDER BY ua.CreatedAt DESC`
+  );
+  return rows;
+}
+
 module.exports = {
   findByEmail,
   findById,
   emailExists,
-  createUser
+  createUser,
+  listAllForAdmin
 };

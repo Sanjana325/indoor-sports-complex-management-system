@@ -9,7 +9,7 @@ const coachModel = require("../models/coach.model");
 const { hashPassword } = require("../utils/password");
 const { generateTempPassword } = require("../utils/randomPassword");
 
-router.get("/admin/test", requireAuth, requireRole("ADMIN"), (req, res) => {
+router.get("/admin/test", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), (req, res) => {
   res.json({
     message: "Admin access granted",
     user: {
@@ -20,7 +20,16 @@ router.get("/admin/test", requireAuth, requireRole("ADMIN"), (req, res) => {
   });
 });
 
-router.post("/admin/users", requireAuth, requireRole("ADMIN"), async (req, res, next) => {
+router.get("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
+  try {
+    const rows = await userModel.listAllForAdmin();
+    res.json({ users: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
   try {
     const { firstName, lastName, email, phoneNumber, role, specialization } = req.body || {};
 
@@ -28,9 +37,19 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN"), async (req, res, 
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const allowed = ["STAFF", "COACH", "PLAYER"];
-    if (!allowed.includes(role)) {
-      return res.status(400).json({ message: "Role not allowed for this endpoint" });
+    const allowedForAdmin = ["STAFF", "COACH", "PLAYER"];
+    const allowedForSuperAdmin = ["ADMIN", "STAFF", "COACH", "PLAYER"];
+
+    const requesterRole = req.user.Role;
+
+    if (requesterRole === "SUPER_ADMIN") {
+      if (!allowedForSuperAdmin.includes(role)) {
+        return res.status(400).json({ message: "Role not allowed for this endpoint" });
+      }
+    } else {
+      if (!allowedForAdmin.includes(role)) {
+        return res.status(403).json({ message: "Only SUPER_ADMIN can create ADMIN" });
+      }
     }
 
     if (role === "COACH" && !specialization) {
