@@ -25,7 +25,8 @@ function displayUserId(userId) {
 
 function mapDbUserToUi(u) {
   return {
-    id: displayUserId(u.UserID),
+    userId: u.UserID,
+    idDisplay: displayUserId(u.UserID),
     role: u.Role,
     firstName: u.FirstName || "",
     lastName: u.LastName || "",
@@ -42,7 +43,7 @@ function s(v) {
 }
 
 function buildHaystack(u) {
-  const id = s(u.id);
+  const id = s(u.idDisplay);
   const role = s(u.role);
   const first = s(u.firstName);
   const last = s(u.lastName);
@@ -67,7 +68,7 @@ export default function UserManagement() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD");
-  const [editingId, setEditingId] = useState(null);
+  const [editingUserId, setEditingUserId] = useState(null);
 
   const [role, setRole] = useState(ROLES[0] || "PLAYER");
   const [firstName, setFirstName] = useState("");
@@ -131,6 +132,20 @@ export default function UserManagement() {
     return users.filter((u) => buildHaystack(u).includes(normalizedSearch));
   }, [users, normalizedSearch]);
 
+  const latestSuperAdmins = useMemo(() => {
+    return filteredUsers
+      .filter((u) => u.role === "SUPER_ADMIN")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 50);
+  }, [filteredUsers]);
+
+  const latestAdmins = useMemo(() => {
+    return filteredUsers
+      .filter((u) => u.role === "ADMIN")
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 50);
+  }, [filteredUsers]);
+
   const latestPlayers = useMemo(() => {
     return filteredUsers
       .filter((u) => u.role === "PLAYER")
@@ -160,7 +175,7 @@ export default function UserManagement() {
     setEmail("");
     setQualificationsList([""]);
     setSpecialization("");
-    setEditingId(null);
+    setEditingUserId(null);
     setFormError("");
   }
 
@@ -172,7 +187,7 @@ export default function UserManagement() {
 
   function openEditModal(user) {
     setMode("EDIT");
-    setEditingId(user.id);
+    setEditingUserId(user.userId);
 
     setRole(user.role);
     setFirstName(user.firstName || "");
@@ -261,6 +276,29 @@ export default function UserManagement() {
     return data;
   }
 
+  async function updateUserOnBackend(userId, payload) {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Not logged in. Please login again.");
+
+    const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = data.message || "Failed to update user";
+      throw new Error(msg);
+    }
+
+    return data;
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setFormError("");
@@ -268,11 +306,6 @@ export default function UserManagement() {
     const err = validateForm();
     if (err) {
       setFormError(err);
-      return;
-    }
-
-    if (mode === "EDIT") {
-      setFormError("Edit is UI-only for now. We will add backend update next.");
       return;
     }
 
@@ -296,18 +329,32 @@ export default function UserManagement() {
 
     setSubmitting(true);
     try {
-      const result = await createUserOnBackend(payload);
+      if (mode === "ADD") {
+        const result = await createUserOnBackend(payload);
 
-      setCreatedEmail(payload.email);
-      setCreatedTempPassword(result.tempPassword || "");
-      setTempModalOpen(true);
+        setCreatedEmail(payload.email);
+        setCreatedTempPassword(result.tempPassword || "");
+        setTempModalOpen(true);
+
+        setIsModalOpen(false);
+        resetForm();
+
+        await fetchUsersFromDb();
+        return;
+      }
+
+      if (!editingUserId) {
+        setFormError("No user selected to update");
+        return;
+      }
+
+      await updateUserOnBackend(editingUserId, payload);
 
       setIsModalOpen(false);
       resetForm();
-
       await fetchUsersFromDb();
     } catch (ex) {
-      setFormError(ex.message || "Failed to create user");
+      setFormError(ex.message || (mode === "ADD" ? "Failed to create user" : "Failed to update user"));
     } finally {
       setSubmitting(false);
     }
@@ -347,6 +394,22 @@ export default function UserManagement() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+
+      {isSuperAdmin ? (
+        <>
+          {latestSuperAdmins.length > 0 ? (
+            <section className="um-section">
+              <h3 className="um-section-title">Super Admins</h3>
+              <UserTable rows={latestSuperAdmins} onEdit={openEditModal} onRemove={() => {}} />
+            </section>
+          ) : null}
+
+          <section className="um-section">
+            <h3 className="um-section-title">Admins</h3>
+            <UserTable rows={latestAdmins} onEdit={openEditModal} onRemove={() => {}} />
+          </section>
+        </>
+      ) : null}
 
       <section className="um-section">
         <h3 className="um-section-title">Players</h3>
@@ -432,9 +495,11 @@ export default function UserManagement() {
                   />
                 </div>
 
-                <div className="um-alert um-alert--info um-full">
-                  Temporary password will be generated by the system after creating the user.
-                </div>
+                {mode === "ADD" ? (
+                  <div className="um-alert um-alert--info um-full">
+                    Temporary password will be generated by the system after creating the user.
+                  </div>
+                ) : null}
 
                 {role === "COACH" && (
                   <>
@@ -495,7 +560,7 @@ export default function UserManagement() {
                   Cancel
                 </button>
                 <button className="um-modal-btn" type="submit" disabled={submitting}>
-                  {submitting ? "Saving..." : "Add User"}
+                  {submitting ? "Saving..." : mode === "ADD" ? "Add User" : "Update User"}
                 </button>
               </div>
             </form>
@@ -580,8 +645,8 @@ function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
             </tr>
           ) : (
             rows.map((u) => (
-              <tr key={u.id}>
-                <td className="um-col-id">{u.id}</td>
+              <tr key={u.userId}>
+                <td className="um-col-id">{u.idDisplay}</td>
                 <td className="um-col-name">
                   {u.firstName} {u.lastName}
                 </td>
@@ -605,7 +670,7 @@ function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
                     <button className="um-action-btn" type="button" onClick={() => onEdit(u)}>
                       Edit
                     </button>
-                    <button className="um-action-btn danger" type="button" onClick={() => onRemove(u.id)}>
+                    <button className="um-action-btn danger" type="button" onClick={() => onRemove(u.userId)}>
                       Remove
                     </button>
                   </div>

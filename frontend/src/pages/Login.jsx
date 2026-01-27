@@ -26,8 +26,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [role, setRole] = useState("ADMIN");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -105,21 +103,15 @@ export default function Login() {
           required
         />
 
-        <div className="role-box">
-          <label>Select Role to Login As</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)} disabled>
-            <option value="ADMIN">Admin</option>
-            <option value="STAFF">Staff</option>
-            <option value="COACH">Coach</option>
-            <option value="PLAYER">Player</option>
-          </select>
-        </div>
-
         <button type="submit" className="login-btn" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
 
-        <button type="button" className="secondary-btn">
+        <button
+          type="button"
+          className="secondary-btn"
+          onClick={() => navigate("/forgot-password")}
+        >
           Forgot Password
         </button>
 

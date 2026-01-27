@@ -1,14 +1,29 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 
 const userModel = require("../models/user.model");
 const { hashPassword, verifyPassword } = require("../utils/password");
 const { signToken } = require("../utils/jwt");
 const requireAuth = require("../middleware/requireAuth");
 const { pool } = require("../config/db");
+const { sendPasswordResetEmail } = require("../utils/email");
+
+const RESET_EXP_MINUTES = 30;
 
 function isValidEmail(email) {
   return typeof email === "string" && email.includes("@") && email.includes(".");
+}
+
+function sha256Hex(input) {
+  return crypto.createHash("sha256").update(input).digest("hex");
+}
+
+function makeResetToken() {
+  const raw = crypto.randomBytes(32).toString("hex");
+  const secret = process.env.RESET_TOKEN_SECRET || "";
+  const tokenHash = sha256Hex(`${raw}.${secret}`);
+  return { raw, tokenHash };
 }
 
 router.post("/auth/register", async (req, res, next) => {
@@ -132,6 +147,82 @@ router.post("/auth/change-password", requireAuth, async (req, res, next) => {
     );
 
     res.json({ message: "Password updated successfully", mustChangePassword: false });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/*
+  Forgot Password
+  Always return 200 with a generic message to avoid leaking whether an email exists.
+*/
+router.post("/auth/forgot-password", async (req, res, next) => {
+  try {
+    const { email } = req.body || {};
+
+    if (!email || !isValidEmail(email)) {
+      return res.json({ message: "If that email exists, we sent a reset link." });
+    }
+
+    const user = await userModel.findByEmail(email);
+    if (!user) {
+      return res.json({ message: "If that email exists, we sent a reset link." });
+    }
+
+    const { raw, tokenHash } = makeResetToken();
+
+    const expiresAt = new Date(Date.now() + RESET_EXP_MINUTES * 60 * 1000);
+    await userModel.createPasswordResetToken({
+      userId: user.UserID,
+      tokenHash,
+      expiresAt
+    });
+
+    const frontendBase = process.env.FRONTEND_BASE_URL || "http://localhost:5173";
+    const resetLink = `${frontendBase}/reset-password?token=${raw}`;
+
+    await sendPasswordResetEmail({
+      toEmail: user.Email,
+      toName: `${user.FirstName || ""} ${user.LastName || ""}`.trim(),
+      resetLink
+    });
+
+    return res.json({ message: "If that email exists, we sent a reset link." });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/auth/reset-password", async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body || {};
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and new password are required" });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const secret = process.env.RESET_TOKEN_SECRET || "";
+    const tokenHash = sha256Hex(`${token}.${secret}`);
+
+    const row = await userModel.findValidPasswordResetTokenByHash(tokenHash);
+    if (!row) {
+      return res.status(400).json({ message: "Reset link is invalid or expired" });
+    }
+
+    const newHash = await hashPassword(newPassword);
+
+    await pool.query(
+      "UPDATE UserAccount SET PasswordHash = ?, MustChangePassword = FALSE WHERE UserID = ?",
+      [newHash, row.UserID]
+    );
+
+    await userModel.markPasswordResetTokenUsed(row.ResetID);
+
+    res.json({ message: "Password reset successful" });
   } catch (err) {
     next(err);
   }

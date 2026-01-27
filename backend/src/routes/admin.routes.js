@@ -8,6 +8,11 @@ const userModel = require("../models/user.model");
 const coachModel = require("../models/coach.model");
 const { hashPassword } = require("../utils/password");
 const { generateTempPassword } = require("../utils/randomPassword");
+const { pool } = require("../config/db");
+
+function isValidEmail(email) {
+  return typeof email === "string" && email.includes("@") && email.includes(".");
+}
 
 router.get("/admin/test", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), (req, res) => {
   res.json({
@@ -35,6 +40,10 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), as
 
     if (!firstName || !lastName || !email || !phoneNumber || !role) {
       return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Invalid email" });
     }
 
     const allowedForAdmin = ["STAFF", "COACH", "PLAYER"];
@@ -82,6 +91,87 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), as
       user: { userId, role, email, coachId },
       mustChangePassword: true,
       tempPassword
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/*
+  Update user (DB)
+  - ADMIN can update STAFF/COACH/PLAYER
+  - SUPER_ADMIN can update ADMIN/STAFF/COACH/PLAYER
+  - Only SUPER_ADMIN can update ADMIN users
+  - Non-super admin cannot edit ADMIN/SUPER_ADMIN users
+*/
+router.put("/admin/users/:userId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
+  try {
+    const targetUserId = Number(req.params.userId);
+    if (!Number.isFinite(targetUserId)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
+    const { firstName, lastName, email, phoneNumber, role, specialization } = req.body || {};
+
+    if (!firstName || !lastName || !email || !phoneNumber || !role) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Invalid email" });
+    }
+
+    const target = await userModel.findById(targetUserId);
+    if (!target) return res.status(404).json({ message: "User not found" });
+
+    const requesterRole = req.user.Role;
+
+    if (requesterRole !== "SUPER_ADMIN" && (target.Role === "ADMIN" || target.Role === "SUPER_ADMIN")) {
+      return res.status(403).json({ message: "You are not allowed to edit this user" });
+    }
+
+    const allowedForAdmin = ["STAFF", "COACH", "PLAYER"];
+    const allowedForSuperAdmin = ["ADMIN", "STAFF", "COACH", "PLAYER"];
+
+    if (requesterRole === "SUPER_ADMIN") {
+      if (!allowedForSuperAdmin.includes(role)) {
+        return res.status(400).json({ message: "Role not allowed" });
+      }
+    } else {
+      if (!allowedForAdmin.includes(role)) {
+        return res.status(403).json({ message: "Only SUPER_ADMIN can assign ADMIN role" });
+      }
+    }
+
+    if (role === "COACH" && !specialization) {
+      return res.status(400).json({ message: "Specialization is required for COACH" });
+    }
+
+    const emailTaken = await userModel.emailExistsExceptUser(email, targetUserId);
+    if (emailTaken) return res.status(409).json({ message: "Email already exists" });
+
+    await userModel.updateUserById(targetUserId, {
+      firstName,
+      lastName,
+      email,
+      phoneNumber,
+      role
+    });
+
+    const wasCoach = target.Role === "COACH";
+    const willBeCoach = role === "COACH";
+
+    if (wasCoach && willBeCoach) {
+      await pool.query("UPDATE Coach SET Specialization = ? WHERE UserID = ?", [specialization, targetUserId]);
+    } else if (!wasCoach && willBeCoach) {
+      await coachModel.createCoach({ userId: targetUserId, specialization });
+    } else if (wasCoach && !willBeCoach) {
+      await pool.query("DELETE FROM Coach WHERE UserID = ?", [targetUserId]);
+    }
+
+    res.json({
+      message: "User updated",
+      user: { userId: targetUserId, role, email }
     });
   } catch (err) {
     next(err);

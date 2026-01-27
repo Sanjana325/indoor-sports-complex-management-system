@@ -28,6 +28,14 @@ async function emailExists(email) {
   return rows.length > 0;
 }
 
+async function emailExistsExceptUser(email, userId) {
+  const [rows] = await pool.query(
+    `SELECT 1 FROM UserAccount WHERE Email = ? AND UserID <> ? LIMIT 1`,
+    [email, userId]
+  );
+  return rows.length > 0;
+}
+
 async function createUser({
   firstName,
   lastName,
@@ -43,6 +51,15 @@ async function createUser({
     [firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword ? 1 : 0]
   );
   return result.insertId;
+}
+
+async function updateUserById(userId, { firstName, lastName, email, phoneNumber, role }) {
+  await pool.query(
+    `UPDATE UserAccount
+     SET FirstName = ?, LastName = ?, Email = ?, PhoneNumber = ?, Role = ?
+     WHERE UserID = ?`,
+    [firstName, lastName, email, phoneNumber, role, userId]
+  );
 }
 
 async function listAllForAdmin() {
@@ -65,10 +82,47 @@ async function listAllForAdmin() {
   return rows;
 }
 
+/* Forgot Password token methods */
+
+async function createPasswordResetToken({ userId, tokenHash, expiresAt }) {
+  await pool.query(
+    `INSERT INTO PasswordResetToken (UserID, TokenHash, ExpiresAt)
+     VALUES (?, ?, ?)`,
+    [userId, tokenHash, expiresAt]
+  );
+}
+
+async function findValidPasswordResetTokenByHash(tokenHash) {
+  const [rows] = await pool.query(
+    `SELECT ResetID, UserID, TokenHash, ExpiresAt, UsedAt
+     FROM PasswordResetToken
+     WHERE TokenHash = ?
+       AND UsedAt IS NULL
+       AND ExpiresAt > NOW()
+     LIMIT 1`,
+    [tokenHash]
+  );
+  return rows.length ? rows[0] : null;
+}
+
+async function markPasswordResetTokenUsed(resetId) {
+  await pool.query(
+    `UPDATE PasswordResetToken
+     SET UsedAt = NOW()
+     WHERE ResetID = ?`,
+    [resetId]
+  );
+}
+
 module.exports = {
   findByEmail,
   findById,
   emailExists,
+  emailExistsExceptUser,
   createUser,
-  listAllForAdmin
+  updateUserById,
+  listAllForAdmin,
+  createPasswordResetToken,
+  findValidPasswordResetTokenByHash,
+  markPasswordResetTokenUsed
 };
