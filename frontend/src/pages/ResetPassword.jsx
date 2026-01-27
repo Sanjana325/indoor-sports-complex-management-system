@@ -9,6 +9,19 @@ function useQuery() {
   return useMemo(() => new URLSearchParams(search), [search]);
 }
 
+function passwordPolicyMessage() {
+  return "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
+}
+
+function isStrongPassword(pw) {
+  if (typeof pw !== "string") return false;
+  if (pw.length < 8) return false;
+  if (!/[A-Z]/.test(pw)) return false;
+  if (!/[a-z]/.test(pw)) return false;
+  if (!/[0-9]/.test(pw)) return false;
+  return true;
+}
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const q = useQuery();
@@ -20,6 +33,13 @@ export default function ResetPassword() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const canSubmit = useMemo(() => {
+    if (!token) return false;
+    if (!isStrongPassword(newPassword)) return false;
+    if (newPassword !== confirm) return false;
+    return true;
+  }, [token, newPassword, confirm]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
@@ -30,8 +50,8 @@ export default function ResetPassword() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (!isStrongPassword(newPassword)) {
+      setError(passwordPolicyMessage());
       return;
     }
 
@@ -77,19 +97,23 @@ export default function ResetPassword() {
           placeholder="Enter new password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
+          autoComplete="new-password"
           required
         />
 
-        <label>Confirm Password</label>
+        <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>{passwordPolicyMessage()}</div>
+
+        <label style={{ marginTop: 12 }}>Confirm Password</label>
         <input
           type="password"
           placeholder="Confirm new password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
+          autoComplete="new-password"
           required
         />
 
-        <button type="submit" className="login-btn" disabled={loading}>
+        <button type="submit" className="login-btn" disabled={loading || !canSubmit}>
           {loading ? "Resetting..." : "Reset Password"}
         </button>
 

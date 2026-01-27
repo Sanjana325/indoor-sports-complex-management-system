@@ -17,28 +17,42 @@ function getTransporter() {
     port,
     secure,
     auth: { user, pass },
-
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
-
-    logger: true,
-    debug: true,
-
-    tls: {
-      servername: host
-    }
+    tls: { servername: host }
   });
 }
 
+function isValidHttpUrl(url) {
+  if (typeof url !== "string") return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 async function sendPasswordResetEmail({ toEmail, toName, resetLink }) {
+  if (!toEmail || typeof toEmail !== "string") {
+    throw new Error("Missing toEmail");
+  }
+  if (!resetLink || !isValidHttpUrl(resetLink)) {
+    throw new Error("Invalid reset link");
+  }
+
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "Indoor Sports Complex";
 
   const subject = "Reset your password";
-  const text = `You requested a password reset. Use this link to reset your password:\n\n${resetLink}\n\nIf you did not request this, you can ignore this email.`;
+  const text =
+    `You requested a password reset. Use this link to reset your password:\n\n${resetLink}\n\n` +
+    `If you did not request this, you can ignore this email.`;
+
+  const safeName = typeof toName === "string" ? toName.trim() : "";
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.5;">
@@ -57,7 +71,7 @@ async function sendPasswordResetEmail({ toEmail, toName, resetLink }) {
 
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
-    to: toName ? `"${toName}" <${toEmail}>` : toEmail,
+    to: safeName ? `"${safeName}" <${toEmail}>` : toEmail,
     subject,
     text,
     html

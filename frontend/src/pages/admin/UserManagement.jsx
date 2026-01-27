@@ -13,7 +13,9 @@ function splitQualificationsToList(q) {
 }
 
 function joinQualifications(list) {
-  const cleaned = (list || []).map((x) => String(x || "").trim()).filter(Boolean);
+  const cleaned = (list || [])
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
   return cleaned.join(", ");
 }
 
@@ -34,7 +36,8 @@ function mapDbUserToUi(u) {
     email: u.Email || "",
     createdAt: u.CreatedAt,
     specialization: u.Specialization || "",
-    qualifications: ""
+    qualifications: "",
+    isActive: Boolean(u.IsActive)
   };
 }
 
@@ -51,16 +54,18 @@ function buildHaystack(u) {
   const email = s(u.email);
   const qual = s(u.qualifications);
   const spec = s(u.specialization);
+  const status = u.isActive ? "active" : "inactive";
 
   const fullName = `${first} ${last}`.trim();
   const swappedName = `${last} ${first}`.trim();
 
-  return `${id} ${role} ${first} ${last} ${fullName} ${swappedName} ${phone} ${email} ${qual} ${spec}`.toLowerCase();
+  return `${id} ${role} ${first} ${last} ${fullName} ${swappedName} ${phone} ${email} ${qual} ${spec} ${status}`.toLowerCase();
 }
 
 export default function UserManagement() {
   const currentRole = localStorage.getItem("role") || "";
   const isSuperAdmin = currentRole === "SUPER_ADMIN";
+  const canManageUsers = currentRole === "ADMIN" || currentRole === "SUPER_ADMIN";
 
   const ROLES = isSuperAdmin ? ["ADMIN", "PLAYER", "STAFF", "COACH"] : ["PLAYER", "STAFF", "COACH"];
 
@@ -299,6 +304,69 @@ export default function UserManagement() {
     return data;
   }
 
+  async function setUserActive(userId, makeActive) {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Not logged in. Please login again.");
+
+    const url = makeActive
+      ? `${API_BASE}/api/admin/users/${userId}/enable`
+      : `${API_BASE}/api/admin/users/${userId}/disable`;
+
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Action failed");
+    return data;
+  }
+
+  async function removeUserHard(userId) {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Not logged in. Please login again.");
+
+    const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || "Remove failed");
+    return data;
+  }
+
+  async function handleDisableToggle(user) {
+    if (!canManageUsers) return;
+
+    const actionLabel = user.isActive ? "Disable User" : "Enable User";
+    const ok = window.confirm(`${actionLabel} for ${user.firstName} ${user.lastName} (${user.email})?`);
+    if (!ok) return;
+
+    try {
+      await setUserActive(user.userId, !user.isActive);
+      await fetchUsersFromDb();
+    } catch (ex) {
+      setListError(ex.message || "Action failed");
+    }
+  }
+
+  async function handleRemoveUser(user) {
+    if (!isSuperAdmin) return;
+
+    const ok = window.confirm(
+      `Remove user permanently?\n\nThis will delete the account and related coach records.\nUser: ${user.firstName} ${user.lastName} (${user.email})`
+    );
+    if (!ok) return;
+
+    try {
+      await removeUserHard(user.userId);
+      await fetchUsersFromDb();
+    } catch (ex) {
+      setListError(ex.message || "Remove failed");
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setFormError("");
@@ -400,30 +468,61 @@ export default function UserManagement() {
           {latestSuperAdmins.length > 0 ? (
             <section className="um-section">
               <h3 className="um-section-title">Super Admins</h3>
-              <UserTable rows={latestSuperAdmins} onEdit={openEditModal} onRemove={() => {}} />
+              <UserTable
+                rows={latestSuperAdmins}
+                onEdit={openEditModal}
+                onDisableToggle={handleDisableToggle}
+                onRemove={handleRemoveUser}
+                currentRole={currentRole}
+              />
             </section>
           ) : null}
 
           <section className="um-section">
             <h3 className="um-section-title">Admins</h3>
-            <UserTable rows={latestAdmins} onEdit={openEditModal} onRemove={() => {}} />
+            <UserTable
+              rows={latestAdmins}
+              onEdit={openEditModal}
+              onDisableToggle={handleDisableToggle}
+              onRemove={handleRemoveUser}
+              currentRole={currentRole}
+            />
           </section>
         </>
       ) : null}
 
       <section className="um-section">
         <h3 className="um-section-title">Players</h3>
-        <UserTable rows={latestPlayers} onEdit={openEditModal} onRemove={() => {}} />
+        <UserTable
+          rows={latestPlayers}
+          onEdit={openEditModal}
+          onDisableToggle={handleDisableToggle}
+          onRemove={handleRemoveUser}
+          currentRole={currentRole}
+        />
       </section>
 
       <section className="um-section">
         <h3 className="um-section-title">Staff</h3>
-        <UserTable rows={latestStaff} onEdit={openEditModal} onRemove={() => {}} />
+        <UserTable
+          rows={latestStaff}
+          onEdit={openEditModal}
+          onDisableToggle={handleDisableToggle}
+          onRemove={handleRemoveUser}
+          currentRole={currentRole}
+        />
       </section>
 
       <section className="um-section">
         <h3 className="um-section-title">Coaches</h3>
-        <UserTable rows={latestCoaches} onEdit={openEditModal} onRemove={() => {}} showCoachCols />
+        <UserTable
+          rows={latestCoaches}
+          onEdit={openEditModal}
+          onDisableToggle={handleDisableToggle}
+          onRemove={handleRemoveUser}
+          showCoachCols
+          currentRole={currentRole}
+        />
       </section>
 
       {isModalOpen && (
@@ -609,7 +708,9 @@ export default function UserManagement() {
   );
 }
 
-function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
+function UserTable({ rows, onEdit, onDisableToggle, onRemove, showCoachCols = false, currentRole }) {
+  const isSuperAdmin = currentRole === "SUPER_ADMIN";
+
   return (
     <div className="um-table-wrap">
       <table className={`um-table ${showCoachCols ? "um-table--coach" : ""}`}>
@@ -649,6 +750,7 @@ function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
                 <td className="um-col-id">{u.idDisplay}</td>
                 <td className="um-col-name">
                   {u.firstName} {u.lastName}
+                  {!u.isActive ? <span style={{ marginLeft: 8, fontSize: 12, color: "#a00" }}>(Disabled)</span> : null}
                 </td>
 
                 {showCoachCols ? (
@@ -670,9 +772,16 @@ function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
                     <button className="um-action-btn" type="button" onClick={() => onEdit(u)}>
                       Edit
                     </button>
-                    <button className="um-action-btn danger" type="button" onClick={() => onRemove(u.userId)}>
-                      Remove
+
+                    <button className="um-action-btn" type="button" onClick={() => onDisableToggle(u)}>
+                      {u.isActive ? "Disable User" : "Enable User"}
                     </button>
+
+                    {isSuperAdmin ? (
+                      <button className="um-action-btn danger" type="button" onClick={() => onRemove(u)}>
+                        Remove User
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>

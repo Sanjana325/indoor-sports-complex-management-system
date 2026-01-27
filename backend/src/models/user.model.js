@@ -21,30 +21,19 @@ async function findById(userId) {
 }
 
 async function emailExists(email) {
-  const [rows] = await pool.query(
-    `SELECT 1 FROM UserAccount WHERE Email = ? LIMIT 1`,
-    [email]
-  );
+  const [rows] = await pool.query(`SELECT 1 FROM UserAccount WHERE Email = ? LIMIT 1`, [email]);
   return rows.length > 0;
 }
 
 async function emailExistsExceptUser(email, userId) {
-  const [rows] = await pool.query(
-    `SELECT 1 FROM UserAccount WHERE Email = ? AND UserID <> ? LIMIT 1`,
-    [email, userId]
-  );
+  const [rows] = await pool.query(`SELECT 1 FROM UserAccount WHERE Email = ? AND UserID <> ? LIMIT 1`, [
+    email,
+    userId
+  ]);
   return rows.length > 0;
 }
 
-async function createUser({
-  firstName,
-  lastName,
-  email,
-  passwordHash,
-  phoneNumber,
-  role,
-  mustChangePassword = false
-}) {
+async function createUser({ firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword = false }) {
   const [result] = await pool.query(
     `INSERT INTO UserAccount (FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, MustChangePassword)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -80,6 +69,45 @@ async function listAllForAdmin() {
      ORDER BY ua.CreatedAt DESC`
   );
   return rows;
+}
+
+async function setActiveById(userId, isActive) {
+  await pool.query(`UPDATE UserAccount SET IsActive = ? WHERE UserID = ?`, [isActive ? 1 : 0, userId]);
+}
+
+async function countActiveSuperAdmins() {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS C
+     FROM UserAccount
+     WHERE Role = 'SUPER_ADMIN' AND IsActive = 1`
+  );
+  return Number(rows?.[0]?.C || 0);
+}
+
+async function deleteUserHardById(userId) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [coachRows] = await conn.query(`SELECT CoachID FROM Coach WHERE UserID = ? LIMIT 1`, [userId]);
+    if (coachRows.length) {
+      const coachId = coachRows[0].CoachID;
+
+      await conn.query(`DELETE FROM CoachQualification WHERE CoachID = ?`, [coachId]);
+      await conn.query(`DELETE FROM Coach WHERE CoachID = ?`, [coachId]);
+    }
+
+    await conn.query(`DELETE FROM UserAccount WHERE UserID = ?`, [userId]);
+
+    await conn.commit();
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch (e) {}
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 /* Forgot Password token methods */
@@ -122,6 +150,9 @@ module.exports = {
   createUser,
   updateUserById,
   listAllForAdmin,
+  setActiveById,
+  countActiveSuperAdmins,
+  deleteUserHardById,
   createPasswordResetToken,
   findValidPasswordResetTokenByHash,
   markPasswordResetTokenUsed

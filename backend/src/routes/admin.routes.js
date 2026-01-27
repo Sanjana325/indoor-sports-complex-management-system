@@ -14,6 +14,10 @@ function isValidEmail(email) {
   return typeof email === "string" && email.includes("@") && email.includes(".");
 }
 
+function canAdminManageTargetRole(targetRole) {
+  return targetRole === "STAFF" || targetRole === "COACH" || targetRole === "PLAYER";
+}
+
 router.get("/admin/test", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), (req, res) => {
   res.json({
     message: "Admin access granted",
@@ -173,6 +177,111 @@ router.put("/admin/users/:userId", requireAuth, requireRole("ADMIN", "SUPER_ADMI
       message: "User updated",
       user: { userId: targetUserId, role, email }
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/*
+  Disable user (soft)
+  - ADMIN + SUPER_ADMIN can disable
+  - ADMIN can only disable STAFF/COACH/PLAYER
+  - SUPER_ADMIN can disable ADMIN/STAFF/COACH/PLAYER
+  - No one can disable themselves
+  - Cannot disable last active SUPER_ADMIN
+*/
+router.patch("/admin/users/:userId/disable", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
+  try {
+    const targetUserId = Number(req.params.userId);
+    if (!Number.isFinite(targetUserId)) return res.status(400).json({ message: "Invalid user id" });
+
+    if (targetUserId === req.user.UserID) {
+      return res.status(400).json({ message: "You cannot disable your own account" });
+    }
+
+    const target = await userModel.findById(targetUserId);
+    if (!target) return res.status(404).json({ message: "User not found" });
+
+    const requesterRole = req.user.Role;
+
+    if (requesterRole !== "SUPER_ADMIN") {
+      if (!canAdminManageTargetRole(target.Role)) {
+        return res.status(403).json({ message: "You are not allowed to disable this user" });
+      }
+    }
+
+    if (target.Role === "SUPER_ADMIN") {
+      const activeCount = await userModel.countActiveSuperAdmins();
+      if (activeCount <= 1) {
+        return res.status(400).json({ message: "Cannot disable the last active SUPER_ADMIN" });
+      }
+    }
+
+    await userModel.setActiveById(targetUserId, false);
+    res.json({ message: "User disabled" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/*
+  Enable user (reactivate)
+  - ADMIN + SUPER_ADMIN can enable
+  - ADMIN can only enable STAFF/COACH/PLAYER
+  - SUPER_ADMIN can enable ADMIN/STAFF/COACH/PLAYER
+  - No one can enable themselves is allowed (harmless), but keep consistent with disable -> allow self enable if needed
+*/
+router.patch("/admin/users/:userId/enable", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
+  try {
+    const targetUserId = Number(req.params.userId);
+    if (!Number.isFinite(targetUserId)) return res.status(400).json({ message: "Invalid user id" });
+
+    const target = await userModel.findById(targetUserId);
+    if (!target) return res.status(404).json({ message: "User not found" });
+
+    const requesterRole = req.user.Role;
+
+    if (requesterRole !== "SUPER_ADMIN") {
+      if (!canAdminManageTargetRole(target.Role)) {
+        return res.status(403).json({ message: "You are not allowed to enable this user" });
+      }
+    }
+
+    await userModel.setActiveById(targetUserId, true);
+    res.json({ message: "User enabled" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/*
+  Remove user (hard delete)
+  - SUPER_ADMIN only
+  - Cannot delete yourself
+  - Cannot delete last active SUPER_ADMIN
+  - Deletes CoachQualification + Coach row first if target is COACH (to satisfy FKs)
+*/
+router.delete("/admin/users/:userId", requireAuth, requireRole("SUPER_ADMIN"), async (req, res, next) => {
+  try {
+    const targetUserId = Number(req.params.userId);
+    if (!Number.isFinite(targetUserId)) return res.status(400).json({ message: "Invalid user id" });
+
+    if (targetUserId === req.user.UserID) {
+      return res.status(400).json({ message: "You cannot remove your own account" });
+    }
+
+    const target = await userModel.findById(targetUserId);
+    if (!target) return res.status(404).json({ message: "User not found" });
+
+    if (target.Role === "SUPER_ADMIN") {
+      const activeCount = await userModel.countActiveSuperAdmins();
+      if (activeCount <= 1) {
+        return res.status(400).json({ message: "Cannot remove the last active SUPER_ADMIN" });
+      }
+    }
+
+    await userModel.deleteUserHardById(targetUserId);
+    res.json({ message: "User removed" });
   } catch (err) {
     next(err);
   }

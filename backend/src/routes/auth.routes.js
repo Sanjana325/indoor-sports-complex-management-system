@@ -11,8 +11,38 @@ const { sendPasswordResetEmail } = require("../utils/email");
 
 const RESET_EXP_MINUTES = 30;
 
+const forgotLimiter = new Map();
+const FORGOT_LIMIT_WINDOW_MS = 60 * 1000;
+const FORGOT_LIMIT_MAX = 5;
+
+function nowMs() {
+  return Date.now();
+}
+
+function normalizeEmail(email) {
+  if (typeof email !== "string") return "";
+  return email.trim().toLowerCase();
+}
+
 function isValidEmail(email) {
-  return typeof email === "string" && email.includes("@") && email.includes(".");
+  if (typeof email !== "string") return false;
+  const e = email.trim();
+  if (e.length < 6 || e.length > 254) return false;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  return re.test(e);
+}
+
+function passwordPolicyMessage() {
+  return "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
+}
+
+function isStrongPassword(pw) {
+  if (typeof pw !== "string") return false;
+  if (pw.length < 8) return false;
+  if (!/[A-Z]/.test(pw)) return false;
+  if (!/[a-z]/.test(pw)) return false;
+  if (!/[0-9]/.test(pw)) return false;
+  return true;
 }
 
 function sha256Hex(input) {
@@ -26,9 +56,34 @@ function makeResetToken() {
   return { raw, tokenHash };
 }
 
+function isValidResetToken(rawToken) {
+  if (typeof rawToken !== "string") return false;
+  const t = rawToken.trim();
+  return /^[a-f0-9]{64}$/i.test(t);
+}
+
+function hitForgotLimit(key) {
+  const t = nowMs();
+  const rec = forgotLimiter.get(key);
+
+  if (!rec || t - rec.windowStart > FORGOT_LIMIT_WINDOW_MS) {
+    forgotLimiter.set(key, { windowStart: t, count: 1 });
+    return false;
+  }
+
+  rec.count += 1;
+  forgotLimiter.set(key, rec);
+  return rec.count > FORGOT_LIMIT_MAX;
+}
+
 router.post("/auth/register", async (req, res, next) => {
   try {
-    const { firstName, lastName, email, phoneNumber, password } = req.body || {};
+    const body = req.body || {};
+    const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
+    const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
+    const email = normalizeEmail(body.email);
+    const phoneNumber = typeof body.phoneNumber === "string" ? body.phoneNumber.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!firstName || !lastName || !email || !phoneNumber || !password) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -38,8 +93,8 @@ router.post("/auth/register", async (req, res, next) => {
       return res.status(400).json({ message: "Invalid email" });
     }
 
-    if (String(password).length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({ message: passwordPolicyMessage() });
     }
 
     const exists = await userModel.emailExists(email);
@@ -79,10 +134,16 @@ router.post("/auth/register", async (req, res, next) => {
 
 router.post("/auth/login", async (req, res, next) => {
   try {
-    const { email, password } = req.body || {};
+    const body = req.body || {};
+    const email = normalizeEmail(body.email);
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
     const user = await userModel.findByEmail(email);
@@ -126,14 +187,20 @@ router.get("/auth/me", requireAuth, async (req, res) => {
 
 router.post("/auth/change-password", requireAuth, async (req, res, next) => {
   try {
-    const { currentPassword, newPassword } = req.body || {};
+    const body = req.body || {};
+    const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
+    const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: "Current password and new password are required" });
     }
 
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: "New password must be different from current password" });
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({ message: passwordPolicyMessage() });
     }
 
     const ok = await verifyPassword(currentPassword, req.user.PasswordHash);
@@ -158,15 +225,35 @@ router.post("/auth/change-password", requireAuth, async (req, res, next) => {
 */
 router.post("/auth/forgot-password", async (req, res, next) => {
   try {
-    const { email } = req.body || {};
+    const body = req.body || {};
+    const email = normalizeEmail(body.email);
+
+    const generic = { message: "If that email exists, we sent a reset link." };
+
+    const ip =
+      (req.headers["x-forwarded-for"] && String(req.headers["x-forwarded-for"]).split(",")[0].trim()) ||
+      req.ip ||
+      "unknown";
+
+    if (hitForgotLimit(`ip:${ip}`)) {
+      return res.json(generic);
+    }
+    if (email && hitForgotLimit(`email:${email}`)) {
+      return res.json(generic);
+    }
 
     if (!email || !isValidEmail(email)) {
-      return res.json({ message: "If that email exists, we sent a reset link." });
+      return res.json(generic);
+    }
+
+    const secret = process.env.RESET_TOKEN_SECRET || "";
+    if (!secret || secret.length < 16) {
+      return res.status(500).json({ message: "Server configuration error" });
     }
 
     const user = await userModel.findByEmail(email);
     if (!user) {
-      return res.json({ message: "If that email exists, we sent a reset link." });
+      return res.json(generic);
     }
 
     const { raw, tokenHash } = makeResetToken();
@@ -179,7 +266,7 @@ router.post("/auth/forgot-password", async (req, res, next) => {
     });
 
     const frontendBase = process.env.FRONTEND_BASE_URL || "http://localhost:5173";
-    const resetLink = `${frontendBase}/reset-password?token=${raw}`;
+    const resetLink = `${frontendBase.replace(/\/$/, "")}/reset-password?token=${raw}`;
 
     await sendPasswordResetEmail({
       toEmail: user.Email,
@@ -187,7 +274,7 @@ router.post("/auth/forgot-password", async (req, res, next) => {
       resetLink
     });
 
-    return res.json({ message: "If that email exists, we sent a reset link." });
+    return res.json(generic);
   } catch (err) {
     next(err);
   }
@@ -195,17 +282,27 @@ router.post("/auth/forgot-password", async (req, res, next) => {
 
 router.post("/auth/reset-password", async (req, res, next) => {
   try {
-    const { token, newPassword } = req.body || {};
+    const body = req.body || {};
+    const token = typeof body.token === "string" ? body.token.trim() : "";
+    const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
 
     if (!token || !newPassword) {
       return res.status(400).json({ message: "Token and new password are required" });
     }
 
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    if (!isValidResetToken(token)) {
+      return res.status(400).json({ message: "Reset link is invalid or expired" });
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({ message: passwordPolicyMessage() });
     }
 
     const secret = process.env.RESET_TOKEN_SECRET || "";
+    if (!secret || secret.length < 16) {
+      return res.status(500).json({ message: "Server configuration error" });
+    }
+
     const tokenHash = sha256Hex(`${token}.${secret}`);
 
     const row = await userModel.findValidPasswordResetTokenByHash(tokenHash);
