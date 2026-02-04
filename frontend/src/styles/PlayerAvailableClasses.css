@@ -1,0 +1,207 @@
+.pac-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.pac-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.pac-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.pac-sub {
+  margin-top: 6px;
+  opacity: 0.75;
+  font-weight: 600;
+}
+
+.pac-outline-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid #000;
+  background: #fff;
+  color: #000;
+  font-weight: 900;
+}
+
+.pac-empty {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0,0,0,0.25);
+  background: rgba(0,0,0,0.02);
+}
+
+.pac-empty-title {
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.pac-empty-sub {
+  opacity: 0.8;
+  font-weight: 700;
+}
+
+.pac-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pac-tile {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pac-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.pac-name {
+  font-weight: 900;
+  font-size: 16px;
+}
+
+.pac-fee {
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.pac-meta,
+.pac-schedule,
+.pac-cap {
+  font-weight: 700;
+  opacity: 0.9;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pac-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.pac-card {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.pac-card-title {
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.pac-pay-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.pac-pay-summary {
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pac-pay-total {
+  margin-top: 6px;
+  font-weight: 900;
+}
+
+.pac-pay-methods {
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.pac-pay-title {
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.pac-radio {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.pac-upload label {
+  display: block;
+  margin: 8px 0 6px;
+  font-weight: 900;
+}
+
+.pac-upload input[type="file"] {
+  width: 100%;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+  font-weight: 700;
+}
+
+.pac-upload-hint {
+  margin-top: 8px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.pac-pay-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.pac-done {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pac-done-title {
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.pac-done-sub {
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+@media (max-width: 1100px) {
+  .pac-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pac-pay-box {
+    grid-template-columns: 1fr;
+  }
+}

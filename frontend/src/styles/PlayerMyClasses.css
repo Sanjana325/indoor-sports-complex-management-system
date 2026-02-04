@@ -1,0 +1,151 @@
+.pmc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.pmc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.pmc-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.pmc-empty {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0,0,0,0.25);
+  background: rgba(0,0,0,0.02);
+}
+
+.pmc-empty-title {
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.pmc-empty-sub {
+  opacity: 0.8;
+  font-weight: 700;
+}
+
+.pmc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pmc-tile {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pmc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.pmc-name {
+  font-weight: 900;
+  font-size: 16px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pmc-meta {
+  font-weight: 700;
+  opacity: 0.92;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pmc-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.pmc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+/* Status pills */
+.pmc-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 2px solid #000;
+  background: #fff;
+  font-weight: 900;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pmc-pill.paid {
+  border-color: #1a7f37;
+  color: #1a7f37;
+}
+
+.pmc-pill.due {
+  border-color: #b26a00;
+  color: #b26a00;
+}
+
+.pmc-pill.pending {
+  border-color: #3b3b3b;
+  color: #3b3b3b;
+}
+
+.pmc-pill.overdue {
+  border-color: #b00020;
+  color: #b00020;
+}
+
+/* Buttons */
+.pmc-primary-btn {
+  padding: 10px 12px;
+  border: 2px solid #000;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #000;
+  color: #fff;
+  font-weight: 800;
+}
+
+.pmc-ghost-btn {
+  padding: 10px 12px;
+  border: 2px solid #000;
+  border-radius: 10px;
+  cursor: pointer;
+  background: transparent;
+  color: #000;
+  font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+  .pmc-grid {
+    grid-template-columns: 1fr;
+  }
+}

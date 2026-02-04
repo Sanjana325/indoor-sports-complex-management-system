@@ -1,7 +1,25 @@
 import { useMemo, useState } from "react";
 import "../../styles/Payments.css";
 
-const STATUS_OPTIONS = ["ALL", "VERIFIED", "COMPLETED", "CANCELLED"];
+const STATUS_OPTIONS = ["ALL", "PENDING", "VERIFIED", "COMPLETED", "CANCELLED"];
+
+function formatPaidAt(isoString) {
+  if (!isoString) return "—";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "—";
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+}
+
+function isDash(v) {
+  return v === "—";
+}
 
 export default function Payments() {
   const [payments, setPayments] = useState([
@@ -13,6 +31,7 @@ export default function Payments() {
       amount: 2500,
       slip: true,
       status: "PENDING",
+      paidAt: "2026-01-22T10:18:00",
     },
     {
       id: "PAY002",
@@ -20,8 +39,9 @@ export default function Payments() {
       type: "Class Fee",
       method: "Online",
       amount: 3000,
-      slip: true,
+      slip: false,
       status: "PENDING",
+      paidAt: "2026-01-22T11:05:00",
     },
     {
       id: "PAY003",
@@ -31,6 +51,7 @@ export default function Payments() {
       amount: 2000,
       slip: true,
       status: "VERIFIED",
+      paidAt: "2026-01-21T16:40:00",
     },
     {
       id: "PAY004",
@@ -38,8 +59,9 @@ export default function Payments() {
       type: "Class Fee",
       method: "Online",
       amount: 3500,
-      slip: true,
+      slip: false,
       status: "COMPLETED",
+      paidAt: "2026-01-20T09:55:00",
     },
     {
       id: "PAY005",
@@ -49,23 +71,19 @@ export default function Payments() {
       amount: 2500,
       slip: true,
       status: "CANCELLED",
+      paidAt: "2026-01-21T08:30:00",
     },
   ]);
 
-  // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   function verifyPayment(id) {
-    setPayments((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "VERIFIED" } : p))
-    );
+    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: "VERIFIED" } : p)));
   }
 
   function rejectPayment(id) {
-    setPayments((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "CANCELLED" } : p))
-    );
+    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: "CANCELLED" } : p)));
   }
 
   function statusLabel(status) {
@@ -82,12 +100,11 @@ export default function Payments() {
     return payments.filter((p) => {
       const matchesText =
         q.length === 0 ||
-        `${p.id} ${p.name} ${p.method} ${p.amount} ${p.status}`
+        `${p.id} ${p.name} ${p.type} ${p.method} ${p.amount} ${p.status} ${p.paidAt || ""}`
           .toLowerCase()
           .includes(q);
 
-      const matchesStatus =
-        statusFilter === "ALL" ? true : p.status === statusFilter;
+      const matchesStatus = statusFilter === "ALL" ? true : p.status === statusFilter;
 
       return matchesText && matchesStatus;
     });
@@ -103,16 +120,17 @@ export default function Payments() {
     [filteredPayments]
   );
 
+  function handleViewSlip(paymentId) {
+    alert(`View slip for ${paymentId} (UI-only for now)`);
+  }
+
   return (
     <div className="pay-page">
       <div className="pay-header">
         <h2 className="pay-title">Payments</h2>
-        <p className="pay-subtitle">
-          Verify or review payments by category.
-        </p>
+        <p className="pay-subtitle">Verify or review payments by category.</p>
       </div>
 
-      {/* Filters */}
       <div className="pay-toolbar">
         <input
           className="pay-search"
@@ -121,11 +139,7 @@ export default function Payments() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        <select
-          className="pay-filter"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
+        <select className="pay-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
               {s === "ALL" ? "All" : statusLabel(s)}
@@ -134,36 +148,36 @@ export default function Payments() {
         </select>
       </div>
 
-      {/* TABLE 1 */}
       <section className="pay-section">
         <h3 className="pay-section-title">Court Booking Payments</h3>
         <PaymentsTable
           rows={bookingPayments}
           onVerify={verifyPayment}
           onReject={rejectPayment}
+          onViewSlip={handleViewSlip}
           statusLabel={statusLabel}
         />
       </section>
 
-      {/* TABLE 2 */}
       <section className="pay-section">
         <h3 className="pay-section-title">Class Fee Payments</h3>
         <PaymentsTable
           rows={classFeePayments}
           onVerify={verifyPayment}
           onReject={rejectPayment}
+          onViewSlip={handleViewSlip}
           statusLabel={statusLabel}
         />
       </section>
 
       <p className="pay-hint">
-        Note: Payment type is inferred from the table category (UI-only).
+        Paid At represents when the user completed the payment (bank slip upload or online payment).
       </p>
     </div>
   );
 }
 
-function PaymentsTable({ rows, onVerify, onReject, statusLabel }) {
+function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel }) {
   return (
     <div className="pay-table-wrap">
       <table className="pay-table">
@@ -173,6 +187,7 @@ function PaymentsTable({ rows, onVerify, onReject, statusLabel }) {
             <th>Name</th>
             <th>Method</th>
             <th>Amount</th>
+            <th>Paid At</th>
             <th>Payment Slip</th>
             <th>Status</th>
             <th className="pay-center">Actions</th>
@@ -182,55 +197,55 @@ function PaymentsTable({ rows, onVerify, onReject, statusLabel }) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan="7" className="pay-empty">
+              <td colSpan="8" className="pay-empty">
                 No payments to show.
               </td>
             </tr>
           ) : (
-            rows.map((p) => (
-              <tr key={p.id}>
-                <td>{p.id}</td>
-                <td>{p.name}</td>
-                <td>{p.method}</td>
-                <td>LKR {p.amount.toLocaleString()}</td>
-                <td>
-                  {p.slip ? (
-                    <button className="pay-link-btn" type="button">
-                      View
-                    </button>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td>
-                  <span className={`pay-badge ${p.status.toLowerCase()}`}>
-                    {statusLabel(p.status)}
-                  </span>
-                </td>
-                <td className="pay-center">
-                  {p.status === "PENDING" ? (
-                    <>
-                      <button
-                        className="pay-verify-btn"
-                        type="button"
-                        onClick={() => onVerify(p.id)}
-                      >
-                        Verify
+            rows.map((p) => {
+              const paidAtText = formatPaidAt(p.paidAt);
+              const showSlipView = p.method === "Bank Slip" && Boolean(p.slip);
+
+              return (
+                <tr key={p.id}>
+                  <td>{p.id}</td>
+                  <td>{p.name}</td>
+                  <td>{p.method}</td>
+                  <td className="pay-mono">LKR {Number(p.amount).toLocaleString("en-LK")}</td>
+
+                  <td className={isDash(paidAtText) ? "pay-dash" : "pay-mono"}>{paidAtText}</td>
+
+                  <td className={showSlipView ? "" : "pay-dash"}>
+                    {showSlipView ? (
+                      <button className="pay-link-btn" type="button" onClick={() => onViewSlip(p.id)}>
+                        View
                       </button>
-                      <button
-                        className="pay-reject-btn"
-                        type="button"
-                        onClick={() => onReject(p.id)}
-                      >
-                        Reject
-                      </button>
-                    </>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
-            ))
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+
+                  <td>
+                    <span className={`pay-badge ${p.status.toLowerCase()}`}>{statusLabel(p.status)}</span>
+                  </td>
+
+                  <td className="pay-center">
+                    {p.status === "PENDING" ? (
+                      <div className="pay-actions">
+                        <button className="pay-verify-btn" type="button" onClick={() => onVerify(p.id)}>
+                          Verify
+                        </button>
+                        <button className="pay-reject-btn" type="button" onClick={() => onReject(p.id)}>
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="pay-dash">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

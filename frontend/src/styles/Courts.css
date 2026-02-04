@@ -5,7 +5,8 @@
 }
 
 .courts-page {
-  max-width: 1100px;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Header */
@@ -58,26 +59,13 @@
   table-layout: fixed;
 }
 
-/* ✅ Balanced column widths (FIXED) */
-.courts-col-id {
-  width: 20%;
-}
-
-.courts-col-name {
-  width: 36%;
-}
-
-.courts-col-capacity {
-  width: 12%;
-}
-
-.courts-col-status {
-  width: 14%;
-}
-
-.courts-col-actions {
-  width: 18%;
-}
+/* Column widths */
+.courts-col-id { width: 18%; }
+.courts-col-name { width: 28%; }
+.courts-col-capacity { width: 10%; }
+.courts-col-price { width: 14%; }
+.courts-col-status { width: 14%; }
+.courts-col-actions { width: 16%; }
 
 /* Cells */
 .courts-table th,
@@ -85,8 +73,6 @@
   padding: 10px;
   border-bottom: 1px solid rgba(0,0,0,0.12);
   text-align: left;
-
-  /* ✅ Important: prevents button borders being cut */
   overflow: visible;
   white-space: nowrap;
 }
@@ -133,11 +119,12 @@
   color: #000000;
 }
 
-/* ✅ Actions buttons (STANDARD ACROSS PROJECT) */
+/* Actions buttons */
 .courts-actions {
   display: flex;
   gap: 12px;
   justify-content: center;
+  flex-wrap: nowrap;
 }
 
 .courts-action-btn {
@@ -164,17 +151,9 @@
   border: 1px solid rgba(255,255,255,0.2);
 }
 
-.courts-badge.available {
-  opacity: 0.95;
-}
-
-.courts-badge.booked {
-  opacity: 0.95;
-}
-
-.courts-badge.maintenance {
-  opacity: 0.95;
-}
+.courts-badge.available { opacity: 0.95; }
+.courts-badge.booked { opacity: 0.95; }
+.courts-badge.maintenance { opacity: 0.95; }
 
 /* Modal */
 .courts-modal-backdrop {

@@ -1,6 +1,24 @@
 import { useMemo, useState } from "react";
 import "../../styles/Bookings.css";
 
+function formatBookedDate(isoString) {
+  if (!isoString) return "-";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toISOString().slice(0, 10);
+}
+
+function formatBookedTime(isoString) {
+  if (!isoString) return "-";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 export default function Bookings() {
   const [bookings, setBookings] = useState([
     {
@@ -9,6 +27,7 @@ export default function Bookings() {
       court: "Badminton - A",
       date: "2026-01-22",
       time: "10:00 - 11:00",
+      createdAt: "2026-01-21T14:25:00",
       status: "PENDING_PAYMENT",
     },
     {
@@ -16,7 +35,8 @@ export default function Bookings() {
       playerName: "Nuwan Perera",
       court: "Cricket - A",
       date: "2026-01-23",
-      time: "04:00 PM - 06:00 PM",
+      time: "16:00 - 18:00",
+      createdAt: "2026-01-22T09:10:00",
       status: "CONFIRMED",
     },
     {
@@ -24,7 +44,8 @@ export default function Bookings() {
       playerName: "Sahan Fernando",
       court: "Futsal - A",
       date: "2026-01-23",
-      time: "06:00 PM - 07:00 PM",
+      time: "18:00 - 19:00",
+      createdAt: "2026-01-22T18:40:00",
       status: "CANCELLED",
     },
   ]);
@@ -38,11 +59,12 @@ export default function Bookings() {
     return bookings.filter((b) => {
       const matchesText =
         q.length === 0 ||
-        `${b.playerName} ${b.court} ${b.date} ${b.time} ${b.status} ${b.id}`
+        `${b.id} ${b.playerName} ${b.court} ${b.date} ${b.time} ${b.status} ${b.createdAt}`
           .toLowerCase()
           .includes(q);
 
-      const matchesStatus = statusFilter === "ALL" ? true : b.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "ALL" ? true : b.status === statusFilter;
 
       return matchesText && matchesStatus;
     });
@@ -72,7 +94,7 @@ export default function Bookings() {
       <div className="bk-toolbar">
         <input
           className="bk-search"
-          placeholder="Search player, court, date, time, status..."
+          placeholder="Search booking id, player, court, date, duration, status..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -93,10 +115,13 @@ export default function Bookings() {
         <table className="bk-table">
           <thead>
             <tr>
+              <th>Booking ID</th>
               <th>Player Name</th>
               <th>Court</th>
-              <th>Date</th>
-              <th>Time</th>
+              <th>Session Date</th>
+              <th>Duration</th>
+              <th>Booked Date</th>
+              <th>Booked Time</th>
               <th>Status</th>
               <th className="bk-center">Actions</th>
             </tr>
@@ -105,24 +130,31 @@ export default function Bookings() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="6" className="bk-empty">
+                <td colSpan="9" className="bk-empty">
                   No bookings found.
                 </td>
               </tr>
             ) : (
               filtered.map((b) => (
                 <tr key={b.id}>
+                  <td className="bk-mono">{b.id}</td>
                   <td>{b.playerName}</td>
                   <td>{b.court}</td>
                   <td>{b.date}</td>
                   <td>{b.time}</td>
+                  <td>{formatBookedDate(b.createdAt)}</td>
+                  <td>{formatBookedTime(b.createdAt)}</td>
                   <td>
                     <span className={`bk-badge ${b.status.toLowerCase()}`}>
                       {statusLabel(b.status)}
                     </span>
                   </td>
                   <td className="bk-center">
-                    <button className="bk-delete-btn" type="button" onClick={() => handleDelete(b.id)}>
+                    <button
+                      className="bk-delete-btn"
+                      type="button"
+                      onClick={() => handleDelete(b.id)}
+                    >
                       Delete
                     </button>
                   </td>

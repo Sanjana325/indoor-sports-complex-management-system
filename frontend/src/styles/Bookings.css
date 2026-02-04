@@ -53,10 +53,12 @@
 .bk-table td {
   padding: 10px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  vertical-align: middle;
 }
 
 .bk-table th {
   text-align: left;
+  white-space: nowrap;
 }
 
 .bk-center {
@@ -68,6 +70,11 @@
   text-align: center;
   padding: 18px;
   opacity: 0.8;
+}
+
+.bk-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 }
 
 .bk-delete-btn {

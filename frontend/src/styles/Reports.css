@@ -1,5 +1,3 @@
-/* Professional Reports UI (repPro) */
-
 .repPro {
   max-width: 1100px;
 }
@@ -17,7 +15,6 @@
   opacity: 0.8;
 }
 
-/* Cards list */
 .repPro-list {
   display: flex;
   flex-direction: column;
@@ -25,14 +22,14 @@
 }
 
 .repPro-card {
-  border: 1px solid rgba(0,0,0,0.18);
+  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 12px;
   padding: 14px 16px;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 14px;
   align-items: center;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .repPro-cardTitle {
@@ -73,21 +70,51 @@
   background: transparent;
 }
 
-/* Preview panel */
-.repPro-preview {
-  margin-top: 16px;
-  border: 1px solid rgba(0,0,0,0.18);
-  border-radius: 12px;
+/* Modal */
+.repPro-modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 14px;
+  z-index: 999;
 }
 
+.repPro-modal {
+  width: 100%;
+  max-width: 1040px;
+  max-height: 92vh;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.repPro-modalBody {
+  padding: 14px;
+  overflow: auto;
+}
+
+.repPro-modalFooter {
+  padding: 12px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Preview head */
 .repPro-previewHead {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  padding: 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .repPro-previewTitle {
@@ -109,10 +136,10 @@
 
 /* Controls */
 .repPro-controls {
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 12px;
   padding: 12px;
-  margin-bottom: 12px;
+  margin: 14px 14px 0;
 }
 
 .repPro-grid {
@@ -134,7 +161,13 @@
   height: 42px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.3);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  outline: none;
+}
+
+.repPro-activeField {
+  border-color: rgba(0, 0, 0, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .repPro-actions {
@@ -147,7 +180,7 @@
 .repPro-range {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(0,0,0,0.12);
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
   font-size: 12px;
   opacity: 0.85;
 }
@@ -161,7 +194,7 @@
 }
 
 .repPro-sCard {
-  border: 1px solid rgba(0,0,0,0.18);
+  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 12px;
   padding: 12px;
 }
@@ -180,19 +213,21 @@
 /* Table */
 .repPro-tableWrap {
   overflow-x: auto;
-  border: 1px solid rgba(0,0,0,0.18);
+  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 12px;
 }
 
 .repPro-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 820px;
 }
 
 .repPro-table th,
 .repPro-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(0,0,0,0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
 }
 
 .repPro-table th {
@@ -201,19 +236,13 @@
 }
 
 .repPro-table tr:hover td {
-  background: rgba(0,0,0,0.03);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .repPro-empty {
   text-align: center;
   padding: 18px;
   opacity: 0.8;
-}
-
-.repPro-note {
-  margin-top: 10px;
-  font-size: 12px;
-  opacity: 0.85;
 }
 
 /* Responsive */
