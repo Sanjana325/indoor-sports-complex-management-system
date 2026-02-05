@@ -19,6 +19,13 @@ function joinQualifications(list) {
   return cleaned.join(", ");
 }
 
+function normalizeQualifications(list) {
+  const cleaned = (list || [])
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+  return Array.from(new Set(cleaned));
+}
+
 function displayUserId(userId) {
   const n = Number(userId);
   if (!Number.isFinite(n)) return String(userId || "-");
@@ -36,7 +43,7 @@ function mapDbUserToUi(u) {
     email: u.Email || "",
     createdAt: u.CreatedAt,
     specialization: u.Specialization || "",
-    qualifications: "",
+    qualifications: u.Qualifications || "",
     isActive: Boolean(u.IsActive)
   };
 }
@@ -377,6 +384,8 @@ export default function UserManagement() {
       return;
     }
 
+    const qList = normalizeQualifications(qualificationsList);
+
     const payload =
       role === "COACH"
         ? {
@@ -385,7 +394,8 @@ export default function UserManagement() {
             lastName: lastName.trim(),
             email: email.trim(),
             phoneNumber: phone.trim(),
-            specialization: specialization.trim()
+            specialization: specialization.trim(),
+            qualifications: qList
           }
         : {
             role,
@@ -636,8 +646,6 @@ export default function UserManagement() {
                           </div>
                         ))}
                       </div>
-
-                      <div className="um-qual-hint">Qualifications shown in UI for now; DB sync can be added next.</div>
                     </div>
 
                     <div className="um-field um-full">

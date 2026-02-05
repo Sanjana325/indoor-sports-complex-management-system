@@ -191,3 +191,15 @@
     padding: 30px 24px;
   }
 }
+.login-error-inline {
+  width: 100%;
+  margin-top: -10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 77, 79, 0.08);
+  border: 1px solid rgba(255, 77, 79, 0.6);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #d32f2f;
+  font-weight: 500;
+}

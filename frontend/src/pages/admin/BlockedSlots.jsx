@@ -33,10 +33,9 @@ export default function BlockedSlots() {
   ]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState("ADD"); // ADD | EDIT
+  const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  // Form state
   const [court, setCourt] = useState("Cricket - A");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -136,7 +135,6 @@ export default function BlockedSlots() {
       return;
     }
 
-    // EDIT
     setBlockedSlots((prev) =>
       prev.map((b) =>
         b.id === editingId
@@ -160,6 +158,7 @@ export default function BlockedSlots() {
       <div className="bs-header">
         <div>
           <h2 className="bs-title">Blocked Slots</h2>
+          <p className="bs-subtitle">Manage blocked time slots for courts</p>
         </div>
 
         <button className="bs-primary-btn" type="button" onClick={openAddModal}>
@@ -275,10 +274,10 @@ export default function BlockedSlots() {
               </div>
 
               <div className="bs-form-actions">
-                <button className="bs-modal-btn" type="button" onClick={closeModal}>
+                <button className="bs-modal-btn secondary" type="button" onClick={closeModal}>
                   Cancel
                 </button>
-                <button className="bs-modal-btn" type="submit">
+                <button className="bs-modal-btn primary" type="submit">
                   {mode === "ADD" ? "Block Slot" : "Save Changes"}
                 </button>
               </div>

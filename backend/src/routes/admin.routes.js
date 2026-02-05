@@ -18,6 +18,14 @@ function canAdminManageTargetRole(targetRole) {
   return targetRole === "STAFF" || targetRole === "COACH" || targetRole === "PLAYER";
 }
 
+function normalizeQualifications(input) {
+  const arr = Array.isArray(input) ? input : [];
+  const cleaned = arr
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+  return Array.from(new Set(cleaned));
+}
+
 router.get("/admin/test", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), (req, res) => {
   res.json({
     message: "Admin access granted",
@@ -39,8 +47,9 @@ router.get("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), asy
 });
 
 router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
+  const conn = await pool.getConnection();
   try {
-    const { firstName, lastName, email, phoneNumber, role, specialization } = req.body || {};
+    const { firstName, lastName, email, phoneNumber, role, specialization, qualifications } = req.body || {};
 
     if (!firstName || !lastName || !email || !phoneNumber || !role) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -65,8 +74,11 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), as
       }
     }
 
-    if (role === "COACH" && !specialization) {
-      return res.status(400).json({ message: "Specialization is required for COACH" });
+    const qList = normalizeQualifications(qualifications);
+
+    if (role === "COACH") {
+      if (!specialization) return res.status(400).json({ message: "Specialization is required for COACH" });
+      if (!qList.length) return res.status(400).json({ message: "At least one qualification is required for COACH" });
     }
 
     const exists = await userModel.emailExists(email);
@@ -75,20 +87,28 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), as
     const tempPassword = generateTempPassword();
     const passwordHash = await hashPassword(tempPassword);
 
-    const userId = await userModel.createUser({
-      firstName,
-      lastName,
-      email,
-      passwordHash,
-      phoneNumber,
-      role,
-      mustChangePassword: true
-    });
+    await conn.beginTransaction();
+
+    const userId = await userModel.createUser(
+      {
+        firstName,
+        lastName,
+        email,
+        passwordHash,
+        phoneNumber,
+        role,
+        mustChangePassword: true
+      },
+      conn
+    );
 
     let coachId = null;
     if (role === "COACH") {
-      coachId = await coachModel.createCoach({ userId, specialization });
+      coachId = await coachModel.createCoach({ userId, specialization }, conn);
+      await coachModel.setCoachQualifications(coachId, qList, conn);
     }
+
+    await conn.commit();
 
     res.status(201).json({
       message: "User created",
@@ -97,7 +117,12 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), as
       tempPassword
     });
   } catch (err) {
+    try {
+      await conn.rollback();
+    } catch (e) {}
     next(err);
+  } finally {
+    conn.release();
   }
 });
 
@@ -109,13 +134,14 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), as
   - Non-super admin cannot edit ADMIN/SUPER_ADMIN users
 */
 router.put("/admin/users/:userId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
+  const conn = await pool.getConnection();
   try {
     const targetUserId = Number(req.params.userId);
     if (!Number.isFinite(targetUserId)) {
       return res.status(400).json({ message: "Invalid user id" });
     }
 
-    const { firstName, lastName, email, phoneNumber, role, specialization } = req.body || {};
+    const { firstName, lastName, email, phoneNumber, role, specialization, qualifications } = req.body || {};
 
     if (!firstName || !lastName || !email || !phoneNumber || !role) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -147,48 +173,64 @@ router.put("/admin/users/:userId", requireAuth, requireRole("ADMIN", "SUPER_ADMI
       }
     }
 
-    if (role === "COACH" && !specialization) {
-      return res.status(400).json({ message: "Specialization is required for COACH" });
+    const qList = normalizeQualifications(qualifications);
+
+    if (role === "COACH") {
+      if (!specialization) return res.status(400).json({ message: "Specialization is required for COACH" });
+      if (!qList.length) return res.status(400).json({ message: "At least one qualification is required for COACH" });
     }
 
     const emailTaken = await userModel.emailExistsExceptUser(email, targetUserId);
     if (emailTaken) return res.status(409).json({ message: "Email already exists" });
 
-    await userModel.updateUserById(targetUserId, {
-      firstName,
-      lastName,
-      email,
-      phoneNumber,
-      role
-    });
+    await conn.beginTransaction();
+
+    await userModel.updateUserById(
+      targetUserId,
+      {
+        firstName,
+        lastName,
+        email,
+        phoneNumber,
+        role
+      },
+      conn
+    );
 
     const wasCoach = target.Role === "COACH";
     const willBeCoach = role === "COACH";
 
     if (wasCoach && willBeCoach) {
-      await pool.query("UPDATE Coach SET Specialization = ? WHERE UserID = ?", [specialization, targetUserId]);
+      await coachModel.updateCoachSpecializationByUserId(targetUserId, specialization, conn);
+      const coachId = await coachModel.getCoachIdByUserId(targetUserId, conn);
+      if (coachId) {
+        await coachModel.setCoachQualifications(coachId, qList, conn);
+      }
     } else if (!wasCoach && willBeCoach) {
-      await coachModel.createCoach({ userId: targetUserId, specialization });
+      const coachId = await coachModel.createCoach({ userId: targetUserId, specialization }, conn);
+      await coachModel.setCoachQualifications(coachId, qList, conn);
     } else if (wasCoach && !willBeCoach) {
-      await pool.query("DELETE FROM Coach WHERE UserID = ?", [targetUserId]);
+      await coachModel.deleteCoachAndLinksByUserId(targetUserId, conn);
     }
+
+    await conn.commit();
 
     res.json({
       message: "User updated",
       user: { userId: targetUserId, role, email }
     });
   } catch (err) {
+    try {
+      await conn.rollback();
+    } catch (e) {}
     next(err);
+  } finally {
+    conn.release();
   }
 });
 
 /*
   Disable user (soft)
-  - ADMIN + SUPER_ADMIN can disable
-  - ADMIN can only disable STAFF/COACH/PLAYER
-  - SUPER_ADMIN can disable ADMIN/STAFF/COACH/PLAYER
-  - No one can disable themselves
-  - Cannot disable last active SUPER_ADMIN
 */
 router.patch("/admin/users/:userId/disable", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
   try {
@@ -224,13 +266,6 @@ router.patch("/admin/users/:userId/disable", requireAuth, requireRole("ADMIN", "
   }
 });
 
-/*
-  Enable user (reactivate)
-  - ADMIN + SUPER_ADMIN can enable
-  - ADMIN can only enable STAFF/COACH/PLAYER
-  - SUPER_ADMIN can enable ADMIN/STAFF/COACH/PLAYER
-  - No one can enable themselves is allowed (harmless), but keep consistent with disable -> allow self enable if needed
-*/
 router.patch("/admin/users/:userId/enable", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), async (req, res, next) => {
   try {
     const targetUserId = Number(req.params.userId);
@@ -256,10 +291,6 @@ router.patch("/admin/users/:userId/enable", requireAuth, requireRole("ADMIN", "S
 
 /*
   Remove user (hard delete)
-  - SUPER_ADMIN only
-  - Cannot delete yourself
-  - Cannot delete last active SUPER_ADMIN
-  - Deletes CoachQualification + Coach row first if target is COACH (to satisfy FKs)
 */
 router.delete("/admin/users/:userId", requireAuth, requireRole("SUPER_ADMIN"), async (req, res, next) => {
   try {

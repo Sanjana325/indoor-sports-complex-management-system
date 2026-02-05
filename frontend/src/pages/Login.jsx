@@ -1,8 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Login.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+function normalizeEmail(email) {
+  if (typeof email !== "string") return "";
+  return email.trim().toLowerCase();
+}
+
+function isValidEmail(email) {
+  if (typeof email !== "string") return false;
+  const e = email.trim();
+  if (e.length < 6 || e.length > 254) return false;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  return re.test(e);
+}
 
 function profileRouteForRole(role) {
   if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin/profile";
@@ -26,19 +39,39 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [fieldErrors, setFieldErrors] = useState({});
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const normalizedEmail = useMemo(() => normalizeEmail(email), [email]);
+
+  function validateForm() {
+    const errs = {};
+
+    if (!normalizedEmail) errs.email = "Email is required";
+    else if (!isValidEmail(normalizedEmail)) errs.email = "Enter a valid email address";
+
+    if (!password) errs.password = "Password is required";
+
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
 
   async function handleLogin(e) {
     e.preventDefault();
     setError("");
+
+    const ok = validateForm();
+    if (!ok) return;
+
     setLoading(true);
 
     try {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: normalizedEmail, password })
       });
 
       const data = await res.json().catch(() => ({}));
@@ -61,7 +94,7 @@ export default function Login() {
       localStorage.setItem("userId", String(user.userId || ""));
       localStorage.setItem("firstName", user.firstName || "");
       localStorage.setItem("lastName", user.lastName || "");
-      localStorage.setItem("email", user.email || email);
+      localStorage.setItem("email", user.email || normalizedEmail);
       localStorage.setItem("role", user.role);
       localStorage.setItem("mustChangePassword", mustChangePassword ? "true" : "false");
 
@@ -76,6 +109,10 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function fieldErrorText(key) {
+    return fieldErrors && fieldErrors[key] ? fieldErrors[key] : "";
   }
 
   return (
@@ -93,6 +130,7 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+        {fieldErrorText("email") ? <div className="login-error-inline">{fieldErrorText("email")}</div> : null}
 
         <label>Password</label>
         <input
@@ -102,16 +140,13 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+        {fieldErrorText("password") ? <div className="login-error-inline">{fieldErrorText("password")}</div> : null}
 
         <button type="submit" className="login-btn" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
 
-        <button
-          type="button"
-          className="secondary-btn"
-          onClick={() => navigate("/forgot-password")}
-        >
+        <button type="button" className="secondary-btn" onClick={() => navigate("/forgot-password")}>
           Forgot Password
         </button>
 

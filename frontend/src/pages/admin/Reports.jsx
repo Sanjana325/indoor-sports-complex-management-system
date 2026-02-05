@@ -11,10 +11,10 @@ const PRESETS = [
 ];
 
 const REPORTS = [
-  { key: "BOOKINGS", title: "Bookings Report", desc: "Generate report of all bookings with date range filters" },
-  { key: "PAYMENTS", title: "Payments Report", desc: "Financial summary with payment status breakdown" },
-  { key: "ATTENDANCE", title: "Attendance Report", desc: "Class-wise attendance tracking and statistics" },
-  { key: "ENROLLMENTS", title: "Enrollments Report", desc: "Student enrollment data by class and date" },
+  { key: "BOOKINGS", title: "Bookings Report", desc: "Generate report of all bookings with date range filters", icon: "calendar" },
+  { key: "PAYMENTS", title: "Payments Report", desc: "Financial summary with payment status breakdown", icon: "dollar" },
+  { key: "ATTENDANCE", title: "Attendance Report", desc: "Class-wise attendance tracking and statistics", icon: "users" },
+  { key: "ENROLLMENTS", title: "Enrollments Report", desc: "Student enrollment data by class and date", icon: "graduation" },
 ];
 
 function toISODate(d) {
@@ -81,11 +81,50 @@ function toCSV(headers, rows) {
   return lines.join("\n");
 }
 
+function getReportIcon(iconType) {
+  switch (iconType) {
+    case "calendar":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      );
+    case "dollar":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      );
+    case "users":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      );
+    case "graduation":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function Reports() {
   const [activeReport, setActiveReport] = useState("BOOKINGS");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [rangeMode, setRangeMode] = useState("PRESET"); // PRESET | CUSTOM
+  const [rangeMode, setRangeMode] = useState("PRESET");
   const [preset, setPreset] = useState("MONTH");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -222,39 +261,39 @@ export default function Reports() {
   const summaryCards = useMemo(() => {
     if (activeReport === "BOOKINGS") {
       return [
-        { label: "Total", value: String(filteredBookings.length) },
-        { label: "Confirmed", value: String(filteredBookings.filter((b) => b.status === "CONFIRMED").length) },
-        { label: "Pending", value: String(filteredBookings.filter((b) => b.status === "PENDING_PAYMENT").length) },
-        { label: "Cancelled", value: String(filteredBookings.filter((b) => b.status === "CANCELLED").length) },
+        { label: "Total", value: String(filteredBookings.length), color: "primary" },
+        { label: "Confirmed", value: String(filteredBookings.filter((b) => b.status === "CONFIRMED").length), color: "success" },
+        { label: "Pending", value: String(filteredBookings.filter((b) => b.status === "PENDING_PAYMENT").length), color: "warning" },
+        { label: "Cancelled", value: String(filteredBookings.filter((b) => b.status === "CANCELLED").length), color: "danger" },
       ];
     }
 
     if (activeReport === "PAYMENTS") {
       const total = filteredPayments.reduce((s, p) => s + p.amount, 0);
       return [
-        { label: "Total", value: String(filteredPayments.length) },
-        { label: "Amount (LKR)", value: total.toLocaleString("en-LK") },
-        { label: "Verified", value: String(filteredPayments.filter((p) => p.status === "VERIFIED").length) },
-        { label: "Completed", value: String(filteredPayments.filter((p) => p.status === "COMPLETED").length) },
+        { label: "Total", value: String(filteredPayments.length), color: "primary" },
+        { label: "Amount (LKR)", value: total.toLocaleString("en-LK"), color: "success" },
+        { label: "Verified", value: String(filteredPayments.filter((p) => p.status === "VERIFIED").length), color: "info" },
+        { label: "Completed", value: String(filteredPayments.filter((p) => p.status === "COMPLETED").length), color: "success" },
       ];
     }
 
     if (activeReport === "ATTENDANCE") {
       return [
-        { label: "Records", value: String(filteredAttendance.length) },
-        { label: "Present", value: String(filteredAttendance.filter((a) => a.status === "PRESENT").length) },
-        { label: "Absent", value: String(filteredAttendance.filter((a) => a.status === "ABSENT").length) },
-        { label: "Sessions", value: String(new Set(filteredAttendance.map((a) => `${a.className}__${a.date}`)).size) },
+        { label: "Records", value: String(filteredAttendance.length), color: "primary" },
+        { label: "Present", value: String(filteredAttendance.filter((a) => a.status === "PRESENT").length), color: "success" },
+        { label: "Absent", value: String(filteredAttendance.filter((a) => a.status === "ABSENT").length), color: "danger" },
+        { label: "Sessions", value: String(new Set(filteredAttendance.map((a) => `${a.className}__${a.date}`)).size), color: "info" },
       ];
     }
 
     return [
-      { label: "Total", value: String(filteredEnrollments.length) },
-      { label: "Enrolled", value: String(filteredEnrollments.filter((e) => e.status === "ENROLLED").length) },
-      { label: "Cancelled", value: String(filteredEnrollments.filter((e) => e.status === "CANCELLED").length) },
-      { label: "Range", value: `${startISO} → ${endISO}` },
+      { label: "Total", value: String(filteredEnrollments.length), color: "primary" },
+      { label: "Enrolled", value: String(filteredEnrollments.filter((e) => e.status === "ENROLLED").length), color: "success" },
+      { label: "Cancelled", value: String(filteredEnrollments.filter((e) => e.status === "CANCELLED").length), color: "danger" },
+      { label: "Classes", value: String(new Set(filteredEnrollments.map((e) => e.className)).size), color: "info" },
     ];
-  }, [activeReport, filteredBookings, filteredPayments, filteredAttendance, filteredEnrollments, startISO, endISO]);
+  }, [activeReport, filteredBookings, filteredPayments, filteredAttendance, filteredEnrollments]);
 
   function exportPDF() {
     const title = REPORTS.find((r) => r.key === activeReport)?.title || "Report";
@@ -354,28 +393,36 @@ export default function Reports() {
 
   return (
     <div className="repPro">
-      <div className="repPro-head">
-        <div>
-          <h2 className="repPro-title">Reports</h2>
-          <p className="repPro-sub">Choose a report, preview with date filters, then export.</p>
-        </div>
-      </div>
-
-      <div className="repPro-list">
-        {REPORTS.map((r) => (
-          <div className="repPro-card" key={r.key}>
-            <div>
-              <div className="repPro-cardTitle">{r.title}</div>
-              <div className="repPro-cardDesc">{r.desc}</div>
-            </div>
-
-            <div className="repPro-cardBtns">
-              <button className="repPro-btnOutline" type="button" onClick={() => openPreview(r.key)}>
-                Preview
-              </button>
-            </div>
+      <div className="repPro-container">
+        <header className="repPro-header">
+          <div className="repPro-header-content">
+            <h1 className="repPro-title">Reports</h1>
+            <p className="repPro-subtitle">Choose a report, preview with date filters, then export</p>
           </div>
-        ))}
+        </header>
+
+        <div className="repPro-list">
+          {REPORTS.map((r) => (
+            <div className="repPro-card" key={r.key}>
+              <div className="repPro-card-icon">
+                {getReportIcon(r.icon)}
+              </div>
+              <div className="repPro-card-content">
+                <h3 className="repPro-cardTitle">{r.title}</h3>
+                <p className="repPro-cardDesc">{r.desc}</p>
+              </div>
+              <div className="repPro-card-actions">
+                <button className="repPro-btnPreview" type="button" onClick={() => openPreview(r.key)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  Preview
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {isModalOpen && (
@@ -387,27 +434,24 @@ export default function Reports() {
             aria-modal="true"
             aria-label="Report preview"
           >
-            <div className="repPro-previewHead">
-              <div>
-                <div className="repPro-previewTitle">Preview: {REPORTS.find((r) => r.key === activeReport)?.title}</div>
-                <div className="repPro-previewDesc">Choose a preset or custom dates, then click Preview Report.</div>
+            <div className="repPro-modalHeader">
+              <div className="repPro-modalHeader-content">
+                <h2 className="repPro-modalTitle">
+                  {REPORTS.find((r) => r.key === activeReport)?.title}
+                </h2>
+                <p className="repPro-modalSubtitle">Choose a preset or custom dates, then click Preview Report</p>
               </div>
 
-              <div className="repPro-previewBtns">
-                <button className="repPro-btnOutline" type="button" onClick={closeModal}>
-                  Close
-                </button>
-                <button className="repPro-btnDark" type="button" onClick={exportPDF}>
-                  Export PDF
-                </button>
-                <button className="repPro-btnDark" type="button" onClick={exportExcelCSV}>
-                  Export Excel
-                </button>
-              </div>
+              <button className="repPro-modalClose" onClick={closeModal} type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
 
             <div className="repPro-controls">
-              <div className="repPro-grid">
+              <div className="repPro-controls-grid">
                 <div className="repPro-field">
                   <label>Preset Range</label>
                   <select
@@ -443,18 +487,23 @@ export default function Reports() {
                   />
                 </div>
 
-                <div className="repPro-actions">
-                  <button className="repPro-btnOutline" type="button" onClick={clearCustomDates}>
-                    Clear Custom Dates
+                <div className="repPro-field-actions">
+                  <button className="repPro-btnSecondary" type="button" onClick={clearCustomDates}>
+                    Clear Custom
                   </button>
-                  <button className="repPro-btnDark" type="button" onClick={generatePreview}>
+                  <button className="repPro-btnPrimary" type="button" onClick={generatePreview}>
                     Preview Report
                   </button>
                 </div>
               </div>
 
-              <div className="repPro-range">
-                <strong>Selected Range:</strong> {generatedRange.label ? generatedRange.label : "Not generated yet"}
+              <div className="repPro-range-info">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span><strong>Selected Range:</strong> {generatedRange.label ? generatedRange.label : "Not generated yet"}</span>
               </div>
             </div>
 
@@ -462,7 +511,7 @@ export default function Reports() {
               <div id="rep-print-area">
                 <div className="repPro-summary">
                   {summaryCards.map((c) => (
-                    <div className="repPro-sCard" key={c.label}>
+                    <div className={`repPro-sCard repPro-sCard-${c.color}`} key={c.label}>
                       <div className="repPro-sLabel">{c.label}</div>
                       <div className="repPro-sValue">{c.value}</div>
                     </div>
@@ -612,8 +661,27 @@ export default function Reports() {
             </div>
 
             <div className="repPro-modalFooter">
-              <button className="repPro-btnOutline" type="button" onClick={closeModal}>
+              <button className="repPro-btnSecondary" type="button" onClick={closeModal}>
                 Close
+              </button>
+              <button className="repPro-btnExport" type="button" onClick={exportPDF}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Export PDF
+              </button>
+              <button className="repPro-btnExport" type="button" onClick={exportExcelCSV}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                Export Excel
               </button>
             </div>
           </div>

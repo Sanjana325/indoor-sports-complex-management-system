@@ -3,19 +3,33 @@
 }
 
 .enr-header {
-  margin-bottom: 14px;
+  margin-bottom: 24px;
 }
 
 .enr-title {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.enr-subtitle {
   margin: 0;
+  opacity: 0.7;
+  font-weight: 600;
+  color: #666;
+  font-size: 15px;
 }
 
 .enr-toolbar {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: end;
   flex-wrap: wrap;
-  margin: 12px 0 18px;
+  margin: 0 0 20px;
 }
 
 .enr-control {
@@ -26,38 +40,76 @@
 }
 
 .enr-label {
-  font-weight: 700;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
 }
 
 .enr-filter {
-  padding: 10px;
-  border: 1px solid rgba(0,0,0,0.3);
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
   min-width: 260px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.enr-filter:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .enr-table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(0,0,0,0.2);
-  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .enr-table {
   width: 100%;
   border-collapse: collapse;
   min-width: 1040px;
+  background: #fff;
 }
 
 .enr-table th,
 .enr-table td {
-  padding: 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.12);
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   white-space: nowrap;
   vertical-align: middle;
 }
 
+.enr-table thead {
+  background: #f9fafb;
+}
+
 .enr-table th {
   text-align: left;
+  font-weight: 700;
+  font-size: 14px;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.enr-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.enr-table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.enr-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .enr-center {
@@ -67,53 +119,75 @@
 
 .enr-empty {
   text-align: center;
-  padding: 18px;
-  opacity: 0.8;
+  padding: 32px;
+  opacity: 0.6;
+  font-weight: 600;
+  color: #666;
 }
 
 /* Consistent formatting */
 .enr-dash {
   text-align: center;
-  opacity: 0.75;
+  opacity: 0.5;
+  color: #999;
 }
 
 .enr-mono {
   font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 600;
+  color: #667eea;
 }
 
-/* Action button (matches your project rule style) */
+/* Action button */
 .enr-remove-btn {
-  padding: 8px 10px;
-  border: 2px solid #b00020;
-  color: #b00020;
-  border-radius: 10px;
+  padding: 8px 14px;
+  border: 2px solid #ff3b3b;
+  color: #ff3b3b;
+  border-radius: 8px;
   cursor: pointer;
-  background: transparent;
-  font-weight: 800;
+  background: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.enr-remove-btn:hover {
+  background: #ff3b3b;
+  color: #fff;
+  transform: scale(1.05);
 }
 
 /* Status badge */
 .enr-badge {
-  padding: 4px 8px;
+  padding: 6px 12px;
   border-radius: 999px;
   font-size: 12px;
-  border: 1px solid rgba(0,0,0,0.3);
-  opacity: 0.9;
-  font-weight: 800;
+  font-weight: 700;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  display: inline-block;
 }
 
 .enr-badge.enrolled {
-  border-color: rgba(26, 127, 55, 0.6);
+  background: rgba(25, 195, 125, 0.12);
+  color: #0f6a45;
+  border-color: rgba(25, 195, 125, 0.35);
 }
 
 .enr-badge.cancelled {
-  border-color: rgba(176, 0, 32, 0.6);
+  background: rgba(255, 59, 59, 0.12);
+  color: #a40000;
+  border-color: rgba(255, 59, 59, 0.35);
 }
 
 .enr-hint {
-  margin-top: 12px;
-  font-size: 12px;
-  opacity: 0.85;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 13px;
+  opacity: 0.7;
+  color: #666;
+  font-weight: 500;
 }
 
 @media (max-width: 640px) {
@@ -125,5 +199,11 @@
   .enr-control,
   .enr-filter {
     min-width: 100%;
+  }
+
+  .enr-table th,
+  .enr-table td {
+    padding: 10px 8px;
+    font-size: 14px;
   }
 }

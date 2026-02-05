@@ -33,8 +33,8 @@ async function emailExistsExceptUser(email, userId) {
   return rows.length > 0;
 }
 
-async function createUser({ firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword = false }) {
-  const [result] = await pool.query(
+async function createUser({ firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword = false }, conn = pool) {
+  const [result] = await conn.query(
     `INSERT INTO UserAccount (FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, MustChangePassword)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword ? 1 : 0]
@@ -42,8 +42,8 @@ async function createUser({ firstName, lastName, email, passwordHash, phoneNumbe
   return result.insertId;
 }
 
-async function updateUserById(userId, { firstName, lastName, email, phoneNumber, role }) {
-  await pool.query(
+async function updateUserById(userId, { firstName, lastName, email, phoneNumber, role }, conn = pool) {
+  await conn.query(
     `UPDATE UserAccount
      SET FirstName = ?, LastName = ?, Email = ?, PhoneNumber = ?, Role = ?
      WHERE UserID = ?`,
@@ -63,9 +63,15 @@ async function listAllForAdmin() {
         ua.IsActive,
         ua.CreatedAt,
         ua.MustChangePassword,
-        c.Specialization
+        c.Specialization,
+        GROUP_CONCAT(DISTINCT q.QualificationName ORDER BY q.QualificationName SEPARATOR ', ') AS Qualifications
      FROM UserAccount ua
      LEFT JOIN Coach c ON c.UserID = ua.UserID
+     LEFT JOIN CoachQualification cq ON cq.CoachID = c.CoachID
+     LEFT JOIN Qualification q ON q.QualificationID = cq.QualificationID
+     GROUP BY
+        ua.UserID, ua.FirstName, ua.LastName, ua.Email, ua.PhoneNumber, ua.Role,
+        ua.IsActive, ua.CreatedAt, ua.MustChangePassword, c.Specialization
      ORDER BY ua.CreatedAt DESC`
   );
   return rows;
@@ -92,7 +98,6 @@ async function deleteUserHardById(userId) {
     const [coachRows] = await conn.query(`SELECT CoachID FROM Coach WHERE UserID = ? LIMIT 1`, [userId]);
     if (coachRows.length) {
       const coachId = coachRows[0].CoachID;
-
       await conn.query(`DELETE FROM CoachQualification WHERE CoachID = ?`, [coachId]);
       await conn.query(`DELETE FROM Coach WHERE CoachID = ?`, [coachId]);
     }

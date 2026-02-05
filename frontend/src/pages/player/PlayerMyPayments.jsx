@@ -182,189 +182,288 @@ export default function PlayerMyPayments() {
 
   return (
     <div className="pp-page">
-      <div className="pp-header">
-        <h2 className="pp-title">My Payments</h2>
-      </div>
+      <div className="pp-container">
+        <header className="pp-header">
+          <div className="pp-header-content">
+            <h1 className="pp-title">My Payments</h1>
+            <p className="pp-subtitle">Track and manage all your payment transactions</p>
+          </div>
+        </header>
 
-      <div className="pp-tabs">
-        <button
-          type="button"
-          className={`pp-tab ${activeTab === "COURT" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("COURT")}
-        >
-          Court Booking <span className="pp-count">{courtCounts.ALL}</span>
-        </button>
+        <div className="pp-tabs">
+          <button
+            type="button"
+            className={`pp-tab ${activeTab === "COURT" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("COURT")}
+          >
+            <svg className="pp-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Court Booking 
+            <span className="pp-count">{courtCounts.ALL}</span>
+          </button>
 
-        <button
-          type="button"
-          className={`pp-tab ${activeTab === "CLASS" ? "is-active" : ""}`}
-          onClick={() => setActiveTab("CLASS")}
-        >
-          Classes <span className="pp-count">{classCounts.ALL}</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            className={`pp-tab ${activeTab === "CLASS" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("CLASS")}
+          >
+            <svg className="pp-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Classes 
+            <span className="pp-count">{classCounts.ALL}</span>
+          </button>
+        </div>
 
-      <div className="pp-panel">
-        {activeTab === "COURT" ? (
-          <>
-            <div className="pp-panel-head">
-              <div className="pp-panel-title">
-                <h3>Court Booking Payments</h3>
-                <div className="pp-sub">Search, filter and upload slips for bank transfers</div>
-              </div>
-
-              <div className="pp-controls">
-                <div className="pp-search-wrap">
-                  <input
-                    className="pp-search"
-                    placeholder="Search by ID, date, method, amount..."
-                    value={courtQuery}
-                    onChange={(e) => setCourtQuery(e.target.value)}
-                  />
+        <div className="pp-panel">
+          {activeTab === "COURT" ? (
+            <>
+              <div className="pp-panel-head">
+                <div className="pp-panel-title">
+                  <h3>Court Booking Payments</h3>
+                  <div className="pp-sub">Search, filter and upload slips for bank transfers</div>
                 </div>
 
-                <select className="pp-sort" value={courtSort} onChange={(e) => setCourtSort(e.target.value)}>
-                  <option value="NEWEST">Newest First</option>
-                  <option value="OLDEST">Oldest First</option>
-                </select>
+                <div className="pp-controls">
+                  <div className="pp-search-wrap">
+                    <svg className="pp-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8"/>
+                      <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input
+                      className="pp-search"
+                      placeholder="Search by ID, date, method, amount..."
+                      value={courtQuery}
+                      onChange={(e) => setCourtQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pp-sort-wrapper">
+                    <svg className="pp-sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M7 12h10m-7 6h4"/>
+                    </svg>
+                    <select className="pp-sort" value={courtSort} onChange={(e) => setCourtSort(e.target.value)}>
+                      <option value="NEWEST">Newest First</option>
+                      <option value="OLDEST">Oldest First</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <StatusChips value={courtStatus} onChange={setCourtStatus} counts={courtCounts} />
+              <StatusChips value={courtStatus} onChange={setCourtStatus} counts={courtCounts} />
 
-            {visibleCourt.length === 0 ? (
-              <div className="pp-empty">
-                <div className="pp-empty-title">No payments found</div>
-                <div className="pp-empty-sub">Try changing filters or searching a different keyword.</div>
-              </div>
-            ) : (
-              <div className="pp-list">
-                {visibleCourt.map((p) => {
-                  const sk = statusKey(p.status);
-                  const canSlip = p.method === "Bank Slip";
-                  const showUpload = canSlip && sk === "PENDING";
-                  const showView = canSlip && p.slipUploaded;
+              {visibleCourt.length === 0 ? (
+                <div className="pp-empty">
+                  <svg className="pp-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <div className="pp-empty-title">No payments found</div>
+                  <div className="pp-empty-sub">Try changing filters or searching a different keyword.</div>
+                </div>
+              ) : (
+                <div className="pp-list">
+                  {visibleCourt.map((p) => {
+                    const sk = statusKey(p.status);
+                    const canSlip = p.method === "Bank Slip";
+                    const showUpload = canSlip && sk === "PENDING";
+                    const showView = canSlip && p.slipUploaded;
 
-                  return (
-                    <div key={p.paymentId} className="pp-item">
-                      <div className="pp-item-left">
-                        <div className="pp-id">{p.paymentId}</div>
-                        <div className="pp-date">{p.date}</div>
-                        <div className="pp-method">{p.method}</div>
-                      </div>
+                    return (
+                      <div key={p.paymentId} className="pp-item">
+                        <div className="pp-item-left">
+                          <div className="pp-id">{p.paymentId}</div>
+                          <div className="pp-details">
+                            <div className="pp-detail-row">
+                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                              <span className="pp-date">{p.date}</span>
+                            </div>
+                            <div className="pp-detail-row">
+                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                <line x1="2" y1="10" x2="22" y2="10"/>
+                              </svg>
+                              <span className="pp-method">{p.method}</span>
+                            </div>
+                          </div>
+                        </div>
 
-                      <div className="pp-item-mid">
-                        <div className="pp-amount">{formatLKR(p.amount)}</div>
-                        <div className="pp-mini">
+                        <div className="pp-item-center">
+                          <div className="pp-amount">{formatLKR(p.amount)}</div>
                           <span className={statusPillClass(sk)}>{statusLabel(sk)}</span>
                         </div>
-                      </div>
 
-                      <div className="pp-item-right">
-                        {showUpload ? (
-                          <button
-                            className="pp-slip-btn"
-                            type="button"
-                            onClick={() => handleUploadSlip(p.paymentId, "COURT")}
-                          >
-                            Upload Slip
-                          </button>
-                        ) : showView ? (
-                          <button className="pp-link" type="button" onClick={() => handleViewSlip(p.paymentId)}>
-                            View Slip
-                          </button>
-                        ) : (
-                          <span className="pp-muted">—</span>
-                        )}
+                        <div className="pp-item-right">
+                          {showUpload ? (
+                            <button
+                              className="pp-slip-btn"
+                              type="button"
+                              onClick={() => handleUploadSlip(p.paymentId, "COURT")}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                              </svg>
+                              Upload Slip
+                            </button>
+                          ) : showView ? (
+                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.paymentId)}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                              </svg>
+                              View Slip
+                            </button>
+                          ) : (
+                            <span className="pp-muted">—</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="pp-panel-head">
-              <div className="pp-panel-title">
-                <h3>Class Payments</h3>
-                <div className="pp-sub">Track payments made for classes and upload slips if needed</div>
-              </div>
-
-              <div className="pp-controls">
-                <div className="pp-search-wrap">
-                  <input
-                    className="pp-search"
-                    placeholder="Search by ID, class, date, method..."
-                    value={classQuery}
-                    onChange={(e) => setClassQuery(e.target.value)}
-                  />
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="pp-panel-head">
+                <div className="pp-panel-title">
+                  <h3>Class Payments</h3>
+                  <div className="pp-sub">Track payments made for classes and upload slips if needed</div>
                 </div>
 
-                <select className="pp-sort" value={classSort} onChange={(e) => setClassSort(e.target.value)}>
-                  <option value="NEWEST">Newest First</option>
-                  <option value="OLDEST">Oldest First</option>
-                </select>
+                <div className="pp-controls">
+                  <div className="pp-search-wrap">
+                    <svg className="pp-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8"/>
+                      <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input
+                      className="pp-search"
+                      placeholder="Search by ID, class, date, method..."
+                      value={classQuery}
+                      onChange={(e) => setClassQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pp-sort-wrapper">
+                    <svg className="pp-sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M7 12h10m-7 6h4"/>
+                    </svg>
+                    <select className="pp-sort" value={classSort} onChange={(e) => setClassSort(e.target.value)}>
+                      <option value="NEWEST">Newest First</option>
+                      <option value="OLDEST">Oldest First</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <StatusChips value={classStatus} onChange={setClassStatus} counts={classCounts} />
+              <StatusChips value={classStatus} onChange={setClassStatus} counts={classCounts} />
 
-            {visibleClass.length === 0 ? (
-              <div className="pp-empty">
-                <div className="pp-empty-title">No payments found</div>
-                <div className="pp-empty-sub">Try changing filters or searching a different keyword.</div>
-              </div>
-            ) : (
-              <div className="pp-list">
-                {visibleClass.map((p) => {
-                  const sk = statusKey(p.status);
-                  const canSlip = p.method === "Bank Slip";
-                  const showUpload = canSlip && sk === "PENDING";
-                  const showView = canSlip && p.slipUploaded;
+              {visibleClass.length === 0 ? (
+                <div className="pp-empty">
+                  <svg className="pp-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <div className="pp-empty-title">No payments found</div>
+                  <div className="pp-empty-sub">Try changing filters or searching a different keyword.</div>
+                </div>
+              ) : (
+                <div className="pp-list">
+                  {visibleClass.map((p) => {
+                    const sk = statusKey(p.status);
+                    const canSlip = p.method === "Bank Slip";
+                    const showUpload = canSlip && sk === "PENDING";
+                    const showView = canSlip && p.slipUploaded;
 
-                  return (
-                    <div key={p.paymentId} className="pp-item">
-                      <div className="pp-item-left">
-                        <div className="pp-id">{p.paymentId}</div>
-                        <div className="pp-date">{p.date}</div>
-                        <div className="pp-method">{p.method}</div>
-                      </div>
-
-                      <div className="pp-item-mid">
-                        <div className="pp-amount">{formatLKR(p.amount)}</div>
-                        <div className="pp-meta">
-                          <span className="pp-label">Class:</span> {p.className || "-"}
+                    return (
+                      <div key={p.paymentId} className="pp-item">
+                        <div className="pp-item-left">
+                          <div className="pp-id">{p.paymentId}</div>
+                          <div className="pp-details">
+                            <div className="pp-detail-row">
+                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                              <span className="pp-date">{p.date}</span>
+                            </div>
+                            <div className="pp-detail-row">
+                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                <line x1="2" y1="10" x2="22" y2="10"/>
+                              </svg>
+                              <span className="pp-method">{p.method}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="pp-mini">
+
+                        <div className="pp-item-center">
+                          <div className="pp-amount">{formatLKR(p.amount)}</div>
+                          <div className="pp-class-info">
+                            <svg className="pp-class-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                              <circle cx="9" cy="7" r="4"/>
+                              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            <span>{p.className || "-"}</span>
+                          </div>
                           <span className={statusPillClass(sk)}>{statusLabel(sk)}</span>
                         </div>
-                      </div>
 
-                      <div className="pp-item-right">
-                        {showUpload ? (
-                          <button
-                            className="pp-slip-btn"
-                            type="button"
-                            onClick={() => handleUploadSlip(p.paymentId, "CLASS")}
-                          >
-                            Upload Slip
-                          </button>
-                        ) : showView ? (
-                          <button className="pp-link" type="button" onClick={() => handleViewSlip(p.paymentId)}>
-                            View Slip
-                          </button>
-                        ) : (
-                          <span className="pp-muted">—</span>
-                        )}
+                        <div className="pp-item-right">
+                          {showUpload ? (
+                            <button
+                              className="pp-slip-btn"
+                              type="button"
+                              onClick={() => handleUploadSlip(p.paymentId, "CLASS")}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                              </svg>
+                              Upload Slip
+                            </button>
+                          ) : showView ? (
+                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.paymentId)}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                              </svg>
+                              View Slip
+                            </button>
+                          ) : (
+                            <span className="pp-muted">—</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -36,7 +36,6 @@ function sportKeyFromText(t = "") {
 export default function PlayerHome() {
   const navigate = useNavigate();
 
-  // UI-only mock (later from backend)
   const [bookings] = useState([
     { id: "B-700001", playerName: "You", court: "Court A", date: "2025-10-19", time: "16:00-18:00", status: "CONFIRMED" },
     { id: "B-700002", playerName: "You", court: "Court B", date: "2025-10-21", time: "10:00-12:00", status: "PENDING_PAYMENT" },
@@ -153,32 +152,49 @@ export default function PlayerHome() {
 
   return (
     <div className="ph-page">
-      <div className="ph-head">
-        <h2 className="ph-title">Player Home</h2>
+      <div className="ph-container">
+        <header className="ph-header">
+          <div className="ph-header-content">
+            <h1 className="ph-title">Player Dashboard</h1>
+            <p className="ph-subtitle">Manage your bookings, classes, and court availability</p>
+          </div>
 
-        <div className="ph-actions">
-          <button type="button" className="ph-action-btn" onClick={onBookCourt}>
-            Book a Court
-          </button>
-          <button type="button" className="ph-action-btn" onClick={onViewClasses}>
-            View Available Classes
-          </button>
-        </div>
-      </div>
+          <div className="ph-actions">
+            <button type="button" className="ph-btn ph-btn-primary" onClick={onBookCourt}>
+              <svg className="ph-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Book a Court
+            </button>
+            <button type="button" className="ph-btn ph-btn-secondary" onClick={onViewClasses}>
+              <svg className="ph-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              View Classes
+            </button>
+          </div>
+        </header>
 
-      <div className="ph-lower">
-        <div className="ph-left">
-          <CalendarPanel
-            monthDate={monthDate}
-            selectedDateISO={selectedDateISO}
-            onChangeMonth={setMonthDate}
-            onSelectDate={handleSelectDate}
-            eventsByDate={eventsByDate}
-          />
-        </div>
+        <div className="ph-content">
+          <div className="ph-calendar-section">
+            <CalendarPanel
+              monthDate={monthDate}
+              selectedDateISO={selectedDateISO}
+              onChangeMonth={setMonthDate}
+              onSelectDate={handleSelectDate}
+              eventsByDate={eventsByDate}
+            />
+          </div>
 
-        <div className="ph-right">
-          <AvailabilityPanel title={`Availability (${selectedDateISO})`} courts={availability} />
+          <div className="ph-availability-section">
+            <AvailabilityPanel title={`Availability (${selectedDateISO})`} courts={availability} />
+          </div>
         </div>
       </div>
 

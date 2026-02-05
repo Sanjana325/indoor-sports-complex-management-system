@@ -7,7 +7,6 @@ function makeId(prefix = "AT") {
 }
 
 export default function Attendance() {
-  // UI-only: available classes
   const classes = useMemo(
     () => [
       "Beginner Cricket",
@@ -19,7 +18,6 @@ export default function Attendance() {
     []
   );
 
-  // UI-only: enrollments list (normally from DB)
   const [enrollments] = useState([
     { id: "ENR-1", className: "Beginner Cricket", playerName: "Kavindi Silva" },
     { id: "ENR-2", className: "Beginner Cricket", playerName: "Nuwan Perera" },
@@ -34,13 +32,10 @@ export default function Attendance() {
     { id: "ENR-8", className: "Chess for Beginners", playerName: "Sahan Fernando" },
   ]);
 
-  // Form state
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [nameSearch, setNameSearch] = useState("");
 
-  // Attendance records (UI-only)
-  // key: `${date}__${className}__${playerName}` => "PRESENT" | "ABSENT"
   const [records, setRecords] = useState({});
 
   const canShowStudents = selectedClass && selectedDate;
@@ -101,7 +96,6 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* FORM */}
       <div className="att-form-card">
         <div className="att-form-row">
           <div className="att-field">
@@ -154,7 +148,6 @@ export default function Attendance() {
         </p>
       </div>
 
-      {/* STUDENT LIST */}
       <div className="att-list-card">
         <div className="att-list-header">
           <h3 className="att-list-title">Students</h3>
@@ -200,6 +193,7 @@ export default function Attendance() {
                       <td className="att-center">
                         <button
                           type="button"
+                          data-status="present"
                           className={`att-mark-btn ${status === "PRESENT" ? "active" : ""}`}
                           onClick={() => mark(s.playerName, "PRESENT")}
                         >
@@ -208,6 +202,7 @@ export default function Attendance() {
 
                         <button
                           type="button"
+                          data-status="absent"
                           className={`att-mark-btn ${status === "ABSENT" ? "active" : ""}`}
                           onClick={() => mark(s.playerName, "ABSENT")}
                         >
@@ -222,8 +217,6 @@ export default function Attendance() {
           </div>
         )}
       </div>
-
-      
     </div>
   );
 }

@@ -15,7 +15,6 @@ function toMinutes(hhmm) {
   return h * 60 + m;
 }
 function overlaps(aStart, aEnd, bStart, bEnd) {
-  // overlap if start < otherEnd AND otherStart < end
   return aStart < bEnd && bStart < aEnd;
 }
 function formatLKR(n) {
@@ -24,14 +23,13 @@ function formatLKR(n) {
 }
 
 const HOURS = Array.from({ length: 16 }, (_, i) => {
-  const h = i + 7; // 07:00 to 22:00
+  const h = i + 7;
   return `${pad2(h)}:00`;
 });
 
 export default function PlayerBookCourt() {
   const navigate = useNavigate();
 
-  // ✅ UI-only “master” courts list (later from backend)
   const courts = useMemo(
     () => [
       { id: "CRT-CR-A", sport: "Cricket", name: "Cricket Court A", pricePerHour: 1500 },
@@ -43,7 +41,6 @@ export default function PlayerBookCourt() {
     []
   );
 
-  // ✅ UI-only “existing bookings/blocks” to simulate availability check
   const existingBookings = useMemo(
     () => [
       { courtName: "Cricket Court A", date: "2025-10-21", start: "10:00", end: "12:00", status: "CONFIRMED" },
@@ -59,18 +56,15 @@ export default function PlayerBookCourt() {
     []
   );
 
-  // Step state
   const [dateISO, setDateISO] = useState(todayISO);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [checked, setChecked] = useState(false);
 
-  // Selection state
   const [selectedCourtIds, setSelectedCourtIds] = useState([]);
 
-  // Payment step
-  const [step, setStep] = useState("SELECT"); // SELECT | PAY | DONE
-  const [payMethod, setPayMethod] = useState(""); // ONLINE | BANKSLIP
+  const [step, setStep] = useState("SELECT");
+  const [payMethod, setPayMethod] = useState("");
   const [bankSlipFile, setBankSlipFile] = useState(null);
 
   const durationHours = useMemo(() => {
@@ -186,7 +180,6 @@ export default function PlayerBookCourt() {
 
     if (payMethod === "BANKSLIP") {
       if (!bankSlipFile) return alert("Please upload your bank slip");
-      // UI-only success
       setStep("DONE");
       return;
     }
@@ -243,7 +236,7 @@ export default function PlayerBookCourt() {
 
           <div className="pbc-field pbc-field-btn">
             <label>&nbsp;</label>
-            <button type="button" className="pbc-outline-btn" onClick={handleCheckAvailability}>
+            <button type="button" className="pbc-primary-btn" onClick={handleCheckAvailability}>
               Check Availability
             </button>
           </div>
@@ -315,7 +308,7 @@ export default function PlayerBookCourt() {
               </div>
               <button
                 type="button"
-                className="pbc-outline-btn"
+                className="pbc-primary-btn"
                 disabled={!anyAvailable || selectedCourts.length === 0 || !durationHours}
                 onClick={handleConfirmCourts}
               >
@@ -378,7 +371,7 @@ export default function PlayerBookCourt() {
                 <button type="button" className="pbc-outline-btn" onClick={() => setStep("SELECT")}>
                   Back
                 </button>
-                <button type="button" className="pbc-outline-btn" onClick={handleSubmitPayment}>
+                <button type="button" className="pbc-primary-btn" onClick={handleSubmitPayment}>
                   Submit Payment
                 </button>
               </div>
@@ -391,7 +384,8 @@ export default function PlayerBookCourt() {
       {checked && step === "DONE" && (
         <div className="pbc-card">
           <div className="pbc-done">
-            <div className="pbc-done-title">✅ Payment Submitted</div>
+            <div className="pbc-done-icon">✅</div>
+            <div className="pbc-done-title">Payment Submitted</div>
             <div className="pbc-done-sub">
               Your booking is now <strong>Pending Verification</strong>. It will become <strong>Confirmed</strong> after staff/admin verification.
             </div>
@@ -400,7 +394,7 @@ export default function PlayerBookCourt() {
               <button type="button" className="pbc-outline-btn" onClick={() => navigate("/player/my-payments")}>
                 Go to My Payments
               </button>
-              <button type="button" className="pbc-outline-btn" onClick={() => navigate("/player/my-bookings")}>
+              <button type="button" className="pbc-primary-btn" onClick={() => navigate("/player/my-bookings")}>
                 Go to My Bookings
               </button>
             </div>

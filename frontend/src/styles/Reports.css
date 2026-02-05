@@ -1,271 +1,715 @@
-.repPro {
-  max-width: 1100px;
+/* ========================================
+   CSS Variables
+   ======================================== */
+:root {
+  --rep-primary: #6366f1;
+  --rep-primary-dark: #4f46e5;
+  --rep-secondary: #8b5cf6;
+  --rep-success: #10b981;
+  --rep-warning: #f59e0b;
+  --rep-danger: #ef4444;
+  --rep-info: #3b82f6;
+  --rep-surface: #ffffff;
+  --rep-background: #f8fafc;
+  --rep-text-primary: #1e293b;
+  --rep-text-secondary: #64748b;
+  --rep-border: #e2e8f0;
+  --rep-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --rep-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --rep-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --rep-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --rep-radius-md: 12px;
+  --rep-radius-lg: 16px;
+  --rep-radius-xl: 20px;
+  --rep-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.repPro-head {
-  margin-bottom: 14px;
+/* ========================================
+   Page Layout
+   ======================================== */
+.repPro {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e9e6ff 0%, #f3f1ff 100%);
+  padding: 2rem;
+  animation: rep-fade-in 0.5s ease-out;
+}
+
+@keyframes rep-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.repPro-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: rep-slide-up 0.6s ease-out;
+}
+
+@keyframes rep-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   Header
+   ======================================== */
+.repPro-header {
+  background: var(--rep-surface);
+  border-radius: var(--rep-radius-xl);
+  padding: 2rem 2.5rem;
+  box-shadow: var(--rep-shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  animation: rep-scale-in 0.5s ease-out 0.1s both;
+}
+
+@keyframes rep-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.repPro-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .repPro-title {
   margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--rep-text-primary);
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--rep-primary) 0%, var(--rep-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.repPro-sub {
-  margin: 6px 0 0;
-  opacity: 0.8;
+.repPro-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--rep-text-secondary);
+  font-weight: 500;
 }
 
+/* ========================================
+   Report Cards List
+   ======================================== */
 .repPro-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 1.5rem;
 }
 
 .repPro-card {
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: 12px;
-  padding: 14px 16px;
+  background: white;
+  border-radius: var(--rep-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--rep-shadow-md);
+  border: 1px solid var(--rep-border);
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 14px;
+  grid-template-columns: 60px 1fr auto;
+  gap: 1.25rem;
   align-items: center;
-  background: rgba(255, 255, 255, 0.02);
+  transition: var(--rep-transition);
+  animation: rep-card-in 0.4s ease-out both;
+}
+
+.repPro-card:nth-child(1) { animation-delay: 0.15s; }
+.repPro-card:nth-child(2) { animation-delay: 0.2s; }
+.repPro-card:nth-child(3) { animation-delay: 0.25s; }
+.repPro-card:nth-child(4) { animation-delay: 0.3s; }
+
+@keyframes rep-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.repPro-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--rep-shadow-xl);
+  border-color: var(--rep-primary);
+}
+
+.repPro-card-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-radius: var(--rep-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.repPro-card-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--rep-primary);
+}
+
+.repPro-card-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .repPro-cardTitle {
-  font-size: 18px;
-  font-weight: 800;
-  margin-bottom: 6px;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--rep-text-primary);
 }
 
 .repPro-cardDesc {
-  opacity: 0.85;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--rep-text-secondary);
+  line-height: 1.5;
 }
 
-.repPro-cardBtns {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+.repPro-card-actions {
+  flex-shrink: 0;
 }
 
-.repPro-btnDark,
-.repPro-btnOutline {
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.repPro-btnDark {
+.repPro-btnPreview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--rep-radius-md);
+  background: linear-gradient(135deg, var(--rep-primary) 0%, var(--rep-primary-dark) 100%);
+  color: white;
   border: none;
-  background: #000;
-  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition: var(--rep-transition);
+  box-shadow: var(--rep-shadow-sm);
 }
 
-.repPro-btnOutline {
-  border: 2px solid #000;
-  background: transparent;
+.repPro-btnPreview svg {
+  width: 16px;
+  height: 16px;
 }
 
-/* Modal */
+.repPro-btnPreview:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--rep-shadow-lg);
+}
+
+.repPro-btnPreview:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   Modal
+   ======================================== */
 .repPro-modalBackdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px;
+  padding: 1rem;
   z-index: 999;
+  animation: rep-modal-fade-in 0.3s ease-out;
+}
+
+@keyframes rep-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .repPro-modal {
   width: 100%;
-  max-width: 1040px;
-  max-height: 92vh;
-  background: #fff;
-  border-radius: 14px;
+  max-width: 1100px;
+  max-height: 90vh;
+  background: white;
+  border-radius: var(--rep-radius-xl);
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--rep-border);
   display: flex;
   flex-direction: column;
+  box-shadow: var(--rep-shadow-xl);
+  animation: rep-modal-slide-up 0.4s ease-out;
 }
 
-.repPro-modalBody {
-  padding: 14px;
-  overflow: auto;
+@keyframes rep-modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.repPro-modalFooter {
-  padding: 12px 14px;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* Preview head */
-.repPro-previewHead {
+/* Modal Header */
+.repPro-modalHeader {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
   align-items: flex-start;
-  flex-wrap: wrap;
-  padding: 14px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  gap: 1.5rem;
+  padding: 2rem 2.5rem;
+  border-bottom: 2px solid var(--rep-border);
+  background: linear-gradient(to bottom, #faf9ff 0%, white 100%);
 }
 
-.repPro-previewTitle {
-  font-size: 18px;
-  font-weight: 900;
-  margin-bottom: 6px;
+.repPro-modalHeader-content {
+  flex: 1;
 }
 
-.repPro-previewDesc {
-  opacity: 0.85;
+.repPro-modalTitle {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--rep-text-primary);
 }
 
-.repPro-previewBtns {
+.repPro-modalSubtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--rep-text-secondary);
+}
+
+.repPro-modalClose {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--rep-background);
+  border: none;
+  cursor: pointer;
   display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  transition: var(--rep-transition);
+  flex-shrink: 0;
 }
 
-/* Controls */
+.repPro-modalClose:hover {
+  background: var(--rep-border);
+  transform: rotate(90deg);
+}
+
+.repPro-modalClose svg {
+  width: 20px;
+  height: 20px;
+  color: var(--rep-text-secondary);
+}
+
+/* ========================================
+   Controls Section
+   ======================================== */
 .repPro-controls {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 12px;
-  padding: 12px;
-  margin: 14px 14px 0;
+  background: var(--rep-background);
+  border: 1px solid var(--rep-border);
+  border-radius: var(--rep-radius-lg);
+  padding: 1.5rem;
+  margin: 1.5rem;
 }
 
-.repPro-grid {
+.repPro-controls-grid {
   display: grid;
-  grid-template-columns: 240px 220px 220px 1fr;
-  gap: 12px;
+  grid-template-columns: 220px 200px 200px 1fr;
+  gap: 1rem;
   align-items: end;
 }
 
+.repPro-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .repPro-field label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--rep-text-primary);
 }
 
 .repPro-field select,
 .repPro-field input {
   width: 100%;
   height: 42px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.3);
+  padding: 0.75rem;
+  border-radius: var(--rep-radius-md);
+  border: 2px solid var(--rep-border);
   outline: none;
+  transition: var(--rep-transition);
+  font-size: 0.875rem;
+  background: white;
+}
+
+.repPro-field select:focus,
+.repPro-field input:focus {
+  border-color: var(--rep-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .repPro-activeField {
-  border-color: rgba(0, 0, 0, 0.75) !important;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+  border-color: var(--rep-primary) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
 }
 
-.repPro-actions {
+.repPro-field-actions {
   display: flex;
-  gap: 10px;
+  gap: 0.75rem;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  align-items: flex-end;
 }
 
-.repPro-range {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-  font-size: 12px;
-  opacity: 0.85;
+.repPro-range-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--rep-border);
+  font-size: 0.875rem;
+  color: var(--rep-text-secondary);
 }
 
-/* Summary cards */
+.repPro-range-info svg {
+  width: 18px;
+  height: 18px;
+  color: var(--rep-primary);
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Modal Body
+   ======================================== */
+.repPro-modalBody {
+  padding: 1.5rem;
+  overflow: auto;
+  flex: 1;
+}
+
+/* Summary Cards */
 .repPro-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(190px, 1fr));
-  gap: 12px;
-  margin: 12px 0;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .repPro-sCard {
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: var(--rep-radius-md);
+  padding: 1.25rem;
+  border: 2px solid;
+  transition: var(--rep-transition);
+}
+
+.repPro-sCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--rep-shadow-md);
+}
+
+.repPro-sCard-primary {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--rep-primary);
+}
+
+.repPro-sCard-success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: var(--rep-success);
+}
+
+.repPro-sCard-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--rep-warning);
+}
+
+.repPro-sCard-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--rep-danger);
+}
+
+.repPro-sCard-info {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--rep-info);
 }
 
 .repPro-sLabel {
-  font-size: 12px;
-  opacity: 0.75;
-  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rep-text-secondary);
+  margin-bottom: 0.5rem;
 }
 
 .repPro-sValue {
-  font-size: 22px;
-  font-weight: 900;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--rep-text-primary);
+  line-height: 1;
 }
 
 /* Table */
 .repPro-tableWrap {
   overflow-x: auto;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  border-radius: 12px;
+  border: 1px solid var(--rep-border);
+  border-radius: var(--rep-radius-lg);
+  background: white;
 }
 
 .repPro-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 820px;
+  min-width: 800px;
 }
 
 .repPro-table th,
 .repPro-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-  white-space: nowrap;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--rep-border);
+  font-size: 0.875rem;
 }
 
 .repPro-table th {
-  text-align: left;
-  font-weight: 900;
+  background: var(--rep-background);
+  font-weight: 700;
+  color: var(--rep-text-primary);
+  white-space: nowrap;
 }
 
-.repPro-table tr:hover td {
-  background: rgba(0, 0, 0, 0.03);
+.repPro-table td {
+  color: var(--rep-text-primary);
+}
+
+.repPro-table tbody tr {
+  transition: var(--rep-transition);
+}
+
+.repPro-table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.repPro-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .repPro-empty {
   text-align: center;
-  padding: 18px;
-  opacity: 0.8;
+  padding: 2rem;
+  color: var(--rep-text-secondary);
+  font-style: italic;
 }
 
-/* Responsive */
-@media (max-width: 980px) {
+/* ========================================
+   Modal Footer
+   ======================================== */
+.repPro-modalFooter {
+  padding: 1.5rem 2rem;
+  border-top: 2px solid var(--rep-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  background: white;
+}
+
+/* ========================================
+   Buttons
+   ======================================== */
+.repPro-btnPrimary,
+.repPro-btnSecondary,
+.repPro-btnExport {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 42px;
+  padding: 0 1.25rem;
+  border-radius: var(--rep-radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition: var(--rep-transition);
+  border: none;
+}
+
+.repPro-btnPrimary {
+  background: linear-gradient(135deg, var(--rep-primary) 0%, var(--rep-primary-dark) 100%);
+  color: white;
+  box-shadow: var(--rep-shadow-sm);
+}
+
+.repPro-btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--rep-shadow-lg);
+}
+
+.repPro-btnSecondary {
+  background: white;
+  color: var(--rep-primary);
+  border: 2px solid var(--rep-primary);
+}
+
+.repPro-btnSecondary:hover {
+  background: var(--rep-primary);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: var(--rep-shadow-md);
+}
+
+.repPro-btnExport {
+  background: var(--rep-success);
+  color: white;
+  box-shadow: var(--rep-shadow-sm);
+}
+
+.repPro-btnExport svg {
+  width: 16px;
+  height: 16px;
+}
+
+.repPro-btnExport:hover {
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: var(--rep-shadow-md);
+}
+
+.repPro-btnPrimary:active,
+.repPro-btnSecondary:active,
+.repPro-btnExport:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+@media (max-width: 1200px) {
+  .repPro-list {
+    grid-template-columns: 1fr;
+  }
+
+  .repPro-controls-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .repPro-field-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .repPro {
+    padding: 1rem;
+  }
+
+  .repPro-header {
+    padding: 1.5rem;
+  }
+
+  .repPro-title {
+    font-size: 1.5rem;
+  }
+
+  .repPro-subtitle {
+    font-size: 0.875rem;
+  }
+
   .repPro-card {
+    grid-template-columns: 50px 1fr;
+    gap: 1rem;
+  }
+
+  .repPro-card-actions {
+    grid-column: 1 / -1;
+  }
+
+  .repPro-btnPreview {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .repPro-modalHeader {
+    padding: 1.5rem;
+  }
+
+  .repPro-modalTitle {
+    font-size: 1.25rem;
+  }
+
+  .repPro-controls {
+    margin: 1rem;
+    padding: 1rem;
+  }
+
+  .repPro-controls-grid {
     grid-template-columns: 1fr;
   }
 
-  .repPro-cardBtns {
-    justify-content: flex-start;
-  }
-
-  .repPro-grid {
-    grid-template-columns: 1fr;
+  .repPro-modalBody {
+    padding: 1rem;
   }
 
   .repPro-summary {
-    grid-template-columns: repeat(2, minmax(190px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .repPro-modalFooter {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .repPro-btnPrimary,
+  .repPro-btnSecondary,
+  .repPro-btnExport {
+    flex: 1;
+    justify-content: center;
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 480px) {
   .repPro-summary {
     grid-template-columns: 1fr;
+  }
+
+  .repPro-card-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .repPro-card-icon svg {
+    width: 24px;
+    height: 24px;
   }
 }

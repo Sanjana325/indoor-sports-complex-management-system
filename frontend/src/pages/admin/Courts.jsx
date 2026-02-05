@@ -26,6 +26,36 @@ function formatLKR(amount) {
   return `LKR ${n.toLocaleString()}`;
 }
 
+function getSportIcon(sport) {
+  switch (sport) {
+    case "CRICKET":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+      );
+    case "BADMINTON":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="5" r="3"/>
+          <line x1="12" y1="8" x2="12" y2="14"/>
+          <line x1="8" y1="14" x2="16" y2="14"/>
+        </svg>
+      );
+    case "FUTSAL":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+          <path d="M2 12h20"/>
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function Courts() {
   const [courts, setCourts] = useState([
     {
@@ -67,7 +97,7 @@ export default function Courts() {
   ]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState("ADD"); // ADD | EDIT
+  const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
   const [sport, setSport] = useState("CRICKET");
@@ -218,47 +248,82 @@ export default function Courts() {
 
   return (
     <div className="courts-page">
-      <div className="courts-header">
-        <div>
-          <h2 className="courts-title">Courts</h2>
+      <div className="courts-container">
+        <header className="courts-header">
+          <div className="courts-header-content">
+            <h1 className="courts-title">Courts Management</h1>
+            <p className="courts-subtitle">Manage all sports courts, pricing, and availability</p>
+          </div>
+
+          <button className="courts-btn-add" type="button" onClick={openAddModal}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Add Court
+          </button>
+        </header>
+
+        <div className="courts-toolbar">
+          <div className="courts-search-wrapper">
+            <svg className="courts-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              className="courts-search"
+              placeholder="Search by ID, name, sport, status..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
 
-        <button className="courts-primary-btn" type="button" onClick={openAddModal}>
-          + Add Court
-        </button>
+        <section className="courts-section">
+          <div className="courts-section-header">
+            <div className="courts-section-icon">
+              {getSportIcon("CRICKET")}
+            </div>
+            <h2 className="courts-section-title">Cricket Courts</h2>
+            <span className="courts-section-count">{latestCricket.length}</span>
+          </div>
+          <CourtTable rows={latestCricket} onEdit={openEditModal} onRemove={handleRemove} />
+        </section>
+
+        <section className="courts-section">
+          <div className="courts-section-header">
+            <div className="courts-section-icon">
+              {getSportIcon("BADMINTON")}
+            </div>
+            <h2 className="courts-section-title">Badminton Courts</h2>
+            <span className="courts-section-count">{latestBadminton.length}</span>
+          </div>
+          <CourtTable rows={latestBadminton} onEdit={openEditModal} onRemove={handleRemove} />
+        </section>
+
+        <section className="courts-section">
+          <div className="courts-section-header">
+            <div className="courts-section-icon">
+              {getSportIcon("FUTSAL")}
+            </div>
+            <h2 className="courts-section-title">Futsal Courts</h2>
+            <span className="courts-section-count">{latestFutsal.length}</span>
+          </div>
+          <CourtTable rows={latestFutsal} onEdit={openEditModal} onRemove={handleRemove} />
+        </section>
       </div>
-
-      <div className="courts-toolbar">
-        <input
-          className="courts-search"
-          placeholder="Search by id, name, sport, status..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <section className="courts-section">
-        <h3 className="courts-section-title">Cricket Courts (Last 5 Added)</h3>
-        <CourtTable rows={latestCricket} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
-      <section className="courts-section">
-        <h3 className="courts-section-title">Badminton Courts (Last 5 Added)</h3>
-        <CourtTable rows={latestBadminton} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
-      <section className="courts-section">
-        <h3 className="courts-section-title">Futsal Courts (Last 5 Added)</h3>
-        <CourtTable rows={latestFutsal} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
 
       {isModalOpen && (
         <div className="courts-modal-backdrop" onMouseDown={closeModal}>
           <div className="courts-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="courts-modal-header">
-              <h3>{mode === "ADD" ? "Add Court" : "Edit Court"}</h3>
-              <button className="courts-icon-btn" type="button" onClick={closeModal} aria-label="Close">
-                ✕
+              <h3 className="courts-modal-title">{mode === "ADD" ? "Add New Court" : "Edit Court"}</h3>
+              <button className="courts-modal-close" type="button" onClick={closeModal}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
               </button>
             </div>
 
@@ -321,11 +386,14 @@ export default function Courts() {
               </div>
 
               <div className="courts-form-actions">
-                <button className="courts-secondary-btn" type="button" onClick={closeModal}>
+                <button className="courts-btn-secondary" type="button" onClick={closeModal}>
                   Cancel
                 </button>
 
-                <button className="courts-primary-btn courts-modal-primary" type="submit">
+                <button className="courts-btn-primary" type="submit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
                   {mode === "ADD" ? "Add Court" : "Save Changes"}
                 </button>
               </div>
@@ -340,51 +408,80 @@ export default function Courts() {
 function CourtTable({ rows, onEdit, onRemove }) {
   return (
     <div className="courts-table-wrap">
-      <table className="courts-table">
-        <thead>
-          <tr>
-            <th className="courts-col-id">Court ID</th>
-            <th className="courts-col-name">Name</th>
-            <th className="courts-col-capacity">Capacity</th>
-            <th className="courts-col-price">Price / Hour</th>
-            <th className="courts-col-status">Status</th>
-            <th className="courts-col-actions courts-center">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {rows.length === 0 ? (
+      {rows.length === 0 ? (
+        <div className="courts-empty-state">
+          <svg className="courts-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p className="courts-empty-text">No courts to show</p>
+        </div>
+      ) : (
+        <table className="courts-table">
+          <thead>
             <tr>
-              <td colSpan="6" className="courts-empty">
-                No courts to show.
-              </td>
+              <th>Court ID</th>
+              <th>Name</th>
+              <th>Capacity</th>
+              <th>Price / Hour</th>
+              <th>Status</th>
+              <th className="courts-actions-header">Actions</th>
             </tr>
-          ) : (
-            rows.map((c) => (
+          </thead>
+
+          <tbody>
+            {rows.map((c) => (
               <tr key={c.id}>
-                <td className="courts-col-id">{c.id}</td>
-                <td className="courts-col-name">{c.name}</td>
-                <td className="courts-col-capacity">{c.capacity}</td>
-                <td className="courts-col-price">{formatLKR(c.pricePerHour)}</td>
-                <td className="courts-col-status">
-                  <span className={`courts-badge ${c.status.toLowerCase()}`}>{statusLabel(c.status)}</span>
+                <td>
+                  <span className="courts-id">{c.id}</span>
+                </td>
+                <td>
+                  <span className="courts-name">{c.name}</span>
+                </td>
+                <td>
+                  <div className="courts-capacity">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    {c.capacity}
+                  </div>
+                </td>
+                <td>
+                  <span className="courts-price">{formatLKR(c.pricePerHour)}</span>
+                </td>
+                <td>
+                  <span className={`courts-badge courts-badge-${c.status.toLowerCase()}`}>
+                    {statusLabel(c.status)}
+                  </span>
                 </td>
 
-                <td className="courts-col-actions courts-center">
+                <td>
                   <div className="courts-actions">
-                    <button className="courts-action-btn" type="button" onClick={() => onEdit(c)}>
+                    <button className="courts-btn-edit" type="button" onClick={() => onEdit(c)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
                       Edit
                     </button>
-                    <button className="courts-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
+                    <button className="courts-btn-remove" type="button" onClick={() => onRemove(c.id)}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
                       Remove
                     </button>
                   </div>
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

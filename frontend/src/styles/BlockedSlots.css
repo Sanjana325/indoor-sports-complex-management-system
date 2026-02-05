@@ -14,36 +14,64 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 24px;
 }
 
 .bs-title {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.bs-subtitle {
   margin: 0;
+  font-size: 15px;
+  color: #666;
+  opacity: 0.8;
 }
 
 .bs-toolbar {
-  margin: 12px 0 18px;
+  margin: 0 0 20px;
 }
 
 .bs-search {
   width: 100%;
   max-width: 540px;
-  padding: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #fff;
+}
+
+.bs-search:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.bs-search::placeholder {
+  color: #aaa;
 }
 
 /* ================= TABLE ================= */
 .bs-table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .bs-table {
   width: 100%;
   border-collapse: collapse;
-  background: rgba(255, 255, 255, 0.03);
+  background: #fff;
   table-layout: fixed;
 }
 
@@ -58,23 +86,42 @@
 /* Cells */
 .bs-table th,
 .bs-table td {
-  padding: 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.bs-table thead {
+  background: #f9fafb;
+}
+
 .bs-table th {
-  font-weight: 800;
+  font-weight: 700;
+  font-size: 14px;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bs-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.bs-table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.bs-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .bs-center {
   text-align: center;
 }
 
-/* IMPORTANT: prevent action buttons being cut */
 .bs-col-actions,
 .bs-col-actions td {
   overflow: visible;
@@ -82,68 +129,113 @@
 
 .bs-empty {
   text-align: center;
-  padding: 18px;
-  opacity: 0.8;
+  padding: 32px;
+  opacity: 0.6;
+  font-weight: 600;
+  color: #666;
 }
 
 /* ================= BUTTONS ================= */
 
 /* Page button (top right) */
 .bs-primary-btn {
-  padding: 10px 12px;
+  padding: 12px 20px;
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  background: #000;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
   font-weight: 700;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-/* Action buttons (Edit / Remove – project standard) */
+.bs-primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.bs-primary-btn:active {
+  transform: translateY(0);
+}
+
+/* Action buttons (Edit / Remove) */
 .bs-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
   align-items: center;
 }
 
 .bs-action-btn {
   padding: 8px 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   cursor: pointer;
-  border: 2px solid #000;
+  border: 2px solid #667eea;
   background: #fff;
+  color: #667eea;
   font-weight: 700;
+  font-size: 13px;
   line-height: 1.1;
+  transition: all 0.2s ease;
+}
+
+.bs-action-btn:hover {
+  background: #667eea;
+  color: #fff;
+  transform: scale(1.05);
 }
 
 .bs-action-btn.danger {
-  border-color: #b00020;
-  color: #b00020;
-  background: #fff;
+  border-color: #ff3b3b;
+  color: #ff3b3b;
+}
+
+.bs-action-btn.danger:hover {
+  background: #ff3b3b;
+  color: #fff;
 }
 
 /* ================= MODAL ================= */
 .bs-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 14px;
   z-index: 999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .bs-modal {
   width: 100%;
   max-width: 640px;
-  background: #1e1e1e;
-  color: #fff;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  padding: 16px;
+  background: #fff;
+  border: none;
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .bs-modal-header {
@@ -151,28 +243,51 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.bs-modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
 }
 
 .bs-icon-btn {
   border: none;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
   color: #fff;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 22px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bs-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
 }
 
 /* ================= FORM ================= */
 .bs-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
+  padding: 24px;
 }
 
 .bs-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -184,16 +299,31 @@
   display: block;
   margin-bottom: 6px;
   font-weight: 600;
+  font-size: 14px;
+  color: #333;
 }
 
 .bs-field input,
 .bs-field select {
   width: 100%;
-  padding: 10px;
+  padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #2a2a2a;
-  color: #fff;
+  border: 2px solid #e0e0e0;
+  background: #fff;
+  color: #333;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.bs-field input:focus,
+.bs-field select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.bs-field input::placeholder {
+  color: #aaa;
 }
 
 /* Full width field */
@@ -201,44 +331,50 @@
   grid-column: 1 / -1;
 }
 
-/* ================= DATE & TIME ICON FIX ================= */
-
-/* Firefox */
-.bs-field input[type="date"],
-.bs-field input[type="time"] {
-  color-scheme: dark;
-}
-
-/* Chrome / Edge / Safari */
-.bs-field input[type="date"]::-webkit-calendar-picker-indicator,
-.bs-field input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) brightness(1.8);
-  opacity: 1;
-  cursor: pointer;
-}
-
-/* Extra Chrome safety */
-.bs-field input[type="date"]::-webkit-inner-spin-button,
-.bs-field input[type="time"]::-webkit-inner-spin-button {
-  filter: invert(1);
-}
-
 /* ================= FORM ACTIONS ================= */
 .bs-form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
+  padding-top: 4px;
 }
 
-/* Cancel + Block Slot buttons (white bg) */
 .bs-modal-btn {
-  padding: 10px 12px;
+  padding: 12px 20px;
   border: none;
   border-radius: 10px;
   cursor: pointer;
-  background: #ffffff;
-  color: #000000;
   font-weight: 700;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.bs-modal-btn.secondary {
+  border: 2px solid #667eea;
+  background: #fff;
+  color: #667eea;
+}
+
+.bs-modal-btn.secondary:hover {
+  background: #667eea;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.bs-modal-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.bs-modal-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.bs-modal-btn:active {
+  transform: translateY(0);
 }
 
 /* ================= MOBILE ================= */
@@ -246,6 +382,10 @@
   .bs-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .bs-primary-btn {
+    width: 100%;
   }
 
   .bs-grid {
@@ -263,5 +403,15 @@
 
   .bs-col-actions {
     width: 22%;
+  }
+
+  .bs-table th,
+  .bs-table td {
+    padding: 10px 8px;
+    font-size: 14px;
+  }
+
+  .bs-form {
+    padding: 20px;
   }
 }

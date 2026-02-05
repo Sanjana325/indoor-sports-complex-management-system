@@ -15,6 +15,10 @@ const forgotLimiter = new Map();
 const FORGOT_LIMIT_WINDOW_MS = 60 * 1000;
 const FORGOT_LIMIT_MAX = 5;
 
+const loginLimiter = new Map();
+const LOGIN_LIMIT_WINDOW_MS = 60 * 1000;
+const LOGIN_LIMIT_MAX = 8;
+
 function nowMs() {
   return Date.now();
 }
@@ -30,6 +34,24 @@ function isValidEmail(email) {
   if (e.length < 6 || e.length > 254) return false;
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   return re.test(e);
+}
+
+function normalizePhone(phone) {
+  if (typeof phone !== "string") return "";
+  return phone.replace(/\s+/g, "").trim();
+}
+
+function isValidPhoneNumber(phone) {
+  const p = normalizePhone(phone);
+
+  if (!p) return false;
+
+  if (/^\+94\d{9}$/.test(p)) return true;
+  if (/^94\d{9}$/.test(p)) return true;
+  if (/^0\d{9}$/.test(p)) return true;
+  if (/^\d{9,12}$/.test(p)) return true;
+
+  return false;
 }
 
 function passwordPolicyMessage() {
@@ -76,13 +98,27 @@ function hitForgotLimit(key) {
   return rec.count > FORGOT_LIMIT_MAX;
 }
 
+function hitLoginLimit(key) {
+  const t = nowMs();
+  const rec = loginLimiter.get(key);
+
+  if (!rec || t - rec.windowStart > LOGIN_LIMIT_WINDOW_MS) {
+    loginLimiter.set(key, { windowStart: t, count: 1 });
+    return false;
+  }
+
+  rec.count += 1;
+  loginLimiter.set(key, rec);
+  return rec.count > LOGIN_LIMIT_MAX;
+}
+
 router.post("/auth/register", async (req, res, next) => {
   try {
     const body = req.body || {};
     const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
     const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
     const email = normalizeEmail(body.email);
-    const phoneNumber = typeof body.phoneNumber === "string" ? body.phoneNumber.trim() : "";
+    const phoneNumber = normalizePhone(typeof body.phoneNumber === "string" ? body.phoneNumber : "");
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!firstName || !lastName || !email || !phoneNumber || !password) {
@@ -91,6 +127,10 @@ router.post("/auth/register", async (req, res, next) => {
 
     if (!isValidEmail(email)) {
       return res.status(400).json({ message: "Invalid email" });
+    }
+
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({ message: "Invalid phone number" });
     }
 
     if (!isStrongPassword(password)) {
@@ -137,6 +177,18 @@ router.post("/auth/login", async (req, res, next) => {
     const body = req.body || {};
     const email = normalizeEmail(body.email);
     const password = typeof body.password === "string" ? body.password : "";
+
+    const ip =
+      (req.headers["x-forwarded-for"] && String(req.headers["x-forwarded-for"]).split(",")[0].trim()) ||
+      req.ip ||
+      "unknown";
+
+    if (hitLoginLimit(`ip:${ip}`)) {
+      return res.status(429).json({ message: "Too many login attempts. Please try again later." });
+    }
+    if (email && hitLoginLimit(`email:${email}`)) {
+      return res.status(429).json({ message: "Too many login attempts. Please try again later." });
+    }
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
@@ -268,11 +320,15 @@ router.post("/auth/forgot-password", async (req, res, next) => {
     const frontendBase = process.env.FRONTEND_BASE_URL || "http://localhost:5173";
     const resetLink = `${frontendBase.replace(/\/$/, "")}/reset-password?token=${raw}`;
 
-    await sendPasswordResetEmail({
-      toEmail: user.Email,
-      toName: `${user.FirstName || ""} ${user.LastName || ""}`.trim(),
-      resetLink
-    });
+    try {
+      await sendPasswordResetEmail({
+        toEmail: user.Email,
+        toName: `${user.FirstName || ""} ${user.LastName || ""}`.trim(),
+        resetLink
+      });
+    } catch (mailErr) {
+      console.error("Forgot-password email failed:", mailErr && mailErr.message ? mailErr.message : mailErr);
+    }
 
     return res.json(generic);
   } catch (err) {

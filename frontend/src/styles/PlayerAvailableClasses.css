@@ -1,7 +1,7 @@
 .pac-page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 24px;
   width: 100%;
 }
 
@@ -10,61 +10,114 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .pac-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 900;
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .pac-sub {
-  margin-top: 6px;
-  opacity: 0.75;
+  margin: 0;
+  opacity: 0.7;
   font-weight: 600;
+  color: #666;
+  font-size: 15px;
 }
 
 .pac-outline-btn {
-  padding: 10px 12px;
+  padding: 12px 20px;
   border-radius: 10px;
   cursor: pointer;
-  border: 2px solid #000;
+  border: 2px solid #667eea;
   background: #fff;
-  color: #000;
-  font-weight: 900;
+  color: #667eea;
+  font-weight: 700;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.pac-outline-btn:hover {
+  background: #667eea;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.pac-outline-btn:active {
+  transform: translateY(0);
+}
+
+.pac-primary-btn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.pac-primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.pac-primary-btn:active {
+  transform: translateY(0);
 }
 
 .pac-empty {
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px dashed rgba(0,0,0,0.25);
-  background: rgba(0,0,0,0.02);
+  padding: 40px 24px;
+  border-radius: 16px;
+  border: 2px dashed rgba(102, 126, 234, 0.3);
+  background: rgba(102, 126, 234, 0.05);
+  text-align: center;
 }
 
 .pac-empty-title {
-  font-weight: 900;
-  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #667eea;
 }
 
 .pac-empty-sub {
-  opacity: 0.8;
-  font-weight: 700;
+  opacity: 0.7;
+  font-weight: 600;
+  color: #666;
 }
 
 .pac-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
 .pac-tile {
   background: #fff;
-  border: 1px solid rgba(0,0,0,0.15);
-  border-radius: 12px;
-  padding: 12px;
+  border: none;
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.pac-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
 .pac-row {
@@ -72,128 +125,207 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.1);
 }
 
 .pac-name {
-  font-weight: 900;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 18px;
+  color: #333;
 }
 
 .pac-fee {
-  font-weight: 900;
+  font-weight: 700;
+  font-size: 16px;
   white-space: nowrap;
+  color: #667eea;
 }
 
 .pac-meta,
 .pac-schedule,
 .pac-cap {
-  font-weight: 700;
-  opacity: 0.9;
+  font-weight: 600;
+  font-size: 14px;
+  color: #666;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  line-height: 1.6;
+}
+
+.pac-meta strong,
+.pac-schedule strong,
+.pac-cap strong {
+  color: #333;
+  font-weight: 700;
 }
 
 .pac-actions {
   display: flex;
   justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .pac-card {
   background: #fff;
-  border: 1px solid rgba(0,0,0,0.15);
-  border-radius: 12px;
-  padding: 12px;
+  border: none;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .pac-card-title {
-  font-weight: 900;
-  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 20px;
+  margin-bottom: 20px;
+  color: #333;
 }
 
 .pac-pay-box {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 20px;
   align-items: start;
 }
 
 .pac-pay-summary {
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 2px solid rgba(102, 126, 234, 0.2);
   border-radius: 12px;
-  padding: 12px;
-  font-weight: 700;
+  padding: 20px;
+  font-weight: 600;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  background: rgba(102, 126, 234, 0.05);
+  color: #666;
+}
+
+.pac-pay-summary strong {
+  color: #333;
+  font-weight: 700;
 }
 
 .pac-pay-total {
-  margin-top: 6px;
-  font-weight: 900;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px solid rgba(102, 126, 234, 0.2);
+  font-weight: 700;
+  font-size: 16px;
+  color: #667eea;
 }
 
 .pac-pay-methods {
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 2px solid #e0e0e0;
   border-radius: 12px;
-  padding: 12px;
+  padding: 20px;
+  background: #f9fafb;
 }
 
 .pac-pay-title {
-  font-weight: 900;
-  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: #333;
 }
 
 .pac-radio {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  font-weight: 800;
-  margin-bottom: 10px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  cursor: pointer;
+  user-select: none;
+  color: #333;
+}
+
+.pac-radio input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.pac-upload {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 10px;
+  border: 2px solid #e0e0e0;
 }
 
 .pac-upload label {
   display: block;
-  margin: 8px 0 6px;
-  font-weight: 900;
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: #333;
+  font-size: 14px;
 }
 
 .pac-upload input[type="file"] {
   width: 100%;
-  border: 1px solid rgba(0,0,0,0.2);
+  border: 2px solid #e0e0e0;
   border-radius: 10px;
-  padding: 10px;
+  padding: 12px;
   background: #fff;
-  font-weight: 700;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pac-upload input[type="file"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .pac-upload-hint {
-  margin-top: 8px;
-  font-weight: 700;
-  opacity: 0.8;
+  margin-top: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #667eea;
+  line-height: 1.5;
 }
 
 .pac-pay-actions {
-  margin-top: 12px;
+  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
 }
 
 .pac-done {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.pac-done-icon {
+  font-size: 64px;
+  margin-bottom: 8px;
 }
 
 .pac-done-title {
-  font-weight: 900;
-  font-size: 18px;
+  font-weight: 700;
+  font-size: 24px;
+  color: #333;
 }
 
 .pac-done-sub {
+  font-weight: 600;
+  font-size: 15px;
+  color: #666;
+  line-height: 1.6;
+  max-width: 500px;
+}
+
+.pac-done-sub strong {
+  color: #667eea;
   font-weight: 700;
-  opacity: 0.85;
 }
 
 @media (max-width: 1100px) {
@@ -203,5 +335,25 @@
 
   .pac-pay-box {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .pac-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pac-outline-btn,
+  .pac-primary-btn {
+    width: 100%;
+  }
+
+  .pac-card {
+    padding: 20px;
+  }
+
+  .pac-pay-actions {
+    flex-direction: column;
   }
 }

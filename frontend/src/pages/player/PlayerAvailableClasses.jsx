@@ -18,7 +18,6 @@ function formatSchedule(c) {
 export default function PlayerAvailableClasses() {
   const navigate = useNavigate();
 
-  // ✅ UI-only mock classes (later from backend)
   const [classes] = useState([
     {
       id: "CL-800001",
@@ -50,7 +49,7 @@ export default function PlayerAvailableClasses() {
       endTime: "19:00",
       fee: 2000,
       capacity: 16,
-      enrolledCount: 16, // full -> should NOT show
+      enrolledCount: 16,
     },
     {
       id: "CL-800003",
@@ -74,11 +73,10 @@ export default function PlayerAvailableClasses() {
     return classes.filter((c) => Number(c.enrolledCount) < Number(c.capacity));
   }, [classes]);
 
-  // Enroll + payment flow
-  const [step, setStep] = useState("LIST"); // LIST | PAY | DONE
+  const [step, setStep] = useState("LIST");
   const [selectedClass, setSelectedClass] = useState(null);
 
-  const [payMethod, setPayMethod] = useState(""); // ONLINE | BANKSLIP
+  const [payMethod, setPayMethod] = useState("");
   const [bankSlipFile, setBankSlipFile] = useState(null);
 
   function onEnrollNow(item) {
@@ -212,7 +210,7 @@ export default function PlayerAvailableClasses() {
                 <button type="button" className="pac-outline-btn" onClick={() => setStep("LIST")}>
                   Back
                 </button>
-                <button type="button" className="pac-outline-btn" onClick={submitPayment}>
+                <button type="button" className="pac-primary-btn" onClick={submitPayment}>
                   Submit Payment
                 </button>
               </div>
@@ -224,7 +222,8 @@ export default function PlayerAvailableClasses() {
       {step === "DONE" && selectedClass && (
         <div className="pac-card">
           <div className="pac-done">
-            <div className="pac-done-title">✅ Payment Submitted</div>
+            <div className="pac-done-icon">✅</div>
+            <div className="pac-done-title">Payment Submitted</div>
             <div className="pac-done-sub">
               Your enrollment is now <strong>Pending Verification</strong>. It will become <strong>Confirmed</strong> after staff/admin verifies your payment.
             </div>
@@ -233,7 +232,7 @@ export default function PlayerAvailableClasses() {
               <button type="button" className="pac-outline-btn" onClick={() => navigate("/player/my-payments")}>
                 Go to My Payments
               </button>
-              <button type="button" className="pac-outline-btn" onClick={() => navigate("/player/my-classes")}>
+              <button type="button" className="pac-primary-btn" onClick={() => navigate("/player/my-classes")}>
                 Go to My Classes
               </button>
             </div>
