@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "../../styles/UserManagement.css";
+import MultiSelectWithAdd from "../../components/MultiSelectWithAdd";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -43,7 +44,10 @@ function mapDbUserToUi(u) {
     email: u.Email || "",
     createdAt: u.CreatedAt,
     specialization: u.Specialization || "",
-    qualifications: u.Qualifications || "",
+    qualifications: Array.isArray(u.Qualifications) ? u.Qualifications : splitQualificationsToList(u.Qualifications),
+    specializations: Array.isArray(u.Specializations)
+      ? u.Specializations
+      : splitQualificationsToList(u.Specializations),
     isActive: Boolean(u.IsActive)
   };
 }
@@ -59,8 +63,9 @@ function buildHaystack(u) {
   const last = s(u.lastName);
   const phone = s(u.phone);
   const email = s(u.email);
-  const qual = s(u.qualifications);
-  const spec = s(u.specialization);
+
+  const qual = Array.isArray(u.qualifications) ? u.qualifications.join(" ") : s(u.qualifications);
+  const spec = Array.isArray(u.specializations) ? u.specializations.join(" ") : s(u.specialization);
   const status = u.isActive ? "active" : "inactive";
 
   const fullName = `${first} ${last}`.trim();
@@ -82,14 +87,21 @@ export default function UserManagement() {
   const [mode, setMode] = useState("ADD");
   const [editingUserId, setEditingUserId] = useState(null);
 
+  const [roles, setRoles] = useState(ROLES); // Use state if we want to dynamic, but constant is fine. 
+
   const [role, setRole] = useState(ROLES[0] || "PLAYER");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  const [qualificationsList, setQualificationsList] = useState([""]);
-  const [specialization, setSpecialization] = useState("");
+  // Coach specific
+  const [qualifications, setQualifications] = useState([]);
+  const [specializations, setSpecializations] = useState([]);
+
+  // Reference data
+  const [allSports, setAllSports] = useState([]);
+  const [allQualifications, setAllQualifications] = useState([]);
 
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
@@ -135,8 +147,38 @@ export default function UserManagement() {
     }
   }
 
+  async function fetchReferenceData() {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      // Fetch Sports
+      const resSports = await fetch(`${API_BASE}/api/admin/sports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (resSports.ok) {
+        const data = await resSports.json();
+        const list = Array.isArray(data.sports) ? data.sports : (Array.isArray(data) ? data : []);
+        setAllSports(list.map(s => s.SportName || s.sportName || s.name || s));
+      }
+
+      // Fetch Qualifications
+      const resQuals = await fetch(`${API_BASE}/api/admin/qualifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (resQuals.ok) {
+        const data = await resQuals.json();
+        const list = Array.isArray(data.qualifications) ? data.qualifications : (Array.isArray(data) ? data : []);
+        setAllQualifications(list.map(q => q.QualificationName || q.qualificationName || q.name || q));
+      }
+    } catch (e) {
+      console.error("Failed to fetch reference data", e);
+    }
+  }
+
   useEffect(() => {
     fetchUsersFromDb();
+    fetchReferenceData();
   }, []);
 
   const filteredUsers = useMemo(() => {
@@ -185,8 +227,8 @@ export default function UserManagement() {
     setLastName("");
     setPhone("");
     setEmail("");
-    setQualificationsList([""]);
-    setSpecialization("");
+    setQualifications([]);
+    setSpecializations([]);
     setEditingUserId(null);
     setFormError("");
   }
@@ -195,6 +237,7 @@ export default function UserManagement() {
     setMode("ADD");
     resetForm();
     setIsModalOpen(true);
+    fetchReferenceData(); // Refresh ref data
   }
 
   function openEditModal(user) {
@@ -207,11 +250,12 @@ export default function UserManagement() {
     setPhone(user.phone || "");
     setEmail(user.email || "");
 
-    setQualificationsList(splitQualificationsToList(user.qualifications || ""));
-    setSpecialization(user.specialization || "");
+    setQualifications(user.qualifications || []);
+    setSpecializations(user.specializations || []);
 
     setFormError("");
     setIsModalOpen(true);
+    fetchReferenceData(); // Refresh ref data
   }
 
   function closeModal() {
@@ -234,9 +278,8 @@ export default function UserManagement() {
     if (!ROLES.includes(role)) return "Role must be valid";
 
     if (role === "COACH") {
-      const qJoined = joinQualifications(qualificationsList);
-      if (!qJoined.trim()) return "Qualifications is required for Coach";
-      if (!specialization.trim()) return "Specialization is required for Coach";
+      if (qualifications.length === 0) return "At least one qualification is required for Coach";
+      if (specializations.length === 0) return "At least one specialization is required for Coach";
     }
 
     return null;
@@ -245,24 +288,49 @@ export default function UserManagement() {
   function handleRoleChange(newRole) {
     setRole(newRole);
     if (newRole !== "COACH") {
-      setQualificationsList([""]);
-      setSpecialization("");
+      setQualifications([]);
+      setSpecializations([]);
     }
   }
 
-  function addQualificationRow() {
-    setQualificationsList((prev) => [...prev, ""]);
+  async function handleAddNewSport(newSportName) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/sports`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ sportName: newSportName })
+      });
+      if (res.ok) {
+        setAllSports(prev => [...prev, newSportName]);
+        setSpecializations(prev => [...prev, newSportName]);
+      }
+    } catch (e) {
+      console.error("Failed to add sport", e);
+    }
   }
 
-  function updateQualificationRow(idx, value) {
-    setQualificationsList((prev) => prev.map((q, i) => (i === idx ? value : q)));
-  }
-
-  function removeQualificationRow(idx) {
-    setQualificationsList((prev) => {
-      const next = prev.filter((_, i) => i !== idx);
-      return next.length ? next : [""];
-    });
+  async function handleAddNewQualification(newQualName) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/qualifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ qualificationName: newQualName })
+      });
+      if (res.ok) {
+        setAllQualifications(prev => [...prev, newQualName]);
+        setQualifications(prev => [...prev, newQualName]);
+      }
+    } catch (e) {
+      console.error("Failed to add qualification", e);
+    }
   }
 
   async function createUserOnBackend(payload) {
@@ -384,26 +452,24 @@ export default function UserManagement() {
       return;
     }
 
-    const qList = normalizeQualifications(qualificationsList);
-
     const payload =
       role === "COACH"
         ? {
-            role,
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            email: email.trim(),
-            phoneNumber: phone.trim(),
-            specialization: specialization.trim(),
-            qualifications: qList
-          }
+          role,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phoneNumber: phone.trim(),
+          specializations: specializations,
+          qualifications: qualifications
+        }
         : {
-            role,
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            email: email.trim(),
-            phoneNumber: phone.trim()
-          };
+          role,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim(),
+          phoneNumber: phone.trim()
+        };
 
     setSubmitting(true);
     try {
@@ -442,7 +508,7 @@ export default function UserManagement() {
     if (!createdTempPassword) return;
     try {
       await navigator.clipboard.writeText(createdTempPassword);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   return (
@@ -612,52 +678,23 @@ export default function UserManagement() {
 
                 {role === "COACH" && (
                   <>
-                    <div className="um-field um-full">
-                      <div className="um-label-row">
-                        <label>Qualifications</label>
-                        <button
-                          type="button"
-                          className="um-qual-add-btn"
-                          onClick={addQualificationRow}
-                          disabled={submitting}
-                        >
-                          +
-                        </button>
-                      </div>
+                    <MultiSelectWithAdd
+                      label="Qualifications"
+                      placeholder="Select or type to add..."
+                      value={qualifications}
+                      options={allQualifications}
+                      onChange={setQualifications}
+                      onAdd={handleAddNewQualification}
+                    />
 
-                      <div className="um-qual-list">
-                        {qualificationsList.map((q, idx) => (
-                          <div key={idx} className="um-qual-row">
-                            <input
-                              type="text"
-                              placeholder="e.g., Diploma in Sports Coaching"
-                              value={q}
-                              onChange={(e) => updateQualificationRow(idx, e.target.value)}
-                              disabled={submitting}
-                            />
-                            <button
-                              type="button"
-                              className="um-action-btn danger um-qual-remove"
-                              onClick={() => removeQualificationRow(idx)}
-                              disabled={submitting}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="um-field um-full">
-                      <label>Specialization</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Cricket / Badminton"
-                        value={specialization}
-                        onChange={(e) => setSpecialization(e.target.value)}
-                        disabled={submitting}
-                      />
-                    </div>
+                    <MultiSelectWithAdd
+                      label="Specialization"
+                      placeholder="Select or type to add..."
+                      value={specializations}
+                      options={allSports}
+                      onChange={setSpecializations}
+                      onAdd={handleAddNewSport}
+                    />
                   </>
                 )}
               </div>
@@ -765,8 +802,8 @@ function UserTable({ rows, onEdit, onDisableToggle, onRemove, showCoachCols = fa
                   <>
                     <td className="um-col-phone">{u.phone}</td>
                     <td className="um-col-email">{u.email}</td>
-                    <td className="um-col-qual">{u.qualifications || "-"}</td>
-                    <td className="um-col-spec">{u.specialization || "-"}</td>
+                    <td className="um-col-qual">{Array.isArray(u.qualifications) ? u.qualifications.join(", ") : u.qualifications}</td>
+                    <td className="um-col-spec">{Array.isArray(u.specializations) ? u.specializations.join(", ") : u.specializations || u.specialization || "-"}</td>
                   </>
                 ) : (
                   <>

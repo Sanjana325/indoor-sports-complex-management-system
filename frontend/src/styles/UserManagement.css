@@ -39,6 +39,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -67,6 +68,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -147,6 +149,7 @@
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -203,17 +206,32 @@
   animation: um-card-in 0.4s ease-out both;
 }
 
-.um-section:nth-child(3) { animation-delay: 0.3s; }
-.um-section:nth-child(4) { animation-delay: 0.35s; }
-.um-section:nth-child(5) { animation-delay: 0.4s; }
-.um-section:nth-child(6) { animation-delay: 0.45s; }
-.um-section:nth-child(7) { animation-delay: 0.5s; }
+.um-section:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.um-section:nth-child(4) {
+  animation-delay: 0.35s;
+}
+
+.um-section:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+.um-section:nth-child(6) {
+  animation-delay: 0.45s;
+}
+
+.um-section:nth-child(7) {
+  animation-delay: 0.5s;
+}
 
 @keyframes um-card-in {
   from {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -288,21 +306,27 @@
 .um-col-id {
   width: 140px;
 }
+
 .um-col-name {
   width: 220px;
 }
+
 .um-col-phone {
   width: 140px;
 }
+
 .um-col-email {
   width: 260px;
 }
+
 .um-col-qual {
   width: 320px;
 }
+
 .um-col-spec {
   width: 220px;
 }
+
 .um-col-actions {
   width: 360px;
 }
@@ -410,6 +434,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -435,6 +460,7 @@
     opacity: 0;
     transform: translateY(30px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -750,7 +776,7 @@
     font-size: 1.5rem;
   }
 
-  .um-header > div:last-child {
+  .um-header>div:last-child {
     display: flex;
     gap: 0.75rem;
   }
@@ -805,4 +831,119 @@
     padding: 0.75rem;
     font-size: 0.8rem;
   }
+}
+
+
+/* ========================================
+   MultiSelectWithAdd Component Styles
+   ======================================== */
+.um-multiselect-container {
+  position: relative;
+  background: white;
+  border: 2px solid var(--um-border);
+  border-radius: var(--um-radius-md);
+  transition: var(--um-transition);
+}
+
+.um-multiselect-container:focus-within {
+  border-color: var(--um-primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.um-multiselect-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  min-height: 48px;
+}
+
+.um-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--um-primary);
+  padding: 0.25rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.um-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--um-primary);
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.um-chip-remove:hover {
+  background: var(--um-primary);
+  color: white;
+}
+
+.um-multiselect-input {
+  flex: 1;
+  min-width: 120px;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0.25rem 0.5rem !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
+.um-multiselect-input:focus {
+  outline: none;
+}
+
+.um-multiselect-dropdown {
+  position: absolute;
+  top: 100%;
+  left: -2px;
+  right: -2px;
+  background: white;
+  border: 2px solid var(--um-border);
+  border-top: none;
+  border-radius: 0 0 var(--um-radius-md) var(--um-radius-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: var(--um-shadow-lg);
+}
+
+.um-multiselect-dropdown li {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: var(--um-transition);
+  font-size: 0.95rem;
+  color: var(--um-text-primary);
+}
+
+.um-multiselect-dropdown li:hover {
+  background: var(--um-background);
+  color: var(--um-primary);
+}
+
+.um-multiselect-add {
+  color: var(--um-primary) !important;
+  font-weight: 600;
+  border-top: 1px solid var(--um-border);
+}
+
+.um-multiselect-empty {
+  color: var(--um-text-secondary) !important;
+  font-style: italic;
+  cursor: default !important;
 }

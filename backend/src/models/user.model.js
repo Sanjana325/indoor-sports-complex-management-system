@@ -63,15 +63,17 @@ async function listAllForAdmin() {
         ua.IsActive,
         ua.CreatedAt,
         ua.MustChangePassword,
-        c.Specialization,
+        GROUP_CONCAT(DISTINCT s.SportName ORDER BY s.SportName SEPARATOR ', ') AS Specializations,
         GROUP_CONCAT(DISTINCT q.QualificationName ORDER BY q.QualificationName SEPARATOR ', ') AS Qualifications
      FROM UserAccount ua
      LEFT JOIN Coach c ON c.UserID = ua.UserID
      LEFT JOIN CoachQualification cq ON cq.CoachID = c.CoachID
      LEFT JOIN Qualification q ON q.QualificationID = cq.QualificationID
+     LEFT JOIN CoachSport cs ON cs.CoachID = c.CoachID
+     LEFT JOIN Sport s ON s.SportID = cs.SportID
      GROUP BY
         ua.UserID, ua.FirstName, ua.LastName, ua.Email, ua.PhoneNumber, ua.Role,
-        ua.IsActive, ua.CreatedAt, ua.MustChangePassword, c.Specialization
+        ua.IsActive, ua.CreatedAt, ua.MustChangePassword
      ORDER BY ua.CreatedAt DESC`
   );
   return rows;
@@ -108,7 +110,7 @@ async function deleteUserHardById(userId) {
   } catch (err) {
     try {
       await conn.rollback();
-    } catch (e) {}
+    } catch (e) { }
     throw err;
   } finally {
     conn.release();
