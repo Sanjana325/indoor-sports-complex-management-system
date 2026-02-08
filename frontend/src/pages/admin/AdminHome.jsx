@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import "../../styles/AdminHome.css";
 
 import CalendarPanel from "../../components/CalendarPanel";
 import DayDetailsModal from "../../components/DayDetailsModal";
 import AvailabilityPanel from "../../components/AvailabilityPanel";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -12,11 +14,10 @@ function toISODate(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 function fmtDuration(start, end) {
-  // start/end: "HH:mm"
   if (!start || !end) return "-";
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
-  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  const mins = eh * 60 + em - (sh * 60 + sm);
   if (!Number.isFinite(mins) || mins <= 0) return "-";
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -51,18 +52,16 @@ function sportLabelFromKey(k) {
 }
 
 export default function AdminHome() {
-  // ✅ tiles (UI-only mock totals — later from backend)
   const totals = useMemo(
     () => ({
       users: 124,
       bookings: 38,
       payments: 29,
-      classes: 12,
+      classes: 12
     }),
     []
   );
 
-  // ✅ UI-only mock data for calendar
   const [bookings] = useState([
     {
       id: "B-500001",
@@ -70,7 +69,7 @@ export default function AdminHome() {
       court: "Badminton - A",
       date: "2026-09-30",
       time: "09:30-10:30",
-      status: "CONFIRMED",
+      status: "CONFIRMED"
     },
     {
       id: "B-500002",
@@ -78,7 +77,7 @@ export default function AdminHome() {
       court: "Cricket - A",
       date: "2026-09-30",
       time: "13:00-15:00",
-      status: "PENDING_PAYMENT",
+      status: "PENDING_PAYMENT"
     },
     {
       id: "B-500003",
@@ -86,8 +85,8 @@ export default function AdminHome() {
       court: "Futsal - A",
       date: "2026-09-30",
       time: "19:00-21:30",
-      status: "CONFIRMED",
-    },
+      status: "CONFIRMED"
+    }
   ]);
 
   const [blockedSlots] = useState([
@@ -97,8 +96,8 @@ export default function AdminHome() {
       date: "2026-09-30",
       startTime: "11:00",
       endTime: "12:30",
-      reason: "Maintenance",
-    },
+      reason: "Maintenance"
+    }
   ]);
 
   const [classes] = useState([
@@ -109,11 +108,10 @@ export default function AdminHome() {
       coachName: "Sahan Fernando",
       date: "2026-09-30",
       startTime: "16:00",
-      endTime: "17:30",
-    },
+      endTime: "17:30"
+    }
   ]);
 
-  // ✅ Calendar controls
   const [monthDate, setMonthDate] = useState(() => {
     const t = new Date();
     return new Date(t.getFullYear(), t.getMonth(), 1);
@@ -122,7 +120,6 @@ export default function AdminHome() {
   const [selectedDateISO, setSelectedDateISO] = useState(() => toISODate(new Date()));
   const [isDayOpen, setIsDayOpen] = useState(false);
 
-  // ✅ Events counts for mini-bars inside month cells
   const eventsByDate = useMemo(() => {
     const map = {};
 
@@ -154,7 +151,6 @@ export default function AdminHome() {
     return map;
   }, [bookings, blockedSlots, classes]);
 
-  // ✅ Data shown in day popup
   const dayData = useMemo(() => {
     const dateISO = selectedDateISO;
 
@@ -170,7 +166,7 @@ export default function AdminHome() {
           statusKey: statusKeyBooking(b.status),
           statusLabel: statusLabelBooking(b.status),
           sportKey,
-          sportLabel: sportLabelFromKey(sportKey),
+          sportLabel: sportLabelFromKey(sportKey)
         };
       });
 
@@ -180,13 +176,12 @@ export default function AdminHome() {
       .filter((c) => c.date === dateISO)
       .map((c) => ({
         ...c,
-        duration: fmtDuration(c.startTime, c.endTime),
+        duration: fmtDuration(c.startTime, c.endTime)
       }));
 
     return { bookings: dayBookings, blocked: dayBlocked, classes: dayClasses };
   }, [selectedDateISO, bookings, blockedSlots, classes]);
 
-  // ✅ Availability panel (UI-only logic)
   const availability = useMemo(() => {
     const dateISO = selectedDateISO;
 
@@ -194,7 +189,7 @@ export default function AdminHome() {
       { name: "Cricket - A", sportKey: "cricket" },
       { name: "Cricket - B", sportKey: "cricket" },
       { name: "Badminton - A", sportKey: "badminton" },
-      { name: "Futsal - A", sportKey: "futsal" },
+      { name: "Futsal - A", sportKey: "futsal" }
     ];
 
     function isBlocked(courtName) {
@@ -205,12 +200,8 @@ export default function AdminHome() {
     }
 
     return courtList.map((c) => {
-      if (isBlocked(c.name)) {
-        return { ...c, statusKey: "blocked", statusLabel: "Blocked" };
-      }
-      if (isBooked(c.name)) {
-        return { ...c, statusKey: "booked", statusLabel: "Booked" };
-      }
+      if (isBlocked(c.name)) return { ...c, statusKey: "blocked", statusLabel: "Blocked" };
+      if (isBooked(c.name)) return { ...c, statusKey: "booked", statusLabel: "Booked" };
       return { ...c, statusKey: "available", statusLabel: "Available" };
     });
   }, [selectedDateISO, bookings, blockedSlots]);
@@ -220,11 +211,20 @@ export default function AdminHome() {
     setIsDayOpen(true);
   }
 
+  const [isSportsOpen, setIsSportsOpen] = useState(false);
+
   return (
     <div className="ah-page">
-      <h2 className="ah-title">Admin Home</h2>
+      <div className="ah-headrow">
+        <h2 className="ah-title">Admin Home</h2>
 
-      {/* 4 tiles */}
+        <div className="ah-actions">
+          <button className="ah-action-btn" type="button" onClick={() => setIsSportsOpen(true)}>
+            View All Sports
+          </button>
+        </div>
+      </div>
+
       <div className="ah-tiles">
         <div className="ah-tile">
           <div className="ah-tile-label">Total Users</div>
@@ -247,7 +247,6 @@ export default function AdminHome() {
         </div>
       </div>
 
-      {/* Calendar + Right panel */}
       <div className="ah-lower">
         <div className="ah-left">
           <CalendarPanel
@@ -271,6 +270,179 @@ export default function AdminHome() {
           onClose={() => setIsDayOpen(false)}
         />
       )}
+
+      {isSportsOpen && <SportsModal onClose={() => setIsSportsOpen(false)} />}
+    </div>
+  );
+}
+
+function SportsModal({ onClose }) {
+  const [sports, setSports] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [newSportName, setNewSportName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchSports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function fetchSports() {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/sports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.message || "Failed to load sports");
+        return;
+      }
+
+      const data = await res.json();
+      setSports(data.sports || []);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to connect to server");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAddSport(e) {
+    e.preventDefault();
+
+    const name = String(newSportName || "").trim().toUpperCase();
+    if (!name) return;
+
+    try {
+      setSaving(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/sports`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ sportName: name })
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.message || "Failed to add sport");
+        return;
+      }
+
+      setNewSportName("");
+      await fetchSports();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to connect to server");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteSport(sportId, sportName) {
+    const ok = window.confirm(`Delete "${sportName}"?`);
+    if (!ok) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/sports/${sportId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.message || "Failed to delete sport");
+        return;
+      }
+
+      await fetchSports();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to connect to server");
+    }
+  }
+
+  return (
+    <div className="ah-modal-backdrop" onMouseDown={onClose}>
+      <div className="ah-modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="ah-modal-head">
+          <div>
+            <div className="ah-modal-title">Sports</div>
+            <div className="ah-modal-sub">Add and remove sports used for courts and classes</div>
+          </div>
+          <button type="button" className="ah-x" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        <div className="ah-modal-body">
+          <div className="ah-sports-grid">
+            <div className="ah-sports-card">
+              <div className="ah-list-title">Add Sport</div>
+
+              <form className="ah-sport-form" onSubmit={handleAddSport}>
+                <input
+                  className="ah-sport-input"
+                  type="text"
+                  placeholder="e.g. CHESS"
+                  value={newSportName}
+                  onChange={(e) => setNewSportName(e.target.value.toUpperCase())}
+                />
+                <button className="ah-sport-add" type="submit" disabled={saving}>
+                  {saving ? "Adding..." : "Add"}
+                </button>
+              </form>
+
+              <div className="ah-sport-hint">
+                Sports will appear in the Add Court dropdown automatically.
+              </div>
+            </div>
+
+            <div className="ah-sports-card">
+              <div className="ah-list-title">All Sports</div>
+
+              {loading ? (
+                <div className="ah-empty">Loading...</div>
+              ) : sports.length === 0 ? (
+                <div className="ah-empty">No sports found</div>
+              ) : (
+                <div className="ah-sports-list">
+                  {sports.map((s) => (
+                    <div key={s.SportID} className="ah-sport-row">
+                      <div className="ah-sport-name">{String(s.SportName || "").toUpperCase()}</div>
+                      <button
+                        type="button"
+                        className="ah-sport-del"
+                        onClick={() => handleDeleteSport(s.SportID, s.SportName)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="ah-sport-hint">
+                If a sport is linked to courts or coaches, delete may be blocked by the database.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="ah-modal-foot">
+          <button type="button" className="ah-modal-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

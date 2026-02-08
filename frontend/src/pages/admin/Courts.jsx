@@ -3,15 +3,6 @@ import "../../styles/Courts.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-function makeId(prefix = "C") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
 function statusLabel(s) {
   if (s === "AVAILABLE") return "Available";
   if (s === "BOOKED") return "Booked";
@@ -26,7 +17,7 @@ function formatLKR(amount) {
 }
 
 function getSportIcon(sportName) {
-  const s = sportName.toUpperCase();
+  const s = String(sportName || "").toUpperCase();
   switch (s) {
     case "CRICKET":
       return (
@@ -52,7 +43,6 @@ function getSportIcon(sportName) {
         </svg>
       );
     default:
-      // Generic ball icon for other sports
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="10" />
@@ -64,61 +54,16 @@ function getSportIcon(sportName) {
 }
 
 export default function Courts() {
-  const [courts, setCourts] = useState([
-    // Keep initial mock data or clear it if you want purely backend. 
-    // For now keeping it to prevent empty screen if backend is empty.
-    {
-      id: "C-200001",
-      sport: "CRICKET",
-      name: "Cricket - A",
-      capacity: 22,
-      pricePerHour: 2500,
-      status: "AVAILABLE",
-      createdAt: "2026-01-18T10:00:00.000Z",
-    },
-    {
-      id: "C-200002",
-      sport: "CRICKET",
-      name: "Cricket - B",
-      capacity: 22,
-      pricePerHour: 2500,
-      status: "MAINTENANCE",
-      createdAt: "2026-01-18T12:00:00.000Z",
-    },
-    {
-      id: "C-200003",
-      sport: "BADMINTON",
-      name: "Badminton - A",
-      capacity: 4,
-      pricePerHour: 2000,
-      status: "AVAILABLE",
-      createdAt: "2026-01-19T08:00:00.000Z",
-    },
-    {
-      id: "C-200004",
-      sport: "FUTSAL",
-      name: "Futsal - A",
-      capacity: 12,
-      pricePerHour: 3500,
-      status: "BOOKED",
-      createdAt: "2026-01-19T09:30:00.000Z",
-    },
-  ]);
-
+  const [courts, setCourts] = useState([]);
   const [sports, setSports] = useState([]);
+  const [rawSports, setRawSports] = useState([]);
   const [loadingSports, setLoadingSports] = useState(false);
+  const [loadingCourts, setLoadingCourts] = useState(false);
 
-  // Court Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  // Add Sport Modal
-  const [isSportModalOpen, setIsSportModalOpen] = useState(false);
-  const [newSportName, setNewSportName] = useState("");
-  const [sportLoading, setSportLoading] = useState(false);
-
-  // Form Fields
   const [sport, setSport] = useState("");
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
@@ -128,9 +73,10 @@ export default function Courts() {
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
-  // Fetch sports on mount
   useEffect(() => {
     fetchSports();
+    fetchCourts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchSports() {
@@ -138,36 +84,24 @@ export default function Courts() {
       setLoadingSports(true);
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/api/admin/sports`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) {
-        const data = await res.json();
-        // data.sports should be an array of objects { SportID, SportName }
-        // We'll map them to a simple array of strings for the existing logic, or keep objects
-        // The existing logic uses strings like "CRICKET".
-        // Let's assume the backend returns objects.
-        // We will store them as objects but also derive a list of names.
-        // For compatibility with current 'courts' state which uses 'sport' string:
-        const sportNames = data.sports.map(s => s.SportName.toUpperCase());
+      if (!res.ok) return;
 
-        // Merge with defaults if needed, or just use backend.
-        // Let's use backend + defaults if empty to avoid breaking UI immediately?
-        // Actually, let's trust the backend.
-        // But we need to ensure the hardcoded courts sports are in the list or handled.
+      const data = await res.json();
+      const list = data.sports || [];
+      setRawSports(list);
 
-        // Also we want to ensure unique sports
-        const uniqueSports = Array.from(new Set([...sportNames, "CRICKET", "BADMINTON", "FUTSAL"]));
-        // (Adding defaults so the mock data courts still show up even if DB is empty)
+      const names = list
+        .map((s) => String(s.SportName || "").toUpperCase())
+        .filter(Boolean);
 
-        setSports(uniqueSports);
+      setSports(names);
 
-        // If we have sports and no current selection, select the first one
-        if (uniqueSports.length > 0 && !sport) {
-          setSport(uniqueSports[0]);
-        }
-      }
+      setSport((prev) => {
+        if (prev) return prev;
+        return names[0] || "";
+      });
     } catch (err) {
       console.error("Failed to fetch sports", err);
     } finally {
@@ -175,40 +109,64 @@ export default function Courts() {
     }
   }
 
+  async function fetchCourts() {
+    try {
+      setLoadingCourts(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/courts`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const rows = data.courts || [];
+
+      const mapped = rows.map((r) => {
+        const sportsText = String(r.Sports || "");
+        const firstSport = sportsText.split(",")[0]?.trim() || "";
+        return {
+          id: r.CourtID,
+          sport: firstSport.toUpperCase(),
+          sportsText,
+          name: r.CourtName,
+          capacity: r.Capacity,
+          pricePerHour: r.PricePerHour,
+          status: r.Status
+        };
+      });
+
+      setCourts(mapped);
+    } catch (err) {
+      console.error("Failed to fetch courts", err);
+    } finally {
+      setLoadingCourts(false);
+    }
+  }
+
   const filteredCourts = useMemo(() => {
     if (!normalizedSearch) return courts;
-
     return courts.filter((c) => {
-      const hay = `${c.id} ${c.sport} ${c.name} ${c.capacity} ${c.pricePerHour ?? ""} ${c.status}`.toLowerCase();
+      const hay = `${c.id} ${c.sportsText} ${c.name} ${c.capacity} ${c.pricePerHour ?? ""} ${c.status}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [courts, normalizedSearch]);
 
-  // Group courts by sport
   const sections = useMemo(() => {
-    // We want a section for each available sport that has courts, 
-    // OR just each available sport from the 'sports' list?
-    // Let's iterate over 'sports' state.
+    const bySport = sports.map((sportName) => {
+      const rows = filteredCourts.filter((c) => c.sport === sportName);
+      return { sport: sportName, rows };
+    });
 
-    return sports.map(sportName => {
-      const rows = filteredCourts
-        .filter(c => c.sport === sportName)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const unknownRows = filteredCourts.filter((c) => !sports.includes(c.sport));
+    if (unknownRows.length > 0) {
+      bySport.unshift({ sport: "OTHER", rows: unknownRows });
+    }
 
-      return {
-        sport: sportName,
-        rows
-      };
-    }).filter(sec => sec.rows.length > 0 || (sports.includes(sec.sport)));
-    // Show empty sections if strictly needed? 
-    // Let's only show sections if they have rows to mimic previous behavior, 
-    // UNLESS it's important to show empty states. 
-    // The previous code showed 3 specific sections even if empty (via 'latestCricket').
-    // So let's show all known sports.
+    return bySport;
   }, [sports, filteredCourts]);
 
   function resetForm() {
-    setSport(sports[0] || "CRICKET");
+    setSport(sports[0] || "");
     setName("");
     setCapacity("");
     setPricePerHour("");
@@ -225,11 +183,11 @@ export default function Courts() {
   function openEditModal(court) {
     setMode("EDIT");
     setEditingId(court.id);
-    setSport(court.sport);
-    setName(court.name);
-    setCapacity(String(court.capacity));
+    setSport(court.sport || sports[0] || "");
+    setName(court.name || "");
+    setCapacity(String(court.capacity ?? ""));
     setPricePerHour(String(court.pricePerHour ?? ""));
-    setStatus(court.status);
+    setStatus(court.status || "AVAILABLE");
     setIsModalOpen(true);
   }
 
@@ -237,10 +195,28 @@ export default function Courts() {
     setIsModalOpen(false);
   }
 
-  function handleRemove(id) {
+  async function handleRemove(id) {
     const ok = window.confirm("Are you sure you want to remove this court?");
     if (!ok) return;
-    setCourts((prev) => prev.filter((c) => c.id !== id));
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/courts/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        setCourts((prev) => prev.filter((c) => c.id !== id));
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      alert(data.message || "Failed to delete court");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to connect to server");
+    }
   }
 
   function validateForm() {
@@ -256,7 +232,7 @@ export default function Courts() {
     return null;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const err = validateForm();
@@ -268,90 +244,79 @@ export default function Courts() {
     const capNum = Number(capacity);
     const priceNum = Number(pricePerHour);
 
+    const token = localStorage.getItem("token");
+    const selectedSportObj = rawSports.find(
+      (s) => String(s.SportName || "").toUpperCase() === sport.toUpperCase()
+    );
+    const sportIds = selectedSportObj ? [selectedSportObj.SportID] : [];
+
+    if (sportIds.length === 0) {
+      alert("Selected sport is not configured in the database yet.");
+      return;
+    }
+
     if (mode === "ADD") {
-      const newCourt = {
-        id: makeId("C"),
-        sport,
-        name: name.trim(),
-        capacity: capNum,
-        pricePerHour: priceNum,
-        status: "AVAILABLE",
-        createdAt: nowIso(),
-      };
-      setCourts((prev) => [newCourt, ...prev]);
-      closeModal();
-      resetForm();
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/courts`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: name.trim(),
+            capacity: capNum,
+            pricePerHour: priceNum,
+            sportIds
+          })
+        });
+
+        if (res.ok) {
+          closeModal();
+          resetForm();
+          await fetchCourts();
+          return;
+        }
+
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.message || "Failed to create court");
+      } catch (error) {
+        console.error("Court creation failed", error);
+        alert("Failed to create court");
+      }
       return;
     }
 
     if (mode === "EDIT") {
-      setCourts((prev) =>
-        prev.map((c) =>
-          c.id === editingId
-            ? {
-              ...c,
-              sport,
-              name: name.trim(),
-              capacity: capNum,
-              pricePerHour: priceNum,
-              status,
-            }
-            : c
-        )
-      );
-      closeModal();
-      resetForm();
-    }
-  }
-
-  // Add Sport Handlers
-  function openSportModal() {
-    setNewSportName("");
-    setIsSportModalOpen(true);
-  }
-
-  function closeSportModal() {
-    setIsSportModalOpen(false);
-  }
-
-  async function handleAddSport(e) {
-    e.preventDefault();
-    if (!newSportName.trim()) return;
-
-    try {
-      setSportLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/sports`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ sportName: newSportName.trim() })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        // data.sport is the new sport object
-        const sName = data.sport.SportName.toUpperCase();
-
-        // Add to sports list if not exists
-        setSports(prev => {
-          if (prev.includes(sName)) return prev;
-          return [...prev, sName];
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/courts/${editingId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: name.trim(),
+            capacity: capNum,
+            pricePerHour: priceNum,
+            status,
+            sportIds
+          })
         });
 
-        closeSportModal();
-        alert("Sport added successfully!");
-      } else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.message || "Failed to add sport");
+        if (res.ok) {
+          closeModal();
+          resetForm();
+          await fetchCourts();
+          return;
+        }
+
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.message || "Failed to update court");
+      } catch (error) {
+        console.error("Court update failed", error);
+        alert("Failed to update court");
       }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to connect to server");
-    } finally {
-      setSportLoading(false);
     }
   }
 
@@ -361,18 +326,10 @@ export default function Courts() {
         <header className="courts-header">
           <div className="courts-header-content">
             <h1 className="courts-title">Courts Management</h1>
-            <p className="courts-subtitle">Manage all sports courts, pricing, and availability</p>
+            <p className="courts-subtitle">Manage all courts, pricing, and availability</p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="courts-btn-secondary" type="button" onClick={openSportModal}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 8 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="16" />
-                <line x1="8" y1="12" x2="16" y2="12" />
-              </svg>
-              Add Sport
-            </button>
+          <div style={{ display: "flex", gap: "10px" }}>
             <button className="courts-btn-add" type="button" onClick={openAddModal}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -399,18 +356,29 @@ export default function Courts() {
           </div>
         </div>
 
-        {sections.map(section => (
-          <section className="courts-section" key={section.sport}>
-            <div className="courts-section-header">
-              <div className="courts-section-icon">
-                {getSportIcon(section.sport)}
+        {loadingCourts ? (
+          <div className="courts-empty-state">
+            <p className="courts-empty-text">Loading courts...</p>
+          </div>
+        ) : (
+          sections.map((section) => (
+            <section className="courts-section" key={section.sport}>
+              <div className="courts-section-header">
+                <div className="courts-section-icon">{getSportIcon(section.sport)}</div>
+                <h2 className="courts-section-title">
+                  {section.sport === "OTHER"
+                    ? "Other Courts"
+                    : section.sport.charAt(0).toUpperCase() +
+                    section.sport.slice(1).toLowerCase() +
+                    " Courts"}
+                </h2>
+                <span className="courts-section-count">{section.rows.length}</span>
               </div>
-              <h2 className="courts-section-title">{section.sport.charAt(0).toUpperCase() + section.sport.slice(1).toLowerCase()} Courts</h2>
-              <span className="courts-section-count">{section.rows.length}</span>
-            </div>
-            <CourtTable rows={section.rows} onEdit={openEditModal} onRemove={handleRemove} />
-          </section>
-        ))}
+
+              <CourtTable rows={section.rows} onEdit={openEditModal} onRemove={handleRemove} />
+            </section>
+          ))
+        )}
       </div>
 
       {isModalOpen && (
@@ -430,28 +398,31 @@ export default function Courts() {
               <div className="courts-grid">
                 <div className="courts-field">
                   <label>Sport</label>
-                  <select value={sport} onChange={(e) => setSport(e.target.value)}>
-                    {sports.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
+                  <select
+                    value={sport}
+                    onChange={(e) => setSport(e.target.value)}
+                    disabled={loadingSports || sports.length === 0}
+                  >
+                    {sports.length === 0 ? (
+                      <option value="">No sports available</option>
+                    ) : (
+                      sports.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
-                {mode === "EDIT" ? (
-                  <div className="courts-field">
-                    <label>Status</label>
-                    <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                      <option value="AVAILABLE">Available</option>
-                      <option value="BOOKED">Booked</option>
-                      <option value="MAINTENANCE">Maintenance</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div className="courts-field">
-                    <label>Status</label>
-                    <input type="text" value="Available" disabled />
-                  </div>
-                )}
+                <div className="courts-field">
+                  <label>Status</label>
+                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                    <option value="AVAILABLE">Available</option>
+                    <option value="BOOKED">Booked</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                  </select>
+                </div>
 
                 <div className="courts-field courts-full">
                   <label>Court Name</label>
@@ -489,53 +460,19 @@ export default function Courts() {
                   Cancel
                 </button>
 
-                <button className="courts-btn-primary" type="submit">
+                <button className="courts-btn-primary" type="submit" disabled={sports.length === 0}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                   {mode === "ADD" ? "Add Court" : "Save Changes"}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Add Sport Modal */}
-      {isSportModalOpen && (
-        <div className="courts-modal-backdrop" onMouseDown={closeSportModal}>
-          <div className="courts-modal" style={{ maxWidth: '400px' }} onMouseDown={(e) => e.stopPropagation()}>
-            <div className="courts-modal-header">
-              <h3 className="courts-modal-title">Add New Sport</h3>
-              <button className="courts-modal-close" type="button" onClick={closeSportModal}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <form className="courts-form" onSubmit={handleAddSport}>
-              <div className="courts-field courts-full">
-                <label>Sport Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. NETBALL"
-                  value={newSportName}
-                  onChange={(e) => setNewSportName(e.target.value.toUpperCase())}
-                  autoFocus
-                />
-              </div>
-
-              <div className="courts-form-actions">
-                <button className="courts-btn-secondary" type="button" onClick={closeSportModal}>
-                  Cancel
-                </button>
-
-                <button className="courts-btn-primary" type="submit" disabled={sportLoading}>
-                  {sportLoading ? "Adding..." : "Add Sport"}
-                </button>
-              </div>
+              {sports.length === 0 && (
+                <div style={{ marginTop: 10, fontWeight: 700, opacity: 0.75 }}>
+                  No sports in database. Add sports from Admin Home → View All Sports.
+                </div>
+              )}
             </form>
           </div>
         </div>
@@ -575,9 +512,11 @@ function CourtTable({ rows, onEdit, onRemove }) {
                 <td>
                   <span className="courts-id">{c.id}</span>
                 </td>
+
                 <td>
                   <span className="courts-name">{c.name}</span>
                 </td>
+
                 <td>
                   <div className="courts-capacity">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -589,11 +528,13 @@ function CourtTable({ rows, onEdit, onRemove }) {
                     {c.capacity}
                   </div>
                 </td>
+
                 <td>
                   <span className="courts-price">{formatLKR(c.pricePerHour)}</span>
                 </td>
+
                 <td>
-                  <span className={`courts-badge courts-badge-${c.status.toLowerCase()}`}>
+                  <span className={`courts-badge courts-badge-${String(c.status || "").toLowerCase()}`}>
                     {statusLabel(c.status)}
                   </span>
                 </td>
@@ -607,6 +548,7 @@ function CourtTable({ rows, onEdit, onRemove }) {
                       </svg>
                       Edit
                     </button>
+
                     <button className="courts-btn-remove" type="button" onClick={() => onRemove(c.id)}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="3 6 5 6 21 6" />

@@ -34,7 +34,7 @@ async function upsertQualificationIdByName(qualificationName, conn = pool) {
 
   await conn
     .query(`INSERT INTO Qualification (QualificationName) VALUES (?)`, [name])
-    .catch(() => {});
+    .catch(() => { });
 
   const [rows] = await conn.query(
     `SELECT QualificationID FROM Qualification WHERE QualificationName = ? LIMIT 1`,
@@ -50,7 +50,7 @@ async function upsertSportIdByName(sportName, conn = pool) {
 
   await conn
     .query(`INSERT INTO Sport (SportName) VALUES (?)`, [name])
-    .catch(() => {});
+    .catch(() => { });
 
   const [rows] = await conn.query(`SELECT SportID FROM Sport WHERE SportName = ? LIMIT 1`, [name]);
   return rows.length ? rows[0].SportID : null;
@@ -122,29 +122,7 @@ async function deleteCoachAndLinksByUserId(userId, conn = pool) {
   await conn.query(`DELETE FROM Coach WHERE CoachID = ?`, [coachId]);
 }
 
-async function listSports(search = "", conn = pool) {
-  const q = `%${normalizeText(search)}%`;
-  const [rows] = await conn.query(
-    `SELECT SportID, SportName
-     FROM Sport
-     WHERE IsActive = TRUE AND SportName LIKE ?
-     ORDER BY SportName ASC
-     LIMIT 50`,
-    [q]
-  );
-  return rows;
-}
 
-async function createSportIfNotExists(sportName, conn = pool) {
-  const sportId = await upsertSportIdByName(sportName, conn);
-  if (!sportId) return null;
-
-  const [rows] = await conn.query(
-    `SELECT SportID, SportName FROM Sport WHERE SportID = ? LIMIT 1`,
-    [sportId]
-  );
-  return rows.length ? rows[0] : null;
-}
 
 async function listQualifications(search = "", conn = pool) {
   const q = `%${normalizeText(search)}%`;
@@ -184,9 +162,6 @@ module.exports = {
   setCoachSportsByNames,
 
   deleteCoachAndLinksByUserId,
-
-  listSports,
-  createSportIfNotExists,
 
   listQualifications,
   createQualificationIfNotExists
