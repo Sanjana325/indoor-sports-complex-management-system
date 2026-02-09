@@ -61,10 +61,12 @@ export default function Courts() {
   const [loadingCourts, setLoadingCourts] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSportDropdownOpen, setIsSportDropdownOpen] = useState(false);
   const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  const [sport, setSport] = useState("");
+  // Form Fields
+  const [selectedSports, setSelectedSports] = useState([]);
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
   const [pricePerHour, setPricePerHour] = useState("");
@@ -97,11 +99,6 @@ export default function Courts() {
         .filter(Boolean);
 
       setSports(names);
-
-      setSport((prev) => {
-        if (prev) return prev;
-        return names[0] || "";
-      });
     } catch (err) {
       console.error("Failed to fetch sports", err);
     } finally {
@@ -123,10 +120,11 @@ export default function Courts() {
 
       const mapped = rows.map((r) => {
         const sportsText = String(r.Sports || "");
-        const firstSport = sportsText.split(",")[0]?.trim() || "";
+        const sportList = sportsText.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
+
         return {
           id: r.CourtID,
-          sport: firstSport.toUpperCase(),
+          sportList,
           sportsText,
           name: r.CourtName,
           capacity: r.Capacity,
@@ -152,12 +150,17 @@ export default function Courts() {
   }, [courts, normalizedSearch]);
 
   const sections = useMemo(() => {
-    const bySport = sports.map((sportName) => {
-      const rows = filteredCourts.filter((c) => c.sport === sportName);
-      return { sport: sportName, rows };
-    });
+    // Only create sections for sports that have courts
+    const bySport = sports
+      .map((sportName) => {
+        // A court belongs to this section if its list includes this sport
+        const rows = filteredCourts.filter((c) => c.sportList && c.sportList.includes(sportName));
+        return { sport: sportName, rows };
+      })
+      .filter((section) => section.rows.length > 0);
 
-    const unknownRows = filteredCourts.filter((c) => !sports.includes(c.sport));
+    // Courts that don't match any known sport
+    const unknownRows = filteredCourts.filter((c) => !c.sportList || !c.sportList.some(s => sports.includes(s)));
     if (unknownRows.length > 0) {
       bySport.unshift({ sport: "OTHER", rows: unknownRows });
     }
@@ -166,7 +169,8 @@ export default function Courts() {
   }, [sports, filteredCourts]);
 
   function resetForm() {
-    setSport(sports[0] || "");
+    setSelectedSports([]);
+    setIsSportDropdownOpen(false);
     setName("");
     setCapacity("");
     setPricePerHour("");
@@ -183,7 +187,7 @@ export default function Courts() {
   function openEditModal(court) {
     setMode("EDIT");
     setEditingId(court.id);
-    setSport(court.sport || sports[0] || "");
+    setSelectedSports(court.sportList || []);
     setName(court.name || "");
     setCapacity(String(court.capacity ?? ""));
     setPricePerHour(String(court.pricePerHour ?? ""));
@@ -193,6 +197,16 @@ export default function Courts() {
 
   function closeModal() {
     setIsModalOpen(false);
+  }
+
+  function toggleSportSelection(sportName) {
+    setSelectedSports(prev => {
+      if (prev.includes(sportName)) {
+        return prev.filter(s => s !== sportName);
+      } else {
+        return [...prev, sportName];
+      }
+    });
   }
 
   async function handleRemove(id) {
@@ -220,7 +234,7 @@ export default function Courts() {
   }
 
   function validateForm() {
-    if (!sport) return "Select a valid sport";
+    if (selectedSports.length === 0) return "Select at least one sport";
     if (!name.trim()) return "Court name is required";
 
     const capNum = Number(capacity);
@@ -243,80 +257,57 @@ export default function Courts() {
 
     const capNum = Number(capacity);
     const priceNum = Number(pricePerHour);
-
     const token = localStorage.getItem("token");
-    const selectedSportObj = rawSports.find(
-      (s) => String(s.SportName || "").toUpperCase() === sport.toUpperCase()
-    );
-    const sportIds = selectedSportObj ? [selectedSportObj.SportID] : [];
+
+    // Map selected sports names to IDs
+    const sportIds = selectedSports.map(name => {
+      const obj = rawSports.find(s => String(s.SportName || "").toUpperCase() === name);
+      return obj ? obj.SportID : null;
+    }).filter(Boolean);
 
     if (sportIds.length === 0) {
-      alert("Selected sport is not configured in the database yet.");
+      alert("Selected sports are invalid.");
       return;
     }
 
-    if (mode === "ADD") {
-      try {
-        const res = await fetch(`${API_BASE}/api/admin/courts`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: name.trim(),
-            capacity: capNum,
-            pricePerHour: priceNum,
-            sportIds
-          })
-        });
+    const payload = {
+      name: name.trim(),
+      capacity: capNum,
+      pricePerHour: priceNum,
+      status: mode === "EDIT" ? status : "AVAILABLE",
+      sportIds
+    };
 
-        if (res.ok) {
-          closeModal();
-          resetForm();
-          await fetchCourts();
-          return;
-        }
+    try {
+      let url = `${API_BASE}/api/admin/courts`;
+      let method = "POST";
 
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.message || "Failed to create court");
-      } catch (error) {
-        console.error("Court creation failed", error);
-        alert("Failed to create court");
+      if (mode === "EDIT") {
+        url = `${url}/${editingId}`;
+        method = "PUT";
       }
-      return;
-    }
 
-    if (mode === "EDIT") {
-      try {
-        const res = await fetch(`${API_BASE}/api/admin/courts/${editingId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: name.trim(),
-            capacity: capNum,
-            pricePerHour: priceNum,
-            status,
-            sportIds
-          })
-        });
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
 
-        if (res.ok) {
-          closeModal();
-          resetForm();
-          await fetchCourts();
-          return;
-        }
-
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.message || "Failed to update court");
-      } catch (error) {
-        console.error("Court update failed", error);
-        alert("Failed to update court");
+      if (res.ok) {
+        closeModal();
+        resetForm();
+        await fetchCourts();
+        return;
       }
+
+      const errorData = await res.json().catch(() => ({}));
+      alert(errorData.message || `Failed to ${mode === "ADD" ? "create" : "update"} court`);
+    } catch (error) {
+      console.error("Court save failed", error);
+      alert(`Failed to ${mode === "ADD" ? "create" : "update"} court`);
     }
   }
 
@@ -396,23 +387,84 @@ export default function Courts() {
 
             <form className="courts-form" onSubmit={handleSubmit}>
               <div className="courts-grid">
-                <div className="courts-field">
-                  <label>Sport</label>
-                  <select
-                    value={sport}
-                    onChange={(e) => setSport(e.target.value)}
-                    disabled={loadingSports || sports.length === 0}
-                  >
-                    {sports.length === 0 ? (
-                      <option value="">No sports available</option>
-                    ) : (
-                      sports.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))
+                <div className="courts-field courts-full">
+                  <label>Applicable Sports</label>
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsSportDropdownOpen(!isSportDropdownOpen)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        background: '#fff',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '14px',
+                        color: selectedSports.length > 0 ? '#333' : '#888'
+                      }}
+                    >
+                      <span>
+                        {selectedSports.length === 0
+                          ? "Select sports..."
+                          : selectedSports.join(", ")}
+                      </span>
+                      <span style={{ fontSize: '12px', opacity: 0.7 }}>▼</span>
+                    </button>
+
+                    {isSportDropdownOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          backgroundColor: '#fff',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          marginTop: '4px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                          zIndex: 10,
+                          maxHeight: '200px',
+                          overflowY: 'auto'
+                        }}
+                      >
+                        {sports.length === 0 ? (
+                          <div style={{ padding: '10px', color: '#888', fontSize: '13px' }}>No sports available</div>
+                        ) : (
+                          sports.map(s => {
+                            const isSelected = selectedSports.includes(s);
+                            return (
+                              <div
+                                key={s}
+                                onClick={() => toggleSportSelection(s)}
+                                style={{
+                                  padding: '8px 12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid #f0f0f0',
+                                  backgroundColor: isSelected ? '#f9f9ff' : '#fff'
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  readOnly
+                                  style={{ marginRight: '10px' }}
+                                />
+                                <span style={{ fontSize: '14px', color: '#333' }}>{s}</span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     )}
-                  </select>
+                  </div>
                 </div>
 
                 <div className="courts-field">
@@ -484,30 +536,34 @@ export default function Courts() {
 function CourtTable({ rows, onEdit, onRemove }) {
   return (
     <div className="courts-table-wrap">
-      {rows.length === 0 ? (
-        <div className="courts-empty-state">
-          <svg className="courts-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <p className="courts-empty-text">No courts to show</p>
-        </div>
-      ) : (
-        <table className="courts-table">
-          <thead>
-            <tr>
-              <th>Court ID</th>
-              <th>Name</th>
-              <th>Capacity</th>
-              <th>Price / Hour</th>
-              <th>Status</th>
-              <th className="courts-actions-header">Actions</th>
-            </tr>
-          </thead>
+      <table className="courts-table">
+        <thead>
+          <tr>
+            <th>Court ID</th>
+            <th>Name</th>
+            <th>Capacity</th>
+            <th>Price / Hour</th>
+            <th>Status</th>
+            <th className="courts-actions-header">Actions</th>
+          </tr>
+        </thead>
 
-          <tbody>
-            {rows.map((c) => (
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan="6" style={{ textAlign: "center", padding: "30px", color: "#888" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 24, height: 24, opacity: 0.5 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>No courts to show</span>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            rows.map((c) => (
               <tr key={c.id}>
                 <td>
                   <span className="courts-id">{c.id}</span>
@@ -559,10 +615,10 @@ function CourtTable({ rows, onEdit, onRemove }) {
                   </div>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
