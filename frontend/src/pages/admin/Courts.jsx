@@ -64,7 +64,7 @@ export default function Courts() {
   const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  const [sport, setSport] = useState("");
+  const [selectedSports, setSelectedSports] = useState([]);
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
   const [pricePerHour, setPricePerHour] = useState("");
@@ -97,11 +97,8 @@ export default function Courts() {
         .filter(Boolean);
 
       setSports(names);
-
-      setSport((prev) => {
-        if (prev) return prev;
-        return names[0] || "";
-      });
+      // Don't auto-select a sport by default for multi-select, or just leave empty
+      setSelectedSports([]);
     } catch (err) {
       console.error("Failed to fetch sports", err);
     } finally {
@@ -123,10 +120,10 @@ export default function Courts() {
 
       const mapped = rows.map((r) => {
         const sportsText = String(r.Sports || "");
-        const firstSport = sportsText.split(",")[0]?.trim() || "";
+        const sportList = sportsText.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
         return {
           id: r.CourtID,
-          sport: firstSport.toUpperCase(),
+          sportsList: sportList,
           sportsText,
           name: r.CourtName,
           capacity: r.Capacity,
@@ -152,12 +149,15 @@ export default function Courts() {
   }, [courts, normalizedSearch]);
 
   const sections = useMemo(() => {
-    const bySport = sports.map((sportName) => {
-      const rows = filteredCourts.filter((c) => c.sport === sportName);
-      return { sport: sportName, rows };
-    });
+    const bySport = sports
+      .map((sportName) => {
+        // A court belongs to this sport if the sportName is in its sportsList
+        const rows = filteredCourts.filter((c) => c.sportsList.includes(sportName));
+        return { sport: sportName, rows };
+      })
+      .filter((section) => section.rows.length > 0);
 
-    const unknownRows = filteredCourts.filter((c) => !sports.includes(c.sport));
+    const unknownRows = filteredCourts.filter((c) => c.sportsList.length === 0);
     if (unknownRows.length > 0) {
       bySport.unshift({ sport: "OTHER", rows: unknownRows });
     }
@@ -166,7 +166,7 @@ export default function Courts() {
   }, [sports, filteredCourts]);
 
   function resetForm() {
-    setSport(sports[0] || "");
+    setSelectedSports([]);
     setName("");
     setCapacity("");
     setPricePerHour("");
@@ -183,7 +183,7 @@ export default function Courts() {
   function openEditModal(court) {
     setMode("EDIT");
     setEditingId(court.id);
-    setSport(court.sport || sports[0] || "");
+    setSelectedSports(court.sportsList || []);
     setName(court.name || "");
     setCapacity(String(court.capacity ?? ""));
     setPricePerHour(String(court.pricePerHour ?? ""));
@@ -220,7 +220,7 @@ export default function Courts() {
   }
 
   function validateForm() {
-    if (!sport) return "Select a valid sport";
+    if (selectedSports.length === 0) return "Select at least one sport";
     if (!name.trim()) return "Court name is required";
 
     const capNum = Number(capacity);
@@ -245,13 +245,15 @@ export default function Courts() {
     const priceNum = Number(pricePerHour);
 
     const token = localStorage.getItem("token");
-    const selectedSportObj = rawSports.find(
-      (s) => String(s.SportName || "").toUpperCase() === sport.toUpperCase()
-    );
-    const sportIds = selectedSportObj ? [selectedSportObj.SportID] : [];
+
+    // Map selected sport names back to IDs
+    const sportIds = selectedSports.map(sName => {
+      const found = rawSports.find(r => String(r.SportName || "").toUpperCase() === sName);
+      return found ? found.SportID : null;
+    }).filter(Boolean);
 
     if (sportIds.length === 0) {
-      alert("Selected sport is not configured in the database yet.");
+      alert("Selected sports are not configured in the database yet.");
       return;
     }
 
@@ -396,23 +398,33 @@ export default function Courts() {
 
             <form className="courts-form" onSubmit={handleSubmit}>
               <div className="courts-grid">
-                <div className="courts-field">
-                  <label>Sport</label>
-                  <select
-                    value={sport}
-                    onChange={(e) => setSport(e.target.value)}
-                    disabled={loadingSports || sports.length === 0}
-                  >
+
+                <div className="courts-field courts-full">
+                  <label>Sports</label>
+                  <div className="courts-checkbox-group">
                     {sports.length === 0 ? (
-                      <option value="">No sports available</option>
+                      <div className="courts-error-text">No sports available</div>
                     ) : (
                       sports.map((s) => (
-                        <option key={s} value={s}>
+                        <label key={s} className="courts-checkbox-label">
+                          <input
+                            type="checkbox"
+                            value={s}
+                            checked={selectedSports.includes(s)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSelectedSports(prev => {
+                                if (checked) return [...prev, s];
+                                return prev.filter(x => x !== s);
+                              });
+                            }}
+                            disabled={loadingSports}
+                          />
                           {s}
-                        </option>
+                        </label>
                       ))
                     )}
-                  </select>
+                  </div>
                 </div>
 
                 <div className="courts-field">
@@ -461,9 +473,6 @@ export default function Courts() {
                 </button>
 
                 <button className="courts-btn-primary" type="submit" disabled={sports.length === 0}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
                   {mode === "ADD" ? "Add Court" : "Save Changes"}
                 </button>
               </div>
