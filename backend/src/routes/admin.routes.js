@@ -8,6 +8,7 @@ const usersController = require("../controllers/admin/users.controller");
 const sportsController = require("../controllers/admin/sports.controller");
 const courtsController = require("../controllers/admin/courts.controller");
 const qualificationsController = require("../controllers/admin/qualifications.controller");
+const classesController = require("../controllers/admin/classes.controller");
 
 // Test endpoint logic was in admin key "test", but not in any new controller. 
 // I will inline it or create a general admin controller if needed. 
@@ -54,5 +55,10 @@ router.delete("/admin/courts/:courtId", requireAuth, requireRole("ADMIN", "SUPER
 
 router.get("/admin/qualifications", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), qualificationsController.listQualifications);
 router.post("/admin/qualifications", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), qualificationsController.createQualification);
+
+router.get("/admin/classes/available-courts", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getAvailableCourts);
+router.get("/admin/coaches", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getCoaches);
+router.get("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getClasses);
+router.post("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.createClass);
 
 module.exports = router;

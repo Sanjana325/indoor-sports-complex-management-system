@@ -1,34 +1,21 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import "../../styles/ClassManagement.css";
 
-const SPORTS = ["CRICKET", "KARATE", "FUTSAL", "CHESS", "BADMINTON"];
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-const COURTS = [
-  { id: "CRT-CR-A", name: "Cricket - A" },
-  { id: "CRT-BD-A", name: "Badminton - A" },
-  { id: "CRT-FU-A", name: "Futsal - A" },
+const DAYS = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 }
 ];
-
-const COACHES = [
-  { id: "CO-1001", name: "Sahan Fernando", sport: "CRICKET" },
-  { id: "CO-1002", name: "Nimal Perera", sport: "KARATE" },
-  { id: "CO-1003", name: "Kasun Silva", sport: "FUTSAL" },
-  { id: "CO-1004", name: "Ishan Fernando", sport: "CHESS" },
-  { id: "CO-1005", name: "Dilani Jayasinghe", sport: "BADMINTON" },
-];
-
-function makeId(prefix = "CL") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
 
 function formatDays(days) {
   if (!days || days.length === 0) return "-";
+  // Assuming days contains weekday abbreviations like "Mon", "Tue"
   return days.join(", ");
 }
 
@@ -37,11 +24,6 @@ function timeToMinutes(t) {
   const [hh, mm] = t.split(":").map(Number);
   if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
   return hh * 60 + mm;
-}
-
-function rangesOverlap(aStart, aEnd, bStart, bEnd) {
-  if (aStart === null || aEnd === null || bStart === null || bEnd === null) return false;
-  return aStart < bEnd && bStart < aEnd;
 }
 
 function durationLabel(startTime, endTime) {
@@ -61,6 +43,8 @@ function durationLabel(startTime, endTime) {
 
 function formatDate(dateStr) {
   if (!dateStr) return "-";
+  // Attempt to parse out time component if present
+  if (dateStr.includes('T')) return dateStr.split('T')[0];
   return dateStr;
 }
 
@@ -70,188 +54,24 @@ function formatLKR(n) {
   return `LKR ${num.toLocaleString("en-LK")}`;
 }
 
-function dayFromDate(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  const map = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return map[d.getDay()];
-}
-
 function normalizeCoachId(v) {
-  return (v || "").trim().toUpperCase();
-}
-
-function findCoachById(coachId) {
-  const id = normalizeCoachId(coachId);
-  if (!id) return null;
-  return COACHES.find((c) => c.id.toUpperCase() === id) || null;
-}
-
-function computeAvailableCourts({
-  classes,
-  scheduleType,
-  days,
-  oneTimeDate,
-  startTime,
-  endTime,
-  excludeClassId,
-}) {
-  const s = timeToMinutes(startTime);
-  const e = timeToMinutes(endTime);
-  if (s === null || e === null || e <= s) return [];
-
-  const selectedDays =
-    scheduleType === "WEEKLY"
-      ? Array.isArray(days)
-        ? days
-        : []
-      : (() => {
-          const d = dayFromDate(oneTimeDate);
-          return d ? [d] : [];
-        })();
-
-  const selectedDate = scheduleType === "ONETIME" ? oneTimeDate : "";
-
-  return COURTS.filter((court) => {
-    const conflicts = classes.some((c) => {
-      if (!c.courtId) return false;
-      if (excludeClassId && c.id === excludeClassId) return false;
-      if (c.courtId !== court.id) return false;
-
-      const cs = timeToMinutes(c.startTime);
-      const ce = timeToMinutes(c.endTime);
-      if (!rangesOverlap(s, e, cs, ce)) return false;
-
-      if (scheduleType === "WEEKLY") {
-        if (c.scheduleType === "WEEKLY") {
-          const cDays = Array.isArray(c.days) ? c.days : [];
-          return selectedDays.some((d) => cDays.includes(d));
-        }
-
-        if (c.scheduleType === "ONETIME") {
-          const cDay = dayFromDate(c.oneTimeDate);
-          return cDay ? selectedDays.includes(cDay) : false;
-        }
-
-        return false;
-      }
-
-      if (scheduleType === "ONETIME") {
-        if (c.scheduleType === "ONETIME") {
-          return (c.oneTimeDate || "") === selectedDate;
-        }
-
-        if (c.scheduleType === "WEEKLY") {
-          const cDays = Array.isArray(c.days) ? c.days : [];
-          const d = dayFromDate(selectedDate);
-          return d ? cDays.includes(d) : false;
-        }
-
-        return false;
-      }
-
-      return false;
-    });
-
-    return !conflicts;
-  });
+  return (v || "").trim();
 }
 
 export default function ClassManagement() {
-  const [classes, setClasses] = useState([
-    {
-      id: "CL-300001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachId: "CO-1001",
-      coachName: "Sahan Fernando",
-      courtId: "CRT-CR-A",
-      courtName: "Cricket - A",
-      scheduleType: "WEEKLY",
-      days: ["Mon", "Wed"],
-      oneTimeDate: "",
-      startTime: "18:00",
-      endTime: "19:30",
-      capacity: 20,
-      fee: 2500,
-      createdAt: "2026-01-18T10:00:00.000Z",
-    },
-    {
-      id: "CL-300002",
-      sport: "KARATE",
-      className: "Karate Basics",
-      coachId: "CO-1002",
-      coachName: "Nimal Perera",
-      courtId: "CRT-BD-A",
-      courtName: "Badminton - A",
-      scheduleType: "WEEKLY",
-      days: ["Tue", "Thu"],
-      oneTimeDate: "",
-      startTime: "17:30",
-      endTime: "19:00",
-      capacity: 25,
-      fee: 3000,
-      createdAt: "2026-01-18T12:00:00.000Z",
-    },
-    {
-      id: "CL-300003",
-      sport: "FUTSAL",
-      className: "Futsal Training",
-      coachId: "CO-1003",
-      coachName: "Kasun Silva",
-      courtId: "CRT-FU-A",
-      courtName: "Futsal - A",
-      scheduleType: "WEEKLY",
-      days: ["Sat"],
-      oneTimeDate: "",
-      startTime: "16:00",
-      endTime: "18:00",
-      capacity: 18,
-      fee: 3500,
-      createdAt: "2026-01-19T08:00:00.000Z",
-    },
-    {
-      id: "CL-300004",
-      sport: "CHESS",
-      className: "Chess for Beginners",
-      coachId: "CO-1004",
-      coachName: "Ishan Fernando",
-      courtId: "CRT-BD-A",
-      courtName: "Badminton - A",
-      scheduleType: "WEEKLY",
-      days: ["Sun"],
-      oneTimeDate: "",
-      startTime: "09:00",
-      endTime: "11:00",
-      capacity: 30,
-      fee: 2000,
-      createdAt: "2026-01-19T09:30:00.000Z",
-    },
-    {
-      id: "CL-300005",
-      sport: "BADMINTON",
-      className: "Badminton Intermediate",
-      coachId: "CO-1005",
-      coachName: "Dilani Jayasinghe",
-      courtId: "CRT-BD-A",
-      courtName: "Badminton - A",
-      scheduleType: "WEEKLY",
-      days: ["Fri"],
-      oneTimeDate: "",
-      startTime: "18:00",
-      endTime: "19:30",
-      capacity: 16,
-      fee: 2800,
-      createdAt: "2026-01-19T10:15:00.000Z",
-    },
-  ]);
+  const [classes, setClasses] = useState([]);
+  const [sportsList, setSportsList] = useState([]);
+  const [coachesList, setCoachesList] = useState([]);
+  const [availableCourts, setAvailableCourts] = useState([]);
+
+  const [loadingInitial, setLoadingInitial] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  const [sport, setSport] = useState("CRICKET");
+  const [sport, setSport] = useState("");
   const [className, setClassName] = useState("");
 
   const [coachId, setCoachId] = useState("");
@@ -263,9 +83,10 @@ export default function ClassManagement() {
   const [capacity, setCapacity] = useState("");
   const [fee, setFee] = useState("");
 
-  const [scheduleType, setScheduleType] = useState("WEEKLY");
-  const [days, setDays] = useState([]);
+  const [scheduleType, setScheduleType] = useState("WEEKLY"); // "WEEKLY" or "ONE_TIME"
+  const [days, setDays] = useState([]); // array of integers (0-6)
   const [oneTimeDate, setOneTimeDate] = useState("");
+  const [startDate, setStartDate] = useState(""); // Needed for WEEKLY classes
 
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -273,38 +94,123 @@ export default function ClassManagement() {
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
-  const coachLookup = useMemo(() => findCoachById(coachId), [coachId]);
-  const coachError = useMemo(() => {
-    if (!coachId.trim()) return "";
-    if (!coachLookup) return "Coach not found. Enter a valid Coach ID.";
-    if (coachLookup.sport !== sport) return `Coach sport mismatch. This coach is for ${coachLookup.sport}.`;
-    return "";
-  }, [coachId, coachLookup, sport]);
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
-  const availableCourts = useMemo(() => {
-    return computeAvailableCourts({
-      classes,
-      scheduleType,
-      days,
-      oneTimeDate,
-      startTime,
-      endTime,
-      excludeClassId: mode === "EDIT" ? editingId : null,
-    });
-  }, [classes, scheduleType, days, oneTimeDate, startTime, endTime, mode, editingId]);
+  async function fetchInitialData() {
+    try {
+      setLoadingInitial(true);
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [spRes, cRes, clsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/sports`, { headers }),
+        fetch(`${API_BASE}/api/admin/coaches`, { headers }),
+        fetch(`${API_BASE}/api/admin/classes`, { headers })
+      ]);
+
+      if (spRes.ok) {
+        const d = await spRes.json();
+        setSportsList(d.sports || []);
+        if (d.sports && d.sports.length > 0) {
+          setSport(d.sports[0].SportName); // Default
+        }
+      }
+      if (cRes.ok) {
+        const d = await cRes.json();
+        setCoachesList(d.coaches || []);
+      }
+      if (clsRes.ok) {
+        const d = await clsRes.json();
+        setClasses(d.classes || []);
+      }
+    } catch (err) {
+      console.error("Fetch error", err);
+    } finally {
+      setLoadingInitial(false);
+    }
+  }
+
+  // Derive sport ID from chosen sport name
+  const selectedSportObj = useMemo(() => {
+    return sportsList.find(s => s.SportName === sport) || null;
+  }, [sport, sportsList]);
+
+  const coachLookup = useMemo(() => {
+    const id = Number(coachId);
+    return coachesList.find(c => c.id === id) || null;
+  }, [coachId, coachesList]);
+
+  // Coaches whose specializations include the currently selected sport
+  const filteredCoaches = useMemo(() => {
+    if (!sport) return coachesList;
+    return coachesList.filter(c => c.sports.includes(sport));
+  }, [coachesList, sport]);
+
+  const coachError = useMemo(() => {
+    if (!coachId) return "";
+    if (!coachLookup) return "Selected coach not found.";
+    return "";
+  }, [coachId, coachLookup]);
 
   const hasSlotInputs = useMemo(() => {
-    if (!startTime || !endTime) return false;
-    if (scheduleType === "WEEKLY") return Array.isArray(days) && days.length > 0;
-    return !!oneTimeDate;
-  }, [startTime, endTime, scheduleType, days, oneTimeDate]);
+    if (!startTime || !endTime || !selectedSportObj) return false;
+    if (scheduleType === "WEEKLY") return Array.isArray(days) && days.length > 0 && !!startDate;
+    if (scheduleType === "ONE_TIME") return !!oneTimeDate;
+    return false;
+  }, [startTime, endTime, scheduleType, days, oneTimeDate, startDate, selectedSportObj]);
+
+  // Fetch Available Courts
+  useEffect(() => {
+    async function fetchCourts() {
+      if (!hasSlotInputs) {
+        setAvailableCourts([]);
+        return;
+      }
+      try {
+        const token = localStorage.getItem("token");
+        const q = new URLSearchParams({
+          sportId: selectedSportObj.SportID,
+          scheduleType,
+          startTime,
+          endTime
+        });
+
+        if (scheduleType === "ONE_TIME") {
+          q.append("oneTimeDate", oneTimeDate);
+        } else {
+          q.append("startDate", startDate);
+          days.forEach(d => q.append("weekdays[]", d));
+        }
+
+        const res = await fetch(`${API_BASE}/api/admin/classes/available-courts?${q.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableCourts(data.availableCourts || []);
+        } else {
+          setAvailableCourts([]);
+        }
+      } catch (err) {
+        console.error("Court fetch error", err);
+        setAvailableCourts([]);
+      }
+    }
+
+    // We debounce slightly to avoid spamming the backend while user types time
+    const timer = setTimeout(fetchCourts, 300);
+    return () => clearTimeout(timer);
+  }, [hasSlotInputs, selectedSportObj, scheduleType, startTime, endTime, oneTimeDate, startDate, days]);
 
   const filteredClasses = useMemo(() => {
     if (!normalizedSearch) return classes;
     return classes.filter((c) => {
       const hay =
         `${c.id} ${c.sport} ${c.className} ${c.coachId} ${c.coachName} ${c.courtName || ""} ` +
-        `${(c.days || []).join(" ")} ${c.oneTimeDate || ""} ${c.startTime} ${c.endTime} ${c.capacity} ${c.fee}`.toLowerCase();
+        `${(c.days || []).join(" ")} ${c.oneTimeDate || ""} ${c.startTime} ${c.endTime} ${c.capacity} ${c.fee} `.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [classes, normalizedSearch]);
@@ -322,26 +228,21 @@ export default function ClassManagement() {
   const badmintonRows = useMemo(() => bySport("BADMINTON"), [filteredClasses]);
 
   function resetForm() {
-    setSport("CRICKET");
     setClassName("");
-
     setCoachId("");
     setCoachName("");
-
     setCourtId("");
     setCourtName("");
-
     setCapacity("");
     setFee("");
-
     setScheduleType("WEEKLY");
     setDays([]);
     setOneTimeDate("");
-
+    setStartDate("");
     setStartTime("");
     setEndTime("");
-
     setEditingId(null);
+    setFormError("");
   }
 
   function openAddModal() {
@@ -398,8 +299,9 @@ export default function ClassManagement() {
 
   function handleOneTimeToggle(checked) {
     if (checked) {
-      setScheduleType("ONETIME");
+      setScheduleType("ONE_TIME");
       setDays([]);
+      setStartDate("");
     } else {
       setScheduleType("WEEKLY");
       setOneTimeDate("");
@@ -423,22 +325,17 @@ export default function ClassManagement() {
     const id = normalizeCoachId(value);
     setCoachId(id);
 
-    const found = findCoachById(id);
-    if (found && found.sport === sport) {
-      setCoachName(found.name);
-    } else {
-      setCoachName("");
-    }
+    const lookupId = Number(id);
+    const found = coachesList.find(c => c.id === lookupId);
+    setCoachName(found ? found.name : "");
   }
 
   function validateForm() {
-    if (!SPORTS.includes(sport)) return "Select a valid sport";
+    if (!selectedSportObj) return "Select a valid sport";
     if (!className.trim()) return "Class name is required";
 
-    if (!coachId.trim()) return "Coach ID is required";
-    if (!coachLookup) return "Enter a valid Coach ID";
-    if (coachLookup.sport !== sport) return `Coach sport mismatch. This coach is for ${coachLookup.sport}.`;
-    if (!coachName.trim()) return "Coach name not resolved";
+    if (!coachId) return "Please select a coach";
+    if (!coachLookup) return "Selected coach is invalid — please re-select";
 
     const capNum = Number(capacity);
     if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
@@ -448,6 +345,7 @@ export default function ClassManagement() {
 
     if (scheduleType === "WEEKLY") {
       if (!Array.isArray(days) || days.length === 0) return "Select at least one day";
+      if (!startDate) return "Start date is required for WEEKLY schedule";
     } else {
       if (!oneTimeDate) return "Select a date for the one-time class";
     }
@@ -461,61 +359,72 @@ export default function ClassManagement() {
     if (e <= s) return "End time must be after start time";
 
     if (!courtId) return "Select an available court for this class slot";
-    const stillAvailable = availableCourts.some((c) => c.id === courtId);
+    const stillAvailable = availableCourts.some((c) => c.CourtID === Number(courtId));
     if (!stillAvailable) return "Selected court is not available for the chosen slot";
 
     return null;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setFormError("");
 
     const err = validateForm();
     if (err) {
-      alert(err);
+      setFormError(err);
       return;
     }
-
-    const capNum = Number(capacity);
-    const feeNum = Number(fee);
-    const selectedCourt = COURTS.find((c) => c.id === courtId);
 
     const payload = {
-      sport,
-      className: className.trim(),
-
-      coachId: normalizeCoachId(coachId),
-      coachName: coachName.trim(),
-
-      courtId,
-      courtName: selectedCourt ? selectedCourt.name : courtName,
-
+      title: className.trim(),
+      sportId: selectedSportObj.SportID,
+      coachId: Number(coachId),
+      courtId: Number(courtId),
+      capacity: Number(capacity),
+      fee: Number(fee),
+      billingType: scheduleType === "WEEKLY" ? "MONTHLY" : "ONE_TIME",
       scheduleType,
-      days: scheduleType === "WEEKLY" ? [...days] : [],
-      oneTimeDate: scheduleType === "ONETIME" ? oneTimeDate : "",
-
+      startDate: scheduleType === "WEEKLY" ? startDate : "2000-01-01", // Dummy date if ONE_TIME to pass validation, though ONE_TIME shouldn't need a real start date. Wait, backend needs it. I'll just use oneTimeDate.
+      oneTimeDate: scheduleType === "ONE_TIME" ? oneTimeDate : "",
       startTime,
       endTime,
-      capacity: capNum,
-      fee: feeNum,
+      weekdays: scheduleType === "WEEKLY" ? days : [],
     };
 
-    if (mode === "ADD") {
-      const newClass = {
-        id: makeId("CL"),
-        ...payload,
-        createdAt: nowIso(),
-      };
-      setClasses((prev) => [newClass, ...prev]);
-      closeModal();
-      resetForm();
-      return;
-    }
+    // Fix start date constraint - send oneTimeDate as startDate too if it's ONE_TIME
+    if (scheduleType === "ONE_TIME") payload.startDate = oneTimeDate;
 
-    if (mode === "EDIT") {
-      setClasses((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...payload } : c)));
-      closeModal();
-      resetForm();
+    try {
+      const token = localStorage.getItem("token");
+
+      let res;
+      if (mode === "ADD") {
+        res = await fetch(`${API_BASE}/api/admin/classes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Mock EDIT implementation - not fully requested in Phase 3 instructions, but included for completeness if needed
+        alert("Edit functionality requires additional backend endpoint! For MVP, edit is disabled.");
+        return;
+      }
+
+      if (res.ok) {
+        alert("Class saved successfully!");
+        closeModal();
+        resetForm();
+        fetchInitialData(); // Refresh table
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        setFormError(errorData.message || "An error occurred while saving the class.");
+      }
+    } catch (error) {
+      console.error("Submission failed", error);
+      setFormError("Failed to connect to the server.");
     }
   }
 
@@ -587,11 +496,9 @@ export default function ClassManagement() {
                 <div className="cm-field">
                   <label>Sport</label>
                   <select value={sport} onChange={(e) => handleSportChange(e.target.value)}>
-                    <option value="CRICKET">Cricket</option>
-                    <option value="KARATE">Karate</option>
-                    <option value="FUTSAL">Futsal</option>
-                    <option value="CHESS">Chess</option>
-                    <option value="BADMINTON">Badminton</option>
+                    {sportsList.map(s => (
+                      <option key={s.SportName} value={s.SportName}>{s.SportName}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -625,35 +532,41 @@ export default function ClassManagement() {
                   />
                 </div>
 
-                <div className="cm-field">
-                  <label>Coach ID</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CO-1001"
-                    value={coachId}
-                    onChange={(e) => onCoachIdChange(e.target.value)}
-                  />
+                <div className="cm-field cm-full">
+                  <label>Coach</label>
+                  {filteredCoaches.length === 0 ? (
+                    <div className="cm-hint">
+                      No coaches found for <strong>{sport}</strong>. Assign a sport specialization to a coach first.
+                    </div>
+                  ) : (
+                    <select
+                      value={coachId}
+                      onChange={(e) => onCoachIdChange(e.target.value)}
+                    >
+                      <option value="">-- Select Coach --</option>
+                      {filteredCoaches.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} (ID: {c.id})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   {coachError ? <div className="cm-error">{coachError}</div> : null}
-                </div>
-
-                <div className="cm-field">
-                  <label>Coach Name</label>
-                  <input type="text" value={coachName || "-"} readOnly />
                 </div>
 
                 <div className="cm-field cm-full">
                   <label>Day / Days (Every week)</label>
 
-                  <div className={`cm-days ${scheduleType === "ONETIME" ? "is-disabled" : ""}`}>
+                  <div className={`cm-days ${scheduleType === "ONE_TIME" ? "is-disabled" : ""} `}>
                     {DAYS.map((d) => (
-                      <label key={d} className="cm-day">
+                      <label key={d.value} className="cm-day">
                         <input
                           type="checkbox"
-                          checked={days.includes(d)}
-                          onChange={() => toggleDay(d)}
-                          disabled={scheduleType === "ONETIME"}
+                          checked={days.includes(d.value)}
+                          onChange={() => toggleDay(d.value)}
+                          disabled={scheduleType === "ONE_TIME"}
                         />
-                        <span>{d}</span>
+                        <span>{d.label}</span>
                       </label>
                     ))}
                   </div>
@@ -661,14 +574,29 @@ export default function ClassManagement() {
                   <label className="cm-onetime">
                     <input
                       type="checkbox"
-                      checked={scheduleType === "ONETIME"}
+                      checked={scheduleType === "ONE_TIME"}
                       onChange={(e) => handleOneTimeToggle(e.target.checked)}
                     />
                     One-time class / No fixed schedule
                   </label>
                 </div>
 
-                {scheduleType === "ONETIME" && (
+                {scheduleType === "WEEKLY" && (
+                  <div className="cm-field cm-full">
+                    <label>Start Date (Begins on)</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setCourtId("");
+                        setCourtName("");
+                      }}
+                    />
+                  </div>
+                )}
+
+                {scheduleType === "ONE_TIME" && (
                   <div className="cm-field cm-full">
                     <label>Select Date</label>
                     <input
@@ -728,20 +656,22 @@ export default function ClassManagement() {
                       onChange={(e) => {
                         const id = e.target.value;
                         setCourtId(id);
-                        const c = COURTS.find((x) => x.id === id);
-                        setCourtName(c ? c.name : "");
+                        const c = availableCourts.find((x) => x.CourtID === Number(id));
+                        setCourtName(c ? c.CourtName : "");
                       }}
                     >
                       <option value="">Select Court</option>
                       {availableCourts.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
+                        <option key={c.CourtID} value={c.CourtID}>
+                          {c.CourtName} (Capacity: {c.Capacity})
                         </option>
                       ))}
                     </select>
                   )}
                 </div>
               </div>
+
+              {formError && <div className="cm-error cm-full-error">{formError}</div>}
 
               <div className="cm-form-actions">
                 <button className="cm-modal-btn" type="button" onClick={closeModal}>
@@ -816,3 +746,4 @@ function ClassTable({ rows, onEdit, onRemove }) {
     </div>
   );
 }
+
