@@ -160,6 +160,7 @@ exports.getClasses = async (req, res, next) => {
                 c.Capacity as capacity,
                 c.Fee as fee,
                 c.CreatedAt as createdAt,
+                c.StartDate as startDate,
                 GROUP_CONCAT(cd.Weekday) as days
             FROM class c
             JOIN sport s ON c.SportID = s.SportID

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { Typography } from "@mui/material";
 import "../../styles/ClassManagement.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -15,8 +16,17 @@ const DAYS = [
 
 function formatDays(days) {
   if (!days || days.length === 0) return "-";
-  // Assuming days contains weekday abbreviations like "Mon", "Tue"
-  return days.join(", ");
+  // Assuming days contains weekday values like 1, 2... map them or if they are numbers map to 'Mon', 'Tue' etc.
+  const dayMap = {
+    1: "Mon",
+    2: "Tue",
+    3: "Wed",
+    4: "Thu",
+    5: "Fri",
+    6: "Sat",
+    0: "Sun"
+  };
+  return days.map(d => dayMap[d] || d);
 }
 
 function timeToMinutes(t) {
@@ -458,27 +468,47 @@ export default function ClassManagement() {
 
       <section className="cm-section">
         <h3 className="cm-section-title">Cricket Classes</h3>
-        <ClassTable rows={cricketRows} onEdit={openEditModal} onRemove={handleRemove} />
+        {cricketRows.length === 0 ? (
+          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
+        ) : (
+          <ClassTable rows={cricketRows} onEdit={openEditModal} onRemove={handleRemove} />
+        )}
       </section>
 
       <section className="cm-section">
         <h3 className="cm-section-title">Karate Classes</h3>
-        <ClassTable rows={karateRows} onEdit={openEditModal} onRemove={handleRemove} />
+        {karateRows.length === 0 ? (
+          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
+        ) : (
+          <ClassTable rows={karateRows} onEdit={openEditModal} onRemove={handleRemove} />
+        )}
       </section>
 
       <section className="cm-section">
         <h3 className="cm-section-title">Futsal Classes</h3>
-        <ClassTable rows={futsalRows} onEdit={openEditModal} onRemove={handleRemove} />
+        {futsalRows.length === 0 ? (
+          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
+        ) : (
+          <ClassTable rows={futsalRows} onEdit={openEditModal} onRemove={handleRemove} />
+        )}
       </section>
 
       <section className="cm-section">
         <h3 className="cm-section-title">Chess Classes</h3>
-        <ClassTable rows={chessRows} onEdit={openEditModal} onRemove={handleRemove} />
+        {chessRows.length === 0 ? (
+          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
+        ) : (
+          <ClassTable rows={chessRows} onEdit={openEditModal} onRemove={handleRemove} />
+        )}
       </section>
 
       <section className="cm-section">
         <h3 className="cm-section-title">Badminton Classes</h3>
-        <ClassTable rows={badmintonRows} onEdit={openEditModal} onRemove={handleRemove} />
+        {badmintonRows.length === 0 ? (
+          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
+        ) : (
+          <ClassTable rows={badmintonRows} onEdit={openEditModal} onRemove={handleRemove} />
+        )}
       </section>
 
       {isModalOpen && (
@@ -690,18 +720,29 @@ export default function ClassManagement() {
 }
 
 function ClassTable({ rows, onEdit, onRemove }) {
+  // Helper to format time strings (e.g., "18:00" -> "6:00 PM")
+  const formatTimeInfo = (start, end) => {
+    if (!start || !end) return "-";
+    const formatStr = (t) => {
+      const [h, m] = t.split(":");
+      let hours = parseInt(h, 10);
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      return `${hours}:${m} ${ampm}`;
+    };
+    return `${formatStr(start)} - ${formatStr(end)}`;
+  };
+
   return (
     <div className="cm-table-wrap">
       <table className="cm-table">
         <thead>
           <tr>
             <th className="cm-col-class">Class Name</th>
-            <th className="cm-col-coachid">Coach ID</th>
             <th className="cm-col-coach">Coach</th>
             <th className="cm-col-court">Court</th>
-            <th className="cm-col-days">Day(s)</th>
-            <th className="cm-col-date">Date</th>
-            <th className="cm-col-duration">Duration</th>
+            <th className="cm-col-schedule">Schedule & Start Date</th>
+            <th className="cm-col-time">Time</th>
             <th className="cm-col-capacity">Capacity</th>
             <th className="cm-col-fee">Fee</th>
             <th className="cm-col-actions cm-center">Actions</th>
@@ -709,38 +750,48 @@ function ClassTable({ rows, onEdit, onRemove }) {
         </thead>
 
         <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan="10" className="cm-empty">
-                No classes to show.
+          {rows.map((c) => (
+            <tr key={c.id}>
+              <td className="cm-col-class fw-semibold">{c.className}</td>
+              <td className="cm-col-coach">{c.coachName}</td>
+              <td className="cm-col-court">{c.courtName || "-"}</td>
+              <td className="cm-col-schedule">
+                {c.scheduleType === "WEEKLY" ? (
+                  <div className="cm-schedule-cell">
+                    <div className="cm-schedule-starts">Starts: {formatDate(c.startDate)}</div>
+                    <div className="cm-day-badges">
+                      {formatDays(c.days).map((dayStr, idx) => (
+                        <span key={idx} className="cm-day-badge">{dayStr}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="cm-schedule-cell">
+                    <div className="cm-schedule-starts">Date: {formatDate(c.oneTimeDate)}</div>
+                    <div className="cm-day-badges">
+                      <span className="cm-day-badge onetime">One-Time</span>
+                    </div>
+                  </div>
+                )}
+              </td>
+              <td className="cm-col-time">{formatTimeInfo(c.startTime, c.endTime)}</td>
+              <td className="cm-col-capacity">
+                <span className="cm-capacity-badge">{c.capacity} Max</span>
+              </td>
+              <td className="cm-col-fee">{formatLKR(c.fee)}</td>
+
+              <td className="cm-col-actions cm-actions-cell">
+                <div className="cm-actions right-align">
+                  <button className="cm-action-btn" type="button" onClick={() => onEdit(c)}>
+                    Edit
+                  </button>
+                  <button className="cm-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
+                    Remove
+                  </button>
+                </div>
               </td>
             </tr>
-          ) : (
-            rows.map((c) => (
-              <tr key={c.id}>
-                <td className="cm-col-class">{c.className}</td>
-                <td className="cm-col-coachid">{c.coachId || "-"}</td>
-                <td className="cm-col-coach">{c.coachName}</td>
-                <td className="cm-col-court">{c.courtName || "-"}</td>
-                <td className="cm-col-days">{formatDays(c.days)}</td>
-                <td className="cm-col-date">{formatDate(c.oneTimeDate)}</td>
-                <td className="cm-col-duration">{durationLabel(c.startTime, c.endTime)}</td>
-                <td className="cm-col-capacity">{c.capacity}</td>
-                <td className="cm-col-fee">{formatLKR(c.fee)}</td>
-
-                <td className="cm-col-actions cm-actions-cell">
-                  <div className="cm-actions">
-                    <button className="cm-action-btn" type="button" onClick={() => onEdit(c)}>
-                      Edit
-                    </button>
-                    <button className="cm-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
+          ))}
         </tbody>
       </table>
     </div>
