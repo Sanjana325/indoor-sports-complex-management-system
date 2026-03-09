@@ -78,6 +78,10 @@ export default function AdminLayout() {
             Courts
           </NavLink>
 
+          <NavLink to="/admin/sports" className={({ isActive }) => (isActive ? "active" : "")}>
+            Sports
+          </NavLink>
+
           <NavLink to="/admin/classes" className={({ isActive }) => (isActive ? "active" : "")}>
             Class Management
           </NavLink>

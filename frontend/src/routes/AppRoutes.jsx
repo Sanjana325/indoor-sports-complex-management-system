@@ -13,6 +13,7 @@ import AdminLayout from "../layouts/AdminLayout";
 import AdminHome from "../pages/admin/AdminHome";
 import UserManagement from "../pages/admin/UserManagement";
 import Courts from "../pages/admin/Courts";
+import Sports from "../pages/admin/Sports";
 import ClassManagement from "../pages/admin/ClassManagement";
 import Bookings from "../pages/admin/Bookings";
 import Payments from "../pages/admin/Payments";
@@ -51,6 +52,7 @@ export default function AppRoutes() {
         <Route index element={<AdminHome />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="courts" element={<Courts />} />
+        <Route path="sports" element={<Sports />} />
         <Route path="classes" element={<ClassManagement />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="payments" element={<Payments />} />
