@@ -112,7 +112,7 @@ export default function AdminLayout() {
       <main className="admin-main">
         {/* TOP BAR */}
         <div className="admin-topbar">
-          <strong>ArenaPro - Admin Dashboard</strong>
+          <strong>Dashboard</strong>
 
           <div className="topbar-right" ref={profileRef}>
             <button
