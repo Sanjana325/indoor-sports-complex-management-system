@@ -118,7 +118,10 @@ export default function Login() {
   return (
     <div className="login-container">
       <form className="login-card" onSubmit={handleLogin}>
-        <h2 className="login-title">Login Page</h2>
+        <div className="title-container">
+          <h2 className="brand-title">ArenaPro</h2>
+          <h3 className="action-title">Sign In</h3>
+        </div>
 
         {error ? <div className="login-error">{error}</div> : null}
 
@@ -151,7 +154,7 @@ export default function Login() {
         </button>
 
         <p className="register-text">
-          Need an account? <Link to="/register">Register here</Link>
+          Don't have an account? <Link to="/register">Create Account</Link>
         </p>
       </form>
     </div>

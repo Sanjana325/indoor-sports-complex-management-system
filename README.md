@@ -1,5 +1,6 @@
-# Indoor Sports Complex Management System
+# ArenaPro
 
+A modern indoor sports complex management system.
 ## Tech Stack
 - Frontend: React
 - Backend: Node.js + Express

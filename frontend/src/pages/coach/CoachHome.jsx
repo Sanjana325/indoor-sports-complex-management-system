@@ -181,7 +181,7 @@ export default function CoachHome() {
 
   return (
     <div className="ch-page">
-      <h2 className="ch-title">Coach Home</h2>
+      <h2 className="ch-title">ArenaPro - Coach Home</h2>
 
       <div className="ch-lower">
         <div className="ch-left">

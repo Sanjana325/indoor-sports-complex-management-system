@@ -62,7 +62,7 @@ export default function CoachLayout() {
     <div className="admin-layout">
       {/* SIDEBAR */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Coach Panel</h2>
+        <h2 className="sidebar-title">ArenaPro</h2>
 
         <nav className="sidebar-nav">
           <NavLink to="/coach" end className={({ isActive }) => (isActive ? "active" : "")}>
@@ -78,7 +78,7 @@ export default function CoachLayout() {
       {/* MAIN */}
       <main className="admin-main">
         <div className="admin-topbar">
-          <strong>Coach Dashboard</strong>
+          <strong>ArenaPro - Coach Dashboard</strong>
 
           <div className="topbar-right" ref={profileRef}>
             <button

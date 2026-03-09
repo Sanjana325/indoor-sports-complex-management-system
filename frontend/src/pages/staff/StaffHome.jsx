@@ -220,7 +220,7 @@ export default function StaffHome() {
 
   return (
     <div className="sh-page">
-      <h2 className="sh-title">Staff Home</h2>
+      <h2 className="sh-title">ArenaPro - Staff Home</h2>
 
       {/* 3 tiles */}
       <div className="sh-tiles">

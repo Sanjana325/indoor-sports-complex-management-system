@@ -63,7 +63,7 @@ export default function StaffLayout() {
     <div className="admin-layout">
       {/* SIDEBAR */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Staff Panel</h2>
+        <h2 className="sidebar-title">ArenaPro</h2>
 
         <nav className="sidebar-nav">
           <NavLink to="/staff" end className={({ isActive }) => (isActive ? "active" : "")}>
@@ -84,7 +84,7 @@ export default function StaffLayout() {
       <main className="admin-main">
         {/* TOP BAR */}
         <div className="admin-topbar">
-          <strong>Staff Dashboard</strong>
+          <strong>ArenaPro - Staff Dashboard</strong>
 
           <div className="topbar-right" ref={profileRef}>
             <button

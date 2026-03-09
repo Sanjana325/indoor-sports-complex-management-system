@@ -63,7 +63,7 @@ export default function AdminLayout() {
     <div className="admin-layout">
       {/* SIDEBAR */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Admin Panel</h2>
+        <h2 className="sidebar-title">ArenaPro</h2>
 
         <nav className="sidebar-nav">
           <NavLink to="/admin" end className={({ isActive }) => (isActive ? "active" : "")}>
@@ -112,7 +112,7 @@ export default function AdminLayout() {
       <main className="admin-main">
         {/* TOP BAR */}
         <div className="admin-topbar">
-          <strong>Admin Dashboard</strong>
+          <strong>ArenaPro - Admin Dashboard</strong>
 
           <div className="topbar-right" ref={profileRef}>
             <button

@@ -14,14 +14,19 @@
   position: absolute;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
   background-size: 50px 50px;
   animation: moveBackground 20s linear infinite;
 }
 
 @keyframes moveBackground {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(50px, 50px); }
+  0% {
+    transform: translate(0, 0);
+  }
+
+  100% {
+    transform: translate(50px, 50px);
+  }
 }
 
 .reg-card {
@@ -43,15 +48,26 @@
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
 }
 
-.reg-title {
-  margin: 0 0 18px;
+.title-container {
   text-align: center;
+  margin-bottom: 18px;
+}
+
+.brand-title {
+  margin: 0 0 5px 0;
   font-size: 24px;
   font-weight: 700;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.action-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #555;
 }
 
 .reg-field {
@@ -170,6 +186,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

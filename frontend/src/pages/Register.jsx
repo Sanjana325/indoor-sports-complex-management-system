@@ -153,7 +153,10 @@ export default function Register() {
   return (
     <div className="reg-page">
       <div className="reg-card">
-        <h2 className="reg-title">Player Registration</h2>
+        <div className="title-container">
+          <h2 className="brand-title">ArenaPro</h2>
+          <h3 className="action-title">Create Account</h3>
+        </div>
 
         {error ? <div className="reg-error">{error}</div> : null}
         {success ? <div className="reg-success">{success}</div> : null}
@@ -230,11 +233,11 @@ export default function Register() {
         </div>
 
         <button className="reg-btn" type="button" onClick={handleRegister} disabled={loading}>
-          {loading ? "Registering..." : "Register"}
+          {loading ? "Registering..." : "Create Account"}
         </button>
 
         <p className="reg-link">
-          Already have an account? <Link to="/">Login</Link>
+          Already have an account? <Link to="/">Sign in</Link>
         </p>
       </div>
     </div>

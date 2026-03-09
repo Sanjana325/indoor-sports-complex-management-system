@@ -12,7 +12,7 @@ export default function AppLayout() {
           padding: "16px",
         }}
       >
-        <h3>Sports Complex</h3>
+        <h3>ArenaPro</h3>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           <Link to="/admin" style={linkStyle}>Admin Dashboard</Link>
@@ -24,25 +24,25 @@ export default function AppLayout() {
 
       {/* MAIN CONTENT */}
       <main style={{ flex: 1 }}>
-  {/* TOP BAR */}
-  <div
-    style={{
-      padding: "12px 20px",
-      borderBottom: "1px solid #ddd",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <strong>Dashboard</strong>
-    <Link to="/" style={{ textDecoration: "none" }}>Logout</Link>
-  </div>
+        {/* TOP BAR */}
+        <div
+          style={{
+            padding: "12px 20px",
+            borderBottom: "1px solid #ddd",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <strong>Dashboard</strong>
+          <Link to="/" style={{ textDecoration: "none" }}>Logout</Link>
+        </div>
 
-  {/* PAGE CONTENT */}
-  <div style={{ padding: "20px" }}>
-    <Outlet />
-  </div>
-</main>
+        {/* PAGE CONTENT */}
+        <div style={{ padding: "20px" }}>
+          <Outlet />
+        </div>
+      </main>
 
     </div>
   );

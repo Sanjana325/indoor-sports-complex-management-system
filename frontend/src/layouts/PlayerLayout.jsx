@@ -56,7 +56,7 @@ export default function PlayerLayout() {
     <div className="admin-layout">
       {/* SIDEBAR */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Player Panel</h2>
+        <h2 className="sidebar-title">ArenaPro</h2>
 
         <nav className="sidebar-nav">
           <NavLink to="/player" end className={({ isActive }) => (isActive ? "active" : "")}>
@@ -80,7 +80,7 @@ export default function PlayerLayout() {
       {/* MAIN */}
       <main className="admin-main">
         <div className="admin-topbar">
-          <strong>Player Dashboard</strong>
+          <strong>ArenaPro - Player Dashboard</strong>
 
           <div className="topbar-right" ref={profileRef}>
             <button

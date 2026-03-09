@@ -216,7 +216,7 @@ export default function AdminHome() {
   return (
     <div className="ah-page">
       <div className="ah-headrow">
-        <h2 className="ah-title">Admin Home</h2>
+        <h2 className="ah-title">ArenaPro - Admin Home</h2>
 
         <div className="ah-actions">
           <button className="ah-action-btn" type="button" onClick={() => setIsSportsOpen(true)}>

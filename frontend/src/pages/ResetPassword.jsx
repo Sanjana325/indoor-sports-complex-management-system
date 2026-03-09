@@ -86,7 +86,10 @@ export default function ResetPassword() {
   return (
     <div className="login-container">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h2 className="login-title">Reset Password</h2>
+        <div className="title-container">
+          <h2 className="brand-title">ArenaPro</h2>
+          <h3 className="action-title">Reset Password</h3>
+        </div>
 
         {error ? <div className="login-error">{error}</div> : null}
         {message ? <div className="login-success">{message}</div> : null}
