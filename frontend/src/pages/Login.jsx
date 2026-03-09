@@ -145,12 +145,14 @@ export default function Login() {
         />
         {fieldErrorText("password") ? <div className="login-error-inline">{fieldErrorText("password")}</div> : null}
 
-        <button type="submit" className="login-btn" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
+        <div className="forgot-password-container">
+          <Link to="/forgot-password" className="forgot-password-link">
+            Forgot password?
+          </Link>
+        </div>
 
-        <button type="button" className="secondary-btn" onClick={() => navigate("/forgot-password")}>
-          Forgot Password
+        <button type="submit" className="login-btn" disabled={loading}>
+          {loading ? "Signing in..." : "Sign In"}
         </button>
 
         <p className="register-text">

@@ -141,8 +141,7 @@
 }
 
 /* Buttons with modern styling */
-.login-btn,
-.secondary-btn {
+.login-btn {
   width: 100%;
   padding: 14px;
   cursor: pointer;
@@ -168,18 +167,29 @@
   transform: translateY(0);
 }
 
-.secondary-btn {
-  margin-top: 12px;
-  background: #fff;
-  color: #667eea;
-  border: 2px solid #667eea;
+.login-btn:active {
+  transform: translateY(0);
 }
 
-.secondary-btn:hover {
-  background: #667eea;
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+/* Forgot Password Link */
+.forgot-password-container {
+  width: 100%;
+  text-align: right;
+  margin-top: -10px;
+  margin-bottom: 20px;
+}
+
+.forgot-password-link {
+  color: #667eea;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.forgot-password-link:hover {
+  color: #764ba2;
+  text-decoration: underline;
 }
 
 /* Register text */
