@@ -46,6 +46,7 @@ router.delete("/admin/users/:userId", requireAuth, requireRole("SUPER_ADMIN"), u
 
 router.get("/admin/sports", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.listSports);
 router.post("/admin/sports", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.createSport);
+router.put("/admin/sports/:sportId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.updateSport);
 router.delete("/admin/sports/:sportId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.deleteSport);
 
 router.get("/admin/courts", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), courtsController.listCourts);

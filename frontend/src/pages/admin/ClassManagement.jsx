@@ -441,7 +441,7 @@ export default function ClassManagement() {
   const disableSubmit = useMemo(() => {
     if (!hasSlotInputs) return false;
     if (availableCourts.length === 0) return true;
-    if (!!coachError) return true;
+    if (coachError) return true;
     return false;
   }, [hasSlotInputs, availableCourts.length, coachError]);
 

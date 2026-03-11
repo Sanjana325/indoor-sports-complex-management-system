@@ -76,7 +76,7 @@ export default function Courts() {
   useEffect(() => {
     fetchSports();
     fetchCourts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   async function fetchSports() {

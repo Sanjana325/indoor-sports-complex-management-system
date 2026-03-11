@@ -4,20 +4,21 @@ function normalizeText(name) {
     return String(name || "").trim();
 }
 
-async function createSportIfNotExists(sportName, conn = pool) {
+async function createSportIfNotExists(sportName, colorCode = '#1976d2', conn = pool) {
     const name = normalizeText(sportName);
+    const color = normalizeText(colorCode) || '#1976d2';
     if (!name) return null;
 
-    await conn.query(`INSERT IGNORE INTO sport (SportName) VALUES (?)`, [name]);
+    await conn.query(`INSERT IGNORE INTO sport (SportName, ColorCode) VALUES (?, ?)`, [name, color]);
 
-    const [rows] = await conn.query(`SELECT SportID, SportName FROM sport WHERE SportName = ? LIMIT 1`, [name]);
+    const [rows] = await conn.query(`SELECT SportID, SportName, ColorCode, IsActive FROM sport WHERE SportName = ? LIMIT 1`, [name]);
     return rows.length ? rows[0] : null;
 }
 
 async function listSports(search = "", conn = pool) {
     const q = `%${normalizeText(search)}%`;
     const [rows] = await conn.query(
-        `SELECT SportID, SportName
+        `SELECT SportID, SportName, ColorCode, IsActive
      FROM sport
      WHERE IsActive = TRUE AND SportName LIKE ?
      ORDER BY SportName ASC
@@ -34,8 +35,20 @@ async function getSportIdByName(sportName, conn = pool) {
 }
 
 async function getSportById(sportId, conn = pool) {
-    const [rows] = await conn.query(`SELECT SportID, SportName FROM sport WHERE SportID = ? LIMIT 1`, [sportId]);
+    const [rows] = await conn.query(`SELECT SportID, SportName, ColorCode, IsActive FROM sport WHERE SportID = ? LIMIT 1`, [sportId]);
     return rows.length ? rows[0] : null;
+}
+
+async function updateSport(sportId, sportName, colorCode, conn = pool) {
+    const name = normalizeText(sportName);
+    const color = normalizeText(colorCode) || '#1976d2';
+    if (!name) return false;
+
+    const [result] = await conn.query(
+        `UPDATE sport SET SportName = ?, ColorCode = ? WHERE SportID = ?`,
+        [name, color, sportId]
+    );
+    return result.affectedRows > 0;
 }
 
 async function deleteSport(sportId, conn = pool) {
@@ -52,5 +65,6 @@ module.exports = {
     listSports,
     getSportIdByName,
     getSportById,
+    updateSport,
     deleteSport
 };
