@@ -131,8 +131,8 @@ export default function Sports() {
 
     return (
         <div className="ah-page">
-            <div className="ah-headrow" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 className="ah-title" style={{ margin: 0 }}>Sports</h2>
+            <Box className="ah-headrow" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', mb: 3, gap: 2 }}>
+                <h2 className="ah-title" style={{ margin: 0 }}>Manage Sports</h2>
                 <Button
                     variant="contained"
                     onClick={handleAddClick}
@@ -153,9 +153,9 @@ export default function Sports() {
                         transition: 'all 0.2s ease-in-out'
                     }}
                 >
-                    + Add Sport
+                    + Add New Sport
                 </Button>
-            </div>
+            </Box>
 
             <div style={{ padding: 0 }}>
                 {loading ? (
