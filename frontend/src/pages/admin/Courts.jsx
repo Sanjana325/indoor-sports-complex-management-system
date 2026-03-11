@@ -307,11 +307,11 @@ export default function Courts() {
   }
 
   return (
-    <div className="courts-page">
-      <div className="courts-container">
+    <Box sx={{ width: '100%', minHeight: '100vh', bgcolor: '#f8fafc', m: 0, p: 4 }}>
+      <Box sx={{ bgcolor: 'transparent', borderRadius: 0, boxShadow: 'none' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Courts</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 'bold', background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', mb: 1 }}>Courts Management</Typography>
             <Typography variant="body2" color="textSecondary">
               Manage all courts, pricing, and availability
             </Typography>
@@ -353,7 +353,7 @@ export default function Courts() {
             <CourtTable rows={filteredCourts} onEdit={openEditModal} onRemove={handleRemove} />
           </div>
         )}
-      </div>
+      </Box>
 
       {isModalOpen && (
         <div className="courts-modal-backdrop" onMouseDown={closeModal}>
@@ -458,7 +458,7 @@ export default function Courts() {
           </div>
         </div>
       )}
-    </div>
+    </Box>
   );
 }
 
