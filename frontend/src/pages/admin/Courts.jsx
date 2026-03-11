@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, Chip, Box, Typography } from "@mui/material";
 import "../../styles/Courts.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -76,7 +77,7 @@ export default function Courts() {
   useEffect(() => {
     fetchSports();
     fetchCourts();
-     
+
   }, []);
 
   async function fetchSports() {
@@ -147,23 +148,6 @@ export default function Courts() {
       return hay.includes(normalizedSearch);
     });
   }, [courts, normalizedSearch]);
-
-  const sections = useMemo(() => {
-    const bySport = sports
-      .map((sportName) => {
-        // A court belongs to this sport if the sportName is in its sportsList
-        const rows = filteredCourts.filter((c) => c.sportsList.includes(sportName));
-        return { sport: sportName, rows };
-      })
-      .filter((section) => section.rows.length > 0);
-
-    const unknownRows = filteredCourts.filter((c) => c.sportsList.length === 0);
-    if (unknownRows.length > 0) {
-      bySport.unshift({ sport: "OTHER", rows: unknownRows });
-    }
-
-    return bySport;
-  }, [sports, filteredCourts]);
 
   function resetForm() {
     setSelectedSports([]);
@@ -325,13 +309,15 @@ export default function Courts() {
   return (
     <div className="courts-page">
       <div className="courts-container">
-        <header className="courts-header">
-          <div className="courts-header-content">
-            <h1 className="courts-title">Courts Management</h1>
-            <p className="courts-subtitle">Manage all courts, pricing, and availability</p>
-          </div>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Courts</Typography>
+            <Typography variant="body2" color="textSecondary">
+              Manage all courts, pricing, and availability
+            </Typography>
+          </Box>
 
-          <div style={{ display: "flex", gap: "10px" }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
             <button className="courts-btn-add" type="button" onClick={openAddModal}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -340,8 +326,8 @@ export default function Courts() {
               </svg>
               Add Court
             </button>
-          </div>
-        </header>
+          </Box>
+        </Box>
 
         <div className="courts-toolbar">
           <div className="courts-search-wrapper">
@@ -363,23 +349,9 @@ export default function Courts() {
             <p className="courts-empty-text">Loading courts...</p>
           </div>
         ) : (
-          sections.map((section) => (
-            <section className="courts-section" key={section.sport}>
-              <div className="courts-section-header">
-                <div className="courts-section-icon">{getSportIcon(section.sport)}</div>
-                <h2 className="courts-section-title">
-                  {section.sport === "OTHER"
-                    ? "Other Courts"
-                    : section.sport.charAt(0).toUpperCase() +
-                    section.sport.slice(1).toLowerCase() +
-                    " Courts"}
-                </h2>
-                <span className="courts-section-count">{section.rows.length}</span>
-              </div>
-
-              <CourtTable rows={section.rows} onEdit={openEditModal} onRemove={handleRemove} />
-            </section>
-          ))
+          <div style={{ marginTop: '20px' }}>
+            <CourtTable rows={filteredCourts} onEdit={openEditModal} onRemove={handleRemove} />
+          </div>
         )}
       </div>
 
@@ -491,87 +463,94 @@ export default function Courts() {
 }
 
 function CourtTable({ rows, onEdit, onRemove }) {
+  if (rows.length === 0) {
+    return (
+      <div className="courts-empty-state">
+        <svg className="courts-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <p className="courts-empty-text">No courts to show</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="courts-table-wrap">
-      {rows.length === 0 ? (
-        <div className="courts-empty-state">
-          <svg className="courts-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <p className="courts-empty-text">No courts to show</p>
-        </div>
-      ) : (
-        <table className="courts-table">
-          <thead>
-            <tr>
-              <th>Court ID</th>
-              <th>Name</th>
-              <th>Capacity</th>
-              <th>Price / Hour</th>
-              <th>Status</th>
-              <th className="courts-actions-header">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {rows.map((c) => (
-              <tr key={c.id}>
-                <td>
-                  <span className="courts-id">{c.id}</span>
-                </td>
-
-                <td>
-                  <span className="courts-name">{c.name}</span>
-                </td>
-
-                <td>
-                  <div className="courts-capacity">
+    <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
+      <Table sx={{ minWidth: 650 }}>
+        <TableHead sx={{ backgroundColor: '#f8f9fa' }}>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>NAME</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>SPORTS</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>CAPACITY</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>PRICE / HOUR</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>STATUS</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>ACTIONS</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((c) => (
+            <TableRow key={c.id} hover>
+              <TableCell>
+                <span className="courts-id">{c.id}</span>
+              </TableCell>
+              <TableCell>
+                <span className="courts-name">{c.name}</span>
+              </TableCell>
+              <TableCell>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {c.sportsList && c.sportsList.length > 0 ? (
+                    c.sportsList.map(sport => (
+                      <Chip key={sport} size="small" label={sport} sx={{ backgroundColor: '#e0e0e0', color: '#424242', fontWeight: 600, fontSize: '0.75rem' }} />
+                    ))
+                  ) : (
+                    <span style={{ color: '#999', fontStyle: 'italic', fontSize: '0.85rem' }}>None</span>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="courts-capacity">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px', marginRight: '4px', verticalAlign: 'middle' }}>
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  {c.capacity}
+                </div>
+              </TableCell>
+              <TableCell>
+                <span className="courts-price">{formatLKR(c.pricePerHour)}</span>
+              </TableCell>
+              <TableCell>
+                <span className={`courts-badge courts-badge-${String(c.status || "").toLowerCase()}`}>
+                  {statusLabel(c.status)}
+                </span>
+              </TableCell>
+              <TableCell>
+                <div className="courts-actions" style={{ display: 'flex', gap: '8px' }}>
+                  <button className="courts-btn-edit" type="button" onClick={() => onEdit(c)}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
-                    {c.capacity}
-                  </div>
-                </td>
-
-                <td>
-                  <span className="courts-price">{formatLKR(c.pricePerHour)}</span>
-                </td>
-
-                <td>
-                  <span className={`courts-badge courts-badge-${String(c.status || "").toLowerCase()}`}>
-                    {statusLabel(c.status)}
-                  </span>
-                </td>
-
-                <td>
-                  <div className="courts-actions">
-                    <button className="courts-btn-edit" type="button" onClick={() => onEdit(c)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                      Edit
-                    </button>
-
-                    <button className="courts-btn-remove" type="button" onClick={() => onRemove(c.id)}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+                    Edit
+                  </button>
+                  <button className="courts-btn-remove" type="button" onClick={() => onRemove(c.id)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Remove
+                  </button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }
