@@ -76,6 +76,7 @@ export default function ClassManagement() {
 
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [formError, setFormError] = useState("");
+  const [isConflict, setIsConflict] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD");
@@ -253,6 +254,7 @@ export default function ClassManagement() {
     setEndTime("");
     setEditingId(null);
     setFormError("");
+    setIsConflict(false);
   }
 
   function openAddModal() {
@@ -455,7 +457,9 @@ export default function ClassManagement() {
         fetchInitialData(); // Refresh table
       } else {
         const errorData = await res.json().catch(() => ({}));
-        setFormError(errorData.message || "An error occurred while saving the class.");
+        const msg = errorData.message || "An error occurred while saving the class.";
+        setIsConflict(res.status === 409);
+        setFormError(msg);
       }
     } catch (error) {
       console.error("Submission failed", error);
@@ -726,7 +730,12 @@ export default function ClassManagement() {
                 </div>
               </div>
 
-              {formError && <div className="cm-error cm-full-error">{formError}</div>}
+              {formError && (
+                <div className={isConflict ? "cm-conflict-error" : "cm-error cm-full-error"}>
+                  {isConflict && <span className="cm-conflict-icon">⚠️ </span>}
+                  {formError}
+                </div>
+              )}
 
               <div className="cm-form-actions">
                 <button className="cm-modal-btn" type="button" onClick={closeModal}>

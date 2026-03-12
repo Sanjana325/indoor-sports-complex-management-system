@@ -15,44 +15,178 @@ function getWeeklySessionDates(startDateStr, weekdays, weeks = 4) {
     return dates;
 }
 
-function checkTimeConflict(start1, end1, start2, end2) {
-    // start1 < end2 AND end1 > start2
-    return start1 < end2 && end1 > start2;
-}
+/**
+ * Returns a Set<CourtID> of courts that conflict with the given schedule.
+ * Checks directly against class schedules (not pre-generated sessions), so it
+ * is accurate indefinitely — not limited to a 4-week window.
+ * Only ACTIVE classes are considered. DEACTIVATED classes are ignored.
+ *
+ * Overlap rule: newStart < existingEnd  AND  newEnd > existingStart
+ *
+ * @param {object} conn  - mysql2 connection or pool
+ * @param {object} opts
+ * @param {'WEEKLY'|'ONE_TIME'} opts.scheduleType
+ * @param {number[]} [opts.weekdays]   - required when scheduleType='WEEKLY' (0=Sun…6=Sat)
+ * @param {string}  [opts.oneTimeDate] - required when scheduleType='ONE_TIME' (YYYY-MM-DD)
+ * @param {string}  opts.startTime     - 'HH:mm'
+ * @param {string}  opts.endTime       - 'HH:mm'
+ * @param {number}  [opts.excludeClassId] - optional: skip this classId (used when editing)
+ */
+async function getConflictingCourtIds(conn, { scheduleType, weekdays, oneTimeDate, startTime, endTime, excludeClassId }) {
+    const conflicting = new Set();
+    const excludeId = excludeClassId || 0; // 0 will never match a real ClassID
 
-async function getConflictingCourts(conn, simulatedSessions) {
-    // simulatedSessions is an array of { date, startTime, endTime }
-    if (simulatedSessions.length === 0) return new Set();
+    if (scheduleType === 'WEEKLY') {
+        if (!weekdays || weekdays.length === 0) return conflicting;
 
-    const dates = [...new Set(simulatedSessions.map(s => s.date))];
-    if (dates.length === 0) return new Set();
+        // 1. WEEKLY new class vs existing WEEKLY active classes — any shared weekday + time overlap
+        const [rows1] = await conn.query(`
+            SELECT DISTINCT c.CourtID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'WEEKLY'
+              AND csd.Weekday IN (?)
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, weekdays, startTime, endTime]);
+        rows1.forEach(r => conflicting.add(r.CourtID));
 
-    // Fetch existing active sessions to check for conflicts
-    const q = `
-        SELECT c.CourtID, cs.SessionDate, cs.StartTime, cs.EndTime
-        FROM classsession cs
-        JOIN class c ON cs.ClassID = c.ClassID
-        WHERE cs.Status != 'CANCELLED'
-          AND c.Status != 'CANCELLED'
-          AND cs.SessionDate IN (?)
-    `;
+        // 2. WEEKLY new class vs existing ONE_TIME active classes on a matching weekday
+        //    (MySQL DAYOFWEEK: 1=Sun…7=Sat, so subtract 1 to get 0=Sun…6=Sat)
+        const [rows2] = await conn.query(`
+            SELECT DISTINCT c.CourtID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'ONE_TIME'
+              AND (DAYOFWEEK(sch.OneTimeDate) - 1) IN (?)
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, weekdays, startTime, endTime]);
+        rows2.forEach(r => conflicting.add(r.CourtID));
 
-    const [existingSessions] = await conn.query(q, [dates]);
-    const conflictingCourtIds = new Set();
+    } else if (scheduleType === 'ONE_TIME') {
+        if (!oneTimeDate) return conflicting;
 
-    for (const sim of simulatedSessions) {
-        for (const existing of existingSessions) {
-            // Existing date from DB might be a Date object, so format it to YYYY-MM-DD for comparison
-            const existingDateStr = new Date(existing.SessionDate).toISOString().split('T')[0];
-            if (sim.date === existingDateStr) {
-                if (checkTimeConflict(sim.startTime, sim.endTime, existing.StartTime, existing.EndTime)) {
-                    conflictingCourtIds.add(existing.CourtID);
-                }
-            }
-        }
+        // Derive the weekday of the one-time date (0=Sun…6=Sat)
+        const [y, mo, d] = oneTimeDate.split('-').map(Number);
+        const weekday = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+
+        // 1. ONE_TIME new class vs existing ONE_TIME active classes on the same date
+        const [rows1] = await conn.query(`
+            SELECT DISTINCT c.CourtID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'ONE_TIME'
+              AND DATE(sch.OneTimeDate) = ?
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, oneTimeDate, startTime, endTime]);
+        rows1.forEach(r => conflicting.add(r.CourtID));
+
+        // 2. ONE_TIME new class vs existing WEEKLY active classes on the same weekday
+        const [rows2] = await conn.query(`
+            SELECT DISTINCT c.CourtID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'WEEKLY'
+              AND csd.Weekday = ?
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, weekday, startTime, endTime]);
+        rows2.forEach(r => conflicting.add(r.CourtID));
     }
 
-    return conflictingCourtIds;
+    return conflicting;
+}
+
+/**
+ * Identical schedule-aware logic as getConflictingCourtIds, but returns a
+ * Set<CoachID> of coaches that are already teaching during the given slot.
+ * Only ACTIVE classes are considered.
+ */
+async function getConflictingCoachIds(conn, { scheduleType, weekdays, oneTimeDate, startTime, endTime, excludeClassId }) {
+    const conflicting = new Set();
+    const excludeId = excludeClassId || 0;
+
+    if (scheduleType === 'WEEKLY') {
+        if (!weekdays || weekdays.length === 0) return conflicting;
+
+        // WEEKLY new class vs existing WEEKLY active classes — shared weekday + time overlap
+        const [rows1] = await conn.query(`
+            SELECT DISTINCT c.CoachID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'WEEKLY'
+              AND csd.Weekday IN (?)
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, weekdays, startTime, endTime]);
+        rows1.forEach(r => conflicting.add(r.CoachID));
+
+        // WEEKLY new class vs existing ONE_TIME active classes on a matching weekday
+        const [rows2] = await conn.query(`
+            SELECT DISTINCT c.CoachID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'ONE_TIME'
+              AND (DAYOFWEEK(sch.OneTimeDate) - 1) IN (?)
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, weekdays, startTime, endTime]);
+        rows2.forEach(r => conflicting.add(r.CoachID));
+
+    } else if (scheduleType === 'ONE_TIME') {
+        if (!oneTimeDate) return conflicting;
+
+        const [y, mo, d] = oneTimeDate.split('-').map(Number);
+        const weekday = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+
+        // ONE_TIME new class vs existing ONE_TIME active classes on the same date
+        const [rows1] = await conn.query(`
+            SELECT DISTINCT c.CoachID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'ONE_TIME'
+              AND DATE(sch.OneTimeDate) = ?
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, oneTimeDate, startTime, endTime]);
+        rows1.forEach(r => conflicting.add(r.CoachID));
+
+        // ONE_TIME new class vs existing WEEKLY active classes on the same weekday
+        const [rows2] = await conn.query(`
+            SELECT DISTINCT c.CoachID
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+            WHERE c.Status = 'ACTIVE'
+              AND c.ClassID != ?
+              AND sch.ScheduleType = 'WEEKLY'
+              AND csd.Weekday = ?
+              AND TIME(?) < sch.EndTime
+              AND TIME(?) > sch.StartTime
+        `, [excludeId, weekday, startTime, endTime]);
+        rows2.forEach(r => conflicting.add(r.CoachID));
+    }
+
+    return conflicting;
 }
 
 exports.getAvailableCourts = async (req, res, next) => {
@@ -100,14 +234,14 @@ exports.getAvailableCourts = async (req, res, next) => {
             return res.json({ availableCourts: [] }); // No courts support this sport
         }
 
-        // 2 & 3 & 4: Find conflicts and remove invalid courts
-        const conn = await pool.getConnection();
-        let conflictingCourtIds;
-        try {
-            conflictingCourtIds = await getConflictingCourts(conn, simulatedSessions);
-        } finally {
-            conn.release();
-        }
+        // Filter out courts with scheduling conflicts
+        const conflictingCourtIds = await getConflictingCourtIds(pool, {
+            scheduleType,
+            weekdays: parsedWeekdays || [],
+            oneTimeDate: oneTimeDate || null,
+            startTime,
+            endTime
+        });
 
         const safeCourts = courts.filter(c => !conflictingCourtIds.has(c.CourtID));
 
@@ -158,6 +292,7 @@ exports.getClasses = async (req, res, next) => {
                 DATE_FORMAT(sch.StartTime, '%H:%i') as startTime,
                 DATE_FORMAT(sch.EndTime, '%H:%i') as endTime,
                 c.Capacity as capacity,
+                c.Fee as fee,
                 c.CreatedAt as createdAt,
                 c.StartDate as startDate,
                 c.Status as status,
@@ -232,19 +367,25 @@ exports.createClass = async (req, res, next) => {
             return res.status(400).json({ message: "This class already exists" });
         }
 
-        // Check conflicts before starting transaction
-        let simulatedSessions = [];
-        if (scheduleType === "ONE_TIME") {
-            simulatedSessions.push({ date: oneTimeDate, startTime, endTime });
-        } else if (scheduleType === "WEEKLY") {
-            const dates = getWeeklySessionDates(startDate, weekdays, 4);
-            simulatedSessions = dates.map(d => ({ date: d, startTime, endTime }));
-        }
+        // Hard conflict checks before starting the transaction
+        const conflictOpts = {
+            scheduleType,
+            weekdays: Array.isArray(weekdays) ? weekdays : [],
+            oneTimeDate: oneTimeDate || null,
+            startTime,
+            endTime
+        };
 
-        const conflictingCourtIds = await getConflictingCourts(conn, simulatedSessions);
+        const conflictingCourtIds = await getConflictingCourtIds(conn, conflictOpts);
         if (conflictingCourtIds.has(Number(courtId))) {
             conn.release();
-            return res.status(409).json({ message: "The selected court is already booked for ONE or MORE of the requested time slots." });
+            return res.status(409).json({ message: "Scheduling Conflict: This court is already booked during this time." });
+        }
+
+        const conflictingCoachIds = await getConflictingCoachIds(conn, conflictOpts);
+        if (conflictingCoachIds.has(Number(coachId))) {
+            conn.release();
+            return res.status(409).json({ message: "Scheduling Conflict: This coach is already teaching another class during this time." });
         }
 
         await conn.beginTransaction();
