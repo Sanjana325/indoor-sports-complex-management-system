@@ -158,9 +158,9 @@ exports.getClasses = async (req, res, next) => {
                 DATE_FORMAT(sch.StartTime, '%H:%i') as startTime,
                 DATE_FORMAT(sch.EndTime, '%H:%i') as endTime,
                 c.Capacity as capacity,
-                c.Fee as fee,
                 c.CreatedAt as createdAt,
                 c.StartDate as startDate,
+                c.Status as status,
                 GROUP_CONCAT(cd.Weekday) as days
             FROM class c
             JOIN sport s ON c.SportID = s.SportID
@@ -221,6 +221,17 @@ exports.createClass = async (req, res, next) => {
             return res.status(400).json({ message: "OneTimeDate is required for ONE_TIME schedule" });
         }
 
+        // Duplicate Check: Same Title, Coach, Court, and Start Date
+        const checkStartDate = scheduleType === "WEEKLY" ? startDate : oneTimeDate;
+        const [existingClass] = await conn.query(
+            "SELECT 1 FROM class WHERE Title = ? AND CoachID = ? AND CourtID = ? AND StartDate = ? LIMIT 1",
+            [title, coachId, courtId, checkStartDate]
+        );
+        if (existingClass.length > 0) {
+            conn.release();
+            return res.status(400).json({ message: "This class already exists" });
+        }
+
         // Check conflicts before starting transaction
         let simulatedSessions = [];
         if (scheduleType === "ONE_TIME") {
@@ -251,8 +262,8 @@ exports.createClass = async (req, res, next) => {
         // Insert Class
         const [classResult] = await conn.query(
             `INSERT INTO class (SportID, CoachID, CourtID, Title, StartDate, Capacity, Fee, Status, BillingType)
-             VALUES(?, ?, ?, ?, ?, ?, ?, 'SCHEDULED', ?)`,
-            [sportId, coachId, courtId, title, startDate, capacity, fee, billingType]
+             VALUES(?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)`,
+            [sportId, coachId, courtId, title, checkStartDate, capacity, fee, billingType]
         );
         const classId = classResult.insertId;
 
@@ -294,5 +305,41 @@ exports.createClass = async (req, res, next) => {
         next(err);
     } finally {
         conn.release();
+    }
+};
+
+exports.deactivateClass = async (req, res, next) => {
+    try {
+        const classId = req.params.classId;
+        const [result] = await pool.query(
+            "UPDATE class SET Status = 'DEACTIVATED' WHERE ClassID = ?",
+            [classId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Class not found" });
+        }
+
+        res.json({ message: "Class deactivated successfully" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.activateClass = async (req, res, next) => {
+    try {
+        const classId = req.params.classId;
+        const [result] = await pool.query(
+            "UPDATE class SET Status = 'ACTIVE' WHERE ClassID = ?",
+            [classId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Class not found" });
+        }
+
+        res.json({ message: "Class activated successfully" });
+    } catch (err) {
+        next(err);
     }
 };

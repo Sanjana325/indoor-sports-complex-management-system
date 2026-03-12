@@ -117,6 +117,10 @@
   width: 10%;
 }
 
+.cm-col-status {
+  width: 10%;
+}
+
 .cm-col-actions {
   width: 14%;
 }
@@ -237,6 +241,34 @@
   white-space: nowrap;
 }
 
+/* Status Badge styling */
+.cm-status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 9999px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.cm-status-badge.active {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.cm-status-badge.deactivated {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+
+/* Deactivated Row styling */
+.cm-row-deactivated {
+  opacity: 0.6;
+}
+
 .cm-empty {
   text-align: center;
   padding: 32px;
@@ -299,9 +331,26 @@
   color: #ff3b3b;
 }
 
-.cm-action-btn.danger:hover {
+.cm-action-btn.danger:hover:not(:disabled) {
   background: #ff3b3b;
   color: #fff;
+}
+
+.cm-action-btn.success {
+  border-color: #059669;
+  color: #059669;
+}
+
+.cm-action-btn.success:hover:not(:disabled) {
+  background: #059669;
+  color: #fff;
+}
+
+.cm-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #ccc;
+  color: #888;
 }
 
 /* MODAL */

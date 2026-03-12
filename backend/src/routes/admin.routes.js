@@ -61,5 +61,7 @@ router.get("/admin/classes/available-courts", requireAuth, requireRole("ADMIN", 
 router.get("/admin/coaches", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getCoaches);
 router.get("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getClasses);
 router.post("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.createClass);
+router.patch("/admin/classes/:classId/deactivate", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.deactivateClass);
+router.patch("/admin/classes/:classId/activate", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.activateClass);
 
 module.exports = router;

@@ -291,10 +291,35 @@ export default function ClassManagement() {
     setIsModalOpen(false);
   }
 
-  function handleRemove(id) {
-    const ok = window.confirm("Are you sure you want to remove this class?");
+  async function handleToggleStatus(classItem) {
+    const isDeactivating = classItem.status !== "DEACTIVATED";
+    const actionText = isDeactivating ? "deactivate" : "activate";
+
+    const ok = window.confirm(`Are you sure you want to ${actionText} this class?`);
     if (!ok) return;
-    setClasses((prev) => prev.filter((c) => c.id !== id));
+
+    try {
+      const token = localStorage.getItem("token");
+      const endpoint = isDeactivating
+        ? `${API_BASE}/api/admin/classes/${classItem.id}/deactivate`
+        : `${API_BASE}/api/admin/classes/${classItem.id}/activate`;
+
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        alert(`Class ${actionText}d successfully.`);
+        fetchInitialData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.message || `Failed to ${actionText} class.`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred connecting to the server.");
+    }
   }
 
   function toggleDay(d) {
@@ -471,7 +496,7 @@ export default function ClassManagement() {
         {cricketRows.length === 0 ? (
           <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
         ) : (
-          <ClassTable rows={cricketRows} onEdit={openEditModal} onRemove={handleRemove} />
+          <ClassTable rows={cricketRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
         )}
       </section>
 
@@ -480,7 +505,7 @@ export default function ClassManagement() {
         {karateRows.length === 0 ? (
           <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
         ) : (
-          <ClassTable rows={karateRows} onEdit={openEditModal} onRemove={handleRemove} />
+          <ClassTable rows={karateRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
         )}
       </section>
 
@@ -489,7 +514,7 @@ export default function ClassManagement() {
         {futsalRows.length === 0 ? (
           <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
         ) : (
-          <ClassTable rows={futsalRows} onEdit={openEditModal} onRemove={handleRemove} />
+          <ClassTable rows={futsalRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
         )}
       </section>
 
@@ -498,7 +523,7 @@ export default function ClassManagement() {
         {chessRows.length === 0 ? (
           <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
         ) : (
-          <ClassTable rows={chessRows} onEdit={openEditModal} onRemove={handleRemove} />
+          <ClassTable rows={chessRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
         )}
       </section>
 
@@ -507,7 +532,7 @@ export default function ClassManagement() {
         {badmintonRows.length === 0 ? (
           <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
         ) : (
-          <ClassTable rows={badmintonRows} onEdit={openEditModal} onRemove={handleRemove} />
+          <ClassTable rows={badmintonRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
         )}
       </section>
 
@@ -719,7 +744,7 @@ export default function ClassManagement() {
   );
 }
 
-function ClassTable({ rows, onEdit, onRemove }) {
+function ClassTable({ rows, onEdit, onToggleStatus }) {
   // Helper to format time strings (e.g., "18:00" -> "6:00 PM")
   const formatTimeInfo = (start, end) => {
     if (!start || !end) return "-";
@@ -745,13 +770,14 @@ function ClassTable({ rows, onEdit, onRemove }) {
             <th className="cm-col-time">Time</th>
             <th className="cm-col-capacity">Capacity</th>
             <th className="cm-col-fee">Fee</th>
+            <th className="cm-col-status">Status</th>
             <th className="cm-col-actions cm-center">Actions</th>
           </tr>
         </thead>
 
         <tbody>
           {rows.map((c) => (
-            <tr key={c.id}>
+            <tr key={c.id} className={c.status === "DEACTIVATED" ? "cm-row-deactivated" : ""}>
               <td className="cm-col-class fw-semibold">{c.className}</td>
               <td className="cm-col-coach">{c.coachName}</td>
               <td className="cm-col-court">{c.courtName || "-"}</td>
@@ -779,14 +805,23 @@ function ClassTable({ rows, onEdit, onRemove }) {
                 <span className="cm-capacity-badge">{c.capacity} Max</span>
               </td>
               <td className="cm-col-fee">{formatLKR(c.fee)}</td>
+              <td className="cm-col-status">
+                <span className={`cm-status-badge ${c.status === "DEACTIVATED" ? "deactivated" : "active"}`}>
+                  {c.status || "ACTIVE"}
+                </span>
+              </td>
 
               <td className="cm-col-actions cm-actions-cell">
                 <div className="cm-actions right-align">
                   <button className="cm-action-btn" type="button" onClick={() => onEdit(c)}>
                     Edit
                   </button>
-                  <button className="cm-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
-                    Remove
+                  <button
+                    className={`cm-action-btn ${c.status === "DEACTIVATED" ? "success" : "danger"}`}
+                    type="button"
+                    onClick={() => onToggleStatus(c)}
+                  >
+                    {c.status === "DEACTIVATED" ? "Activate" : "Deactivate"}
                   </button>
                 </div>
               </td>
