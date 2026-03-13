@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Typography } from "@mui/material";
+import { Typography, Box, Paper, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, OutlinedInput, Chip } from "@mui/material";
 import "../../styles/ClassManagement.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -15,8 +15,7 @@ const DAYS = [
 ];
 
 function formatDays(days) {
-  if (!days || days.length === 0) return "-";
-  // Assuming days contains weekday values like 1, 2... map them or if they are numbers map to 'Mon', 'Tue' etc.
+  if (!days || !Array.isArray(days) || days.length === 0) return [];
   const dayMap = {
     1: "Mon",
     2: "Tue",
@@ -88,8 +87,8 @@ export default function ClassManagement() {
   const [coachId, setCoachId] = useState("");
   const [coachName, setCoachName] = useState("");
 
-  const [courtId, setCourtId] = useState("");
-  const [courtName, setCourtName] = useState("");
+  const [courtIds, setCourtIds] = useState([]); // Array of integers
+  const [courtName, setCourtName] = useState(""); // For single legacy or internal use, but we'll focus on IDs
 
   const [capacity, setCapacity] = useState("");
   const [fee, setFee] = useState("");
@@ -127,17 +126,29 @@ export default function ClassManagement() {
         if (d.sports && d.sports.length > 0) {
           setSport(d.sports[0].SportName); // Default
         }
+      } else {
+        const err = await spRes.json().catch(() => ({}));
+        console.error("Sports fetch failed", err);
       }
+
       if (cRes.ok) {
         const d = await cRes.json();
         setCoachesList(d.coaches || []);
+      } else {
+        const err = await cRes.json().catch(() => ({}));
+        console.error("Coaches fetch failed", err);
       }
+
       if (clsRes.ok) {
         const d = await clsRes.json();
         setClasses(d.classes || []);
+      } else {
+        const err = await clsRes.json().catch(() => ({}));
+        alert(err.message || "Failed to fetch classes from server.");
       }
     } catch (err) {
       console.error("Fetch error", err);
+      alert("Could not connect to the backend server. Please ensure it is running.");
     } finally {
       setLoadingInitial(false);
     }
@@ -192,7 +203,7 @@ export default function ClassManagement() {
           q.append("oneTimeDate", oneTimeDate);
         } else {
           q.append("startDate", startDate);
-          days.forEach(d => q.append("weekdays[]", d));
+          days.forEach(d => q.append("weekdays", d));
         }
 
         const res = await fetch(`${API_BASE}/api/admin/classes/available-courts?${q.toString()}`, {
@@ -239,10 +250,11 @@ export default function ClassManagement() {
   const badmintonRows = useMemo(() => bySport("BADMINTON"), [filteredClasses]);
 
   function resetForm() {
+    setSport("");
     setClassName("");
     setCoachId("");
     setCoachName("");
-    setCourtId("");
+    setCourtIds([]);
     setCourtName("");
     setCapacity("");
     setFee("");
@@ -260,6 +272,10 @@ export default function ClassManagement() {
   function openAddModal() {
     setMode("ADD");
     resetForm();
+    // Always default to the first available sport so the dropdown is never blank
+    if (sportsList.length > 0) {
+      setSport(sportsList[0].SportName);
+    }
     setIsModalOpen(true);
   }
 
@@ -273,7 +289,7 @@ export default function ClassManagement() {
     setCoachId(item.coachId || "");
     setCoachName(item.coachName || "");
 
-    setCourtId(item.courtId || "");
+    setCourtIds(item.courtIds || []);
     setCourtName(item.courtName || "");
 
     setCapacity(String(item.capacity));
@@ -330,7 +346,7 @@ export default function ClassManagement() {
       return [...prev, d];
     });
 
-    setCourtId("");
+    setCourtIds([]);
     setCourtName("");
   }
 
@@ -344,7 +360,7 @@ export default function ClassManagement() {
       setOneTimeDate("");
     }
 
-    setCourtId("");
+    setCourtIds([]);
     setCourtName("");
   }
 
@@ -354,7 +370,7 @@ export default function ClassManagement() {
     setCoachId("");
     setCoachName("");
 
-    setCourtId("");
+    setCourtIds([]);
     setCourtName("");
   }
 
@@ -395,9 +411,9 @@ export default function ClassManagement() {
     if (s === null || e === null) return "Select valid start/end time";
     if (e <= s) return "End time must be after start time";
 
-    if (!courtId) return "Select an available court for this class slot";
-    const stillAvailable = availableCourts.some((c) => c.CourtID === Number(courtId));
-    if (!stillAvailable) return "Selected court is not available for the chosen slot";
+    if (!courtIds || courtIds.length === 0) return "Select at least one available court";
+    const allStillAvailable = courtIds.every(id => availableCourts.some((c) => c.CourtID === Number(id)));
+    if (!allStillAvailable) return "One or more selected courts are no longer available for the chosen slot";
 
     return null;
   }
@@ -416,12 +432,12 @@ export default function ClassManagement() {
       title: className.trim(),
       sportId: selectedSportObj.SportID,
       coachId: Number(coachId),
-      courtId: Number(courtId),
+      courtIds: courtIds.map(Number),
       capacity: Number(capacity),
       fee: Number(fee),
       billingType: scheduleType === "WEEKLY" ? "MONTHLY" : "ONE_TIME",
       scheduleType,
-      startDate: scheduleType === "WEEKLY" ? startDate : "2000-01-01", // Dummy date if ONE_TIME to pass validation, though ONE_TIME shouldn't need a real start date. Wait, backend needs it. I'll just use oneTimeDate.
+      startDate: scheduleType === "WEEKLY" ? startDate : "2000-01-01", 
       oneTimeDate: scheduleType === "ONE_TIME" ? oneTimeDate : "",
       startTime,
       endTime,
@@ -495,50 +511,50 @@ export default function ClassManagement() {
         />
       </div>
 
-      <section className="cm-section">
-        <h3 className="cm-section-title">Cricket Classes</h3>
-        {cricketRows.length === 0 ? (
-          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
-        ) : (
-          <ClassTable rows={cricketRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
-        )}
-      </section>
+      {filteredClasses.length === 0 ? (
+        <Box display="flex" justifyContent="center" mt={6}>
+          <Paper
+            elevation={0}
+            sx={{
+              px: 6,
+              py: 5,
+              textAlign: "center",
+              borderRadius: 3,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px dashed rgba(255,255,255,0.15)",
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 1, color: "text.secondary" }}>
+              No classes have been scheduled yet.
+            </Typography>
+            <Typography variant="body2" color="text.disabled">
+              Click <strong>+ Add Class</strong> to get started.
+            </Typography>
+          </Paper>
+        </Box>
+      ) : (
+        sportsList.map((sportObj) => {
+          const sportKey = sportObj.SportName;
+          const classesForThisSport = filteredClasses
+            .filter((c) => c.sport === sportKey)
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      <section className="cm-section">
-        <h3 className="cm-section-title">Karate Classes</h3>
-        {karateRows.length === 0 ? (
-          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
-        ) : (
-          <ClassTable rows={karateRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
-        )}
-      </section>
+          if (classesForThisSport.length === 0) return null;
 
-      <section className="cm-section">
-        <h3 className="cm-section-title">Futsal Classes</h3>
-        {futsalRows.length === 0 ? (
-          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
-        ) : (
-          <ClassTable rows={futsalRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
-        )}
-      </section>
-
-      <section className="cm-section">
-        <h3 className="cm-section-title">Chess Classes</h3>
-        {chessRows.length === 0 ? (
-          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
-        ) : (
-          <ClassTable rows={chessRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
-        )}
-      </section>
-
-      <section className="cm-section">
-        <h3 className="cm-section-title">Badminton Classes</h3>
-        {badmintonRows.length === 0 ? (
-          <Typography color="textSecondary">No classes currently scheduled for this sport.</Typography>
-        ) : (
-          <ClassTable rows={badmintonRows} onEdit={openEditModal} onToggleStatus={handleToggleStatus} />
-        )}
-      </section>
+          return (
+            <section key={sportKey} className="cm-section">
+              <h3 className="cm-section-title">
+                {sportKey.charAt(0) + sportKey.slice(1).toLowerCase()} Classes
+              </h3>
+              <ClassTable
+                rows={classesForThisSport}
+                onEdit={openEditModal}
+                onToggleStatus={handleToggleStatus}
+              />
+            </section>
+          );
+        })
+      )}
 
       {isModalOpen && (
         <div className="cm-modal-backdrop" onMouseDown={closeModal}>
@@ -648,7 +664,7 @@ export default function ClassManagement() {
                       value={startDate}
                       onChange={(e) => {
                         setStartDate(e.target.value);
-                        setCourtId("");
+                        setCourtIds([]);
                         setCourtName("");
                       }}
                     />
@@ -663,7 +679,7 @@ export default function ClassManagement() {
                       value={oneTimeDate}
                       onChange={(e) => {
                         setOneTimeDate(e.target.value);
-                        setCourtId("");
+                        setCourtIds([]);
                         setCourtName("");
                       }}
                     />
@@ -677,7 +693,7 @@ export default function ClassManagement() {
                     value={startTime}
                     onChange={(e) => {
                       setStartTime(e.target.value);
-                      setCourtId("");
+                      setCourtIds([]);
                       setCourtName("");
                     }}
                   />
@@ -690,7 +706,7 @@ export default function ClassManagement() {
                     value={endTime}
                     onChange={(e) => {
                       setEndTime(e.target.value);
-                      setCourtId("");
+                      setCourtIds([]);
                       setCourtName("");
                     }}
                   />
@@ -703,29 +719,43 @@ export default function ClassManagement() {
                 </div>
 
                 <div className="cm-field cm-full">
-                  <label>Court (Available only)</label>
+                  <label>Courts (Select one or more)</label>
 
                   {!hasSlotInputs ? (
                     <div className="cm-hint">Select day/date and time first to load available courts.</div>
                   ) : availableCourts.length === 0 ? (
                     <div className="cm-no-courts">No available courts for the selected slot.</div>
                   ) : (
-                    <select
-                      value={courtId}
-                      onChange={(e) => {
-                        const id = e.target.value;
-                        setCourtId(id);
-                        const c = availableCourts.find((x) => x.CourtID === Number(id));
-                        setCourtName(c ? c.CourtName : "");
-                      }}
-                    >
-                      <option value="">Select Court</option>
-                      {availableCourts.map((c) => (
-                        <option key={c.CourtID} value={c.CourtID}>
-                          {c.CourtName} (Capacity: {c.Capacity})
-                        </option>
-                      ))}
-                    </select>
+                    <FormControl fullWidth size="small">
+                      <Select
+                        multiple
+                        value={courtIds}
+                        onChange={(e) => setCourtIds(e.target.value)}
+                        input={<OutlinedInput size="small" />}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {selected.map((value) => (
+                              <Chip 
+                                key={value} 
+                                label={availableCourts.find(c => c.CourtID === value)?.CourtName || value} 
+                                size="small"
+                              />
+                            ))}
+                          </Box>
+                        )}
+                        sx={{ 
+                          bgcolor: 'white',
+                          '& .MuiSelect-select': { py: 1 }
+                        }}
+                      >
+                        {availableCourts.map((c) => (
+                          <MenuItem key={c.CourtID} value={c.CourtID}>
+                            <Checkbox checked={courtIds.indexOf(c.CourtID) > -1} size="small" />
+                            <ListItemText primary={`${c.CourtName} (Cap: ${c.Capacity})`} />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   )}
                 </div>
               </div>
@@ -774,7 +804,7 @@ function ClassTable({ rows, onEdit, onToggleStatus }) {
           <tr>
             <th className="cm-col-class">Class Name</th>
             <th className="cm-col-coach">Coach</th>
-            <th className="cm-col-court">Court</th>
+            <th className="cm-col-court">Courts</th>
             <th className="cm-col-schedule">Schedule & Start Date</th>
             <th className="cm-col-time">Time</th>
             <th className="cm-col-capacity">Capacity</th>
@@ -789,15 +819,21 @@ function ClassTable({ rows, onEdit, onToggleStatus }) {
             <tr key={c.id} className={c.status === "DEACTIVATED" ? "cm-row-deactivated" : ""}>
               <td className="cm-col-class fw-semibold">{c.className}</td>
               <td className="cm-col-coach">{c.coachName}</td>
-              <td className="cm-col-court">{c.courtName || "-"}</td>
+              <td className="cm-col-court">
+                {c.courtName || "-"}
+              </td>
               <td className="cm-col-schedule">
                 {c.scheduleType === "WEEKLY" ? (
                   <div className="cm-schedule-cell">
                     <div className="cm-schedule-starts">Starts: {formatDate(c.startDate)}</div>
                     <div className="cm-day-badges">
-                      {formatDays(c.days).map((dayStr, idx) => (
-                        <span key={idx} className="cm-day-badge">{dayStr}</span>
-                      ))}
+                      {formatDays(c.days).length > 0 ? (
+                        formatDays(c.days).map((dayStr, idx) => (
+                          <span key={idx} className="cm-day-badge">{dayStr}</span>
+                        ))
+                      ) : (
+                        <span className="cm-no-days">-</span>
+                      )}
                     </div>
                   </div>
                 ) : (
