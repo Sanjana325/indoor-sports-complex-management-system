@@ -1,21 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { SportsCricket, SportsTennis, SportsSoccer, Event, Place, CheckCircle } from "@mui/icons-material";
+import { SportsCricket, SportsTennis, SportsSoccer, Event, Place, CheckCircle, SportsBasketball, SportsVolleyball, ErrorOutline } from "@mui/icons-material";
 import "../../styles/PlayerBookCourt.css";
 
-const SPORTS = [
-  { id: "Cricket", name: "Cricket", Icon: SportsCricket },
-  { id: "Badminton", name: "Badminton", Icon: SportsTennis },
-  { id: "Futsal", name: "Futsal", Icon: SportsSoccer },
-];
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-const COURTS = [
-  { id: "CRT-CR-A", sport: "Cricket", name: "Cricket Court A", price: 1500 },
-  { id: "CRT-CR-B", sport: "Cricket", name: "Cricket Court B", price: 1500 },
-  { id: "CRT-FU-A", sport: "Futsal", name: "Futsal Court A", price: 2000 },
-  { id: "CRT-BD-A", sport: "Badminton", name: "Badminton Court A", price: 1000 },
-  { id: "CRT-BD-B", sport: "Badminton", name: "Badminton Court B", price: 1000 },
-];
+// Map names to icons locally
+const ICON_MAP = {
+  "Cricket": SportsCricket,
+  "Badminton": SportsTennis,
+  "Futsal": SportsSoccer,
+  "Basketball": SportsBasketball,
+  "Volleyball": SportsVolleyball,
+};
+
+const DEFAULT_ICON = SportsSoccer;
 
 const TIME_SLOTS = [
   { id: "08-09", label: "08:00 AM - 09:00 AM", available: true },
@@ -41,29 +40,89 @@ function todayISO() {
 export default function PlayerBookCourt() {
   const navigate = useNavigate();
 
-  // State
-  const [selectedSport, setSelectedSport] = useState("");
+  // API State
+  const [sports, setSports] = useState([]);
+  const [courts, setCourts] = useState([]);
+  const [loadingSports, setLoadingSports] = useState(true);
+  const [loadingCourts, setLoadingCourts] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  // UI Selections
+  const [selectedSportId, setSelectedSportId] = useState("");
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
 
+  // Fetch Sports on Mount
+  useEffect(() => {
+    async function fetchSports() {
+      try {
+        setLoadingSports(true);
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/player/sports`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setSports(data.sports || []);
+        } else {
+          setApiError(data.message || "Failed to load sports");
+        }
+      } catch (err) {
+        setApiError("Connection error. Please try again.");
+      } finally {
+        setLoadingSports(false);
+      }
+    }
+    fetchSports();
+  }, []);
+
+  // Fetch Courts when Sport changes
+  useEffect(() => {
+    if (!selectedSportId) {
+      setCourts([]);
+      return;
+    }
+
+    async function fetchCourts() {
+      try {
+        setLoadingCourts(true);
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/player/courts?sportId=${selectedSportId}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setCourts(data.courts || []);
+        } else {
+          setApiError(data.message || "Failed to load courts");
+        }
+      } catch (err) {
+        setApiError("Connection error while loading courts.");
+      } finally {
+        setLoadingCourts(false);
+      }
+    }
+    fetchCourts();
+  }, [selectedSportId]);
+
   // Derived state
-  const availableCourts = useMemo(() => {
-    return COURTS.filter(c => c.sport === selectedSport);
-  }, [selectedSport]);
+  const selectedSport = useMemo(() => {
+    return sports.find(s => String(s.SportID) === String(selectedSportId)) || null;
+  }, [sports, selectedSportId]);
 
   const selectedCourt = useMemo(() => {
-    return COURTS.find(c => c.id === selectedCourtId) || null;
-  }, [selectedCourtId]);
+    return courts.find(c => String(c.CourtID) === String(selectedCourtId)) || null;
+  }, [courts, selectedCourtId]);
 
   const totalAmount = useMemo(() => {
     if (!selectedCourt) return 0;
-    return selectedTimeSlots.length * selectedCourt.price;
+    return selectedTimeSlots.length * Number(selectedCourt.PricePerHour || 0);
   }, [selectedTimeSlots, selectedCourt]);
 
   // Handlers
   const handleSportSelect = (sportId) => {
-    setSelectedSport(sportId);
+    setSelectedSportId(sportId);
     setSelectedCourtId("");
     setSelectedTimeSlots([]);
   };
@@ -76,11 +135,11 @@ export default function PlayerBookCourt() {
   };
 
   const handleConfirm = () => {
-    if (!selectedSport || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0) {
+    if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0) {
       alert("Please complete all selections before confirming.");
       return;
     }
-    alert("Booking Confirmed!");
+    alert("In-progress: Submit Booking POST request is not yet implemented.");
     navigate("/player/my-bookings");
   };
 
@@ -100,30 +159,39 @@ export default function PlayerBookCourt() {
           {/* STEP 1: Select Sport */}
           <section className="pbc-section glass-panel">
             <h2 className="pbc-section-title">1. Select Sport</h2>
-            <div className="pbc-sports-grid">
-              {SPORTS.map((sport) => {
-                const isSelected = selectedSport === sport.id;
-                return (
-                  <button
-                    key={sport.id}
-                    className={`pbc-sport-card ${isSelected ? "selected" : ""}`}
-                    onClick={() => handleSportSelect(sport.id)}
-                  >
-                    <sport.Icon className="sport-icon" />
-                    <span>{sport.name}</span>
-                    {isSelected && <CheckCircle className="selected-icon" />}
-                  </button>
-                );
-              })}
-            </div>
+            {apiError && <div className="pbc-error-inline"><ErrorOutline fontSize="small" /> {apiError}</div>}
+            
+            {loadingSports ? (
+              <div className="pbc-loading-indicator">Updating available sports...</div>
+            ) : (
+              <div className="pbc-sports-grid">
+                {sports.map((sport) => {
+                  const isSelected = String(selectedSportId) === String(sport.SportID);
+                  const IconComp = ICON_MAP[sport.SportName] || DEFAULT_ICON;
+                  return (
+                    <button
+                      key={sport.SportID}
+                      className={`pbc-sport-card ${isSelected ? "selected" : ""}`}
+                      onClick={() => handleSportSelect(sport.SportID)}
+                    >
+                      <IconComp className="sport-icon" />
+                      <span>{sport.SportName}</span>
+                      {isSelected && <CheckCircle className="selected-icon" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           {/* STEP 2: Date & Space */}
           <section className="pbc-section glass-panel">
             <h2 className="pbc-section-title">2. Select Date & Space</h2>
             
-            {!selectedSport ? (
+            {!selectedSportId ? (
               <div className="pbc-hint-box">Please select a sport first.</div>
+            ) : loadingCourts ? (
+              <div className="pbc-loading-indicator">Finding available courts for {selectedSport?.SportName}...</div>
             ) : (
               <div className="pbc-inline-selectors">
                 <div className="pbc-control">
@@ -148,8 +216,10 @@ export default function PlayerBookCourt() {
                     }}
                   >
                     <option value="">-- Choose Court --</option>
-                    {availableCourts.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} (LKR {c.price}/hr)</option>
+                    {courts.map(c => (
+                      <option key={c.CourtID} value={c.CourtID}>
+                        {c.CourtName} (LKR {Number(c.PricePerHour).toLocaleString("en-LK")}/hr)
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -176,7 +246,7 @@ export default function PlayerBookCourt() {
                     >
                       <div className="slot-time">{slot.label}</div>
                       <div className="slot-price-badge">
-                        <span className="slot-price">LKR {selectedCourt?.price || 0}</span>
+                        <span className="slot-price">LKR {Number(selectedCourt?.PricePerHour || 0).toLocaleString("en-LK")}</span>
                         <span className="slot-badge">{slot.available ? "AVAILABLE" : "BOOKED"}</span>
                       </div>
                     </button>
@@ -196,12 +266,12 @@ export default function PlayerBookCourt() {
             <div className="summary-details">
               <div className="summary-row">
                 <span className="summary-label">Sport:</span>
-                <span className="summary-value">{selectedSport || "-"}</span>
+                <span className="summary-value">{selectedSport?.SportName || "-"}</span>
               </div>
               
               <div className="summary-row">
                 <span className="summary-label">Court:</span>
-                <span className="summary-value">{selectedCourt?.name || "-"}</span>
+                <span className="summary-value">{selectedCourt?.CourtName || "-"}</span>
               </div>
               
               <div className="summary-row">
@@ -231,7 +301,7 @@ export default function PlayerBookCourt() {
 
             <button 
               className="pbc-confirm-btn"
-              disabled={!selectedSport || !selectedCourtId || selectedTimeSlots.length === 0}
+              disabled={!selectedSportId || !selectedCourtId || selectedTimeSlots.length === 0}
               onClick={handleConfirm}
             >
               CONFIRM BOOKING

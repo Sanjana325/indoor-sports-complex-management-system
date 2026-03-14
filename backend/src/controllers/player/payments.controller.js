@@ -1,10 +1,10 @@
-const db = require("../../config/db");
+const { pool } = require("../../config/db");
 
 exports.getMyPayments = async (req, res, next) => {
     try {
         const userId = req.user.userId;
 
-        const [rows] = await db.query(
+        const [rows] = await pool.query(
             `SELECT PaymentID, Amount, Method, Status, PaidAt, VerifiedAt
              FROM payment
              WHERE UserID = ?

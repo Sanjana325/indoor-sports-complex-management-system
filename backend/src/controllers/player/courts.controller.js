@@ -1,4 +1,4 @@
-const db = require("../../config/db");
+const { pool } = require("../../config/db");
 
 exports.getCourtsBySport = async (req, res, next) => {
     try {
@@ -7,7 +7,7 @@ exports.getCourtsBySport = async (req, res, next) => {
             return res.status(400).json({ message: "Invalid sportId" });
         }
 
-        const [rows] = await db.query(
+        const [rows] = await pool.query(
             `SELECT c.CourtID, c.CourtName, c.Capacity, c.PricePerHour, c.Status 
              FROM court c
              JOIN court_sport cs ON c.CourtID = cs.CourtID
@@ -37,7 +37,7 @@ exports.getCourtAvailability = async (req, res, next) => {
         const endOfDay = `${date} 23:59:59`;
 
         // Get bookings overlapping this date
-        const [bookings] = await db.query(
+        const [bookings] = await pool.query(
             `SELECT StartDateTime, EndDateTime 
              FROM booking 
              WHERE CourtID = ? AND Status != 'CANCELLED'
@@ -46,7 +46,7 @@ exports.getCourtAvailability = async (req, res, next) => {
         );
 
         // Get blocked slots overlapping this date
-        const [blocked] = await db.query(
+        const [blocked] = await pool.query(
             `SELECT StartDateTime, EndDateTime, Reason
              FROM blockedslot
              WHERE CourtID = ?

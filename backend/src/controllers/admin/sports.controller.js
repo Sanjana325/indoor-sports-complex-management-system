@@ -12,8 +12,9 @@ exports.listSports = async (req, res, next) => {
 
 exports.createSport = async (req, res, next) => {
     try {
-        const { sportName, colorCode } = req.body || {};
-        const row = await sportModel.createSportIfNotExists(sportName, colorCode);
+        const { sportName, colorCode, isBookable } = req.body || {};
+        const isBookableVal = isBookable === undefined ? 1 : (isBookable ? 1 : 0);
+        const row = await sportModel.createSportIfNotExists(sportName, colorCode, isBookableVal);
         if (!row) return res.status(400).json({ message: "Sport name is required" });
         res.status(201).json({ sport: row });
     } catch (err) {
@@ -43,10 +44,11 @@ exports.updateSport = async (req, res, next) => {
         const sportId = Number(req.params.sportId);
         if (!Number.isFinite(sportId)) return res.status(400).json({ message: "Invalid sport ID" });
 
-        const { sportName, colorCode } = req.body || {};
+        const { sportName, colorCode, isBookable } = req.body || {};
         if (!sportName) return res.status(400).json({ message: "Sport name is required" });
-
-        const success = await sportModel.updateSport(sportId, sportName, colorCode);
+ 
+        const isBookableVal = isBookable === undefined ? 1 : (isBookable ? 1 : 0);
+        const success = await sportModel.updateSport(sportId, sportName, colorCode, isBookableVal);
         if (!success) return res.status(404).json({ message: "Sport not found or update failed" });
 
         // Fetch updated sport to return

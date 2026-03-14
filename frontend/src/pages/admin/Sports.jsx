@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
+import { Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, FormControlLabel, Switch, Chip } from "@mui/material";
 import "../../styles/AdminHome.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -10,6 +10,7 @@ export default function Sports() {
 
     const [newSportName, setNewSportName] = useState("");
     const [newSportColor, setNewSportColor] = useState("#1976d2");
+    const [isBookable, setIsBookable] = useState(true);
     const [editingSport, setEditingSport] = useState(null);
     const [saving, setSaving] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,7 +63,7 @@ export default function Sports() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ sportName: name, colorCode: newSportColor })
+                body: JSON.stringify({ sportName: name, colorCode: newSportColor, isBookable })
             });
 
             if (!res.ok) {
@@ -73,6 +74,7 @@ export default function Sports() {
 
             setNewSportName("");
             setNewSportColor("#1976d2");
+            setIsBookable(true);
             setEditingSport(null);
             setIsModalOpen(false);
             await fetchSports();
@@ -88,6 +90,7 @@ export default function Sports() {
         setEditingSport(null);
         setNewSportName("");
         setNewSportColor("#1976d2");
+        setIsBookable(true);
         setIsModalOpen(true);
     }
 
@@ -95,6 +98,7 @@ export default function Sports() {
         setEditingSport(sport);
         setNewSportName(sport.SportName);
         setNewSportColor(sport.ColorCode || "#1976d2");
+        setIsBookable(sport.IsBookable === 1 || sport.IsBookable === true);
         setIsModalOpen(true);
     }
 
@@ -103,6 +107,7 @@ export default function Sports() {
         setEditingSport(null);
         setNewSportName("");
         setNewSportColor("#1976d2");
+        setIsBookable(true);
     }
 
     async function handleDeleteSport(sportId, sportName) {
@@ -170,6 +175,7 @@ export default function Sports() {
                                     <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>NAME</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>COLOR</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>STATUS</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold' }}>ACTIONS</TableCell>
                                 </TableRow>
                             </TableHead>
@@ -179,7 +185,17 @@ export default function Sports() {
                                         <TableCell>{s.SportID}</TableCell>
                                         <TableCell>{String(s.SportName || "").toUpperCase()}</TableCell>
                                         <TableCell>
-                                            <Box sx={{ width: 24, height: 24, borderRadius: 1, backgroundColor: s.ColorCode || '#1976d2' }} />
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ width: 16, height: 16, borderRadius: 0.5, backgroundColor: s.ColorCode || '#1976d2' }} />
+                                                <Typography variant="body2">{s.ColorCode}</Typography>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            {s.IsBookable ? (
+                                                <Chip label="Bookable" color="success" size="small" variant="outlined" />
+                                            ) : (
+                                                <Chip label="Class-Only" color="warning" size="small" variant="outlined" />
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -208,7 +224,7 @@ export default function Sports() {
                 )}
 
                 <div className="ah-sport-hint" style={{ marginTop: '16px' }}>
-                    If a sport is linked to courts or coaches, delete may be blocked by the database.
+                    Bookable sports appear in the Player's court booking dashboard. Class-Only sports are restricted to enrollments.
                 </div>
             </div>
 
@@ -253,10 +269,17 @@ export default function Sports() {
                                 </Typography>
                             </Box>
                         </Box>
+
+                        <FormControlLabel
+                            control={<Switch checked={isBookable} onChange={(e) => setIsBookable(e.target.checked)} color="primary" />}
+                            label={
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Allow Player Bookings</Typography>
+                                    <Typography variant="caption" color="textSecondary">If disabled, this sport will only be available for classes.</Typography>
+                                </Box>
+                            }
+                        />
                     </form>
-                    <div className="ah-sport-hint" style={{ marginTop: '20px' }}>
-                        Sports will appear in the Add Court dropdown automatically.
-                    </div>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, py: 2 }}>
                     <Button onClick={handleCloseModal} disabled={saving} color="inherit">

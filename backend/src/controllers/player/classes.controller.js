@@ -1,10 +1,10 @@
-const db = require("../../config/db");
+const { pool } = require("../../config/db");
 
 exports.getAvailableClasses = async (req, res, next) => {
     try {
         const userId = req.user.userId;
 
-        const [rows] = await db.query(
+        const [rows] = await pool.query(
             `SELECT c.ClassID, c.Title, c.StartDate, c.Capacity, c.Fee, c.BillingType,
                     s.SportName,
                     co.CoachID, ua.FirstName AS CoachFirstName, ua.LastName AS CoachLastName,
@@ -38,7 +38,7 @@ exports.enrollInClass = async (req, res, next) => {
             return res.status(400).json({ message: "Invalid class ID" });
         }
 
-        const [[classData]] = await db.query(
+        const [[classData]] = await pool.query(
             `SELECT Capacity,
              (SELECT COUNT(*) FROM enrollment WHERE ClassID = ? AND Status = 'ENROLLED') as CurrentEnrolled
              FROM class WHERE ClassID = ? AND Status = 'ACTIVE'`,
@@ -52,7 +52,7 @@ exports.enrollInClass = async (req, res, next) => {
             return res.status(400).json({ message: "Class is full" });
         }
 
-        await db.query(
+        await pool.query(
             `INSERT INTO enrollment (ClassID, UserID, Status) 
              VALUES (?, ?, 'ENROLLED')
              ON DUPLICATE KEY UPDATE Status = 'ENROLLED'`,
@@ -69,7 +69,7 @@ exports.getMyClasses = async (req, res, next) => {
     try {
         const userId = req.user.userId;
 
-        const [rows] = await db.query(
+        const [rows] = await pool.query(
             `SELECT e.EnrollmentID, e.EnrolledAt, e.Status AS EnrollmentStatus,
                     c.ClassID, c.Title, c.StartDate, c.Fee, c.BillingType, c.Status AS ClassStatus,
                     s.SportName,

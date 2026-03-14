@@ -1,4 +1,4 @@
-const db = require("../../config/db");
+const { pool } = require("../../config/db");
 
 exports.createBooking = async (req, res, next) => {
     try {
@@ -9,7 +9,7 @@ exports.createBooking = async (req, res, next) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        const [result] = await db.query(
+        const [result] = await pool.query(
             "INSERT INTO booking (CourtID, SportID, UserID, StartDateTime, EndDateTime, Status) VALUES (?, ?, ?, ?, ?, 'PENDING')",
             [courtId, sportId, userId, startDateTime, endDateTime]
         );
@@ -23,7 +23,7 @@ exports.createBooking = async (req, res, next) => {
 exports.getMyBookings = async (req, res, next) => {
     try {
         const userId = req.user.userId;
-        const [rows] = await db.query(
+        const [rows] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
                     c.CourtName, s.SportName
              FROM booking b
@@ -48,7 +48,7 @@ exports.cancelBooking = async (req, res, next) => {
             return res.status(400).json({ message: "Invalid booking ID" });
         }
 
-        const [result] = await db.query(
+        const [result] = await pool.query(
             "UPDATE booking SET Status = 'CANCELLED' WHERE BookingID = ? AND UserID = ? AND Status != 'CANCELLED'",
             [bookingId, userId]
         );

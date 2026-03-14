@@ -4,21 +4,21 @@ function normalizeText(name) {
     return String(name || "").trim();
 }
 
-async function createSportIfNotExists(sportName, colorCode = '#1976d2', conn = pool) {
+async function createSportIfNotExists(sportName, colorCode = '#1976d2', isBookable = 1, conn = pool) {
     const name = normalizeText(sportName);
     const color = normalizeText(colorCode) || '#1976d2';
     if (!name) return null;
 
-    await conn.query(`INSERT IGNORE INTO sport (SportName, ColorCode) VALUES (?, ?)`, [name, color]);
+    await conn.query(`INSERT IGNORE INTO sport (SportName, ColorCode, IsBookable) VALUES (?, ?, ?)`, [name, color, isBookable]);
 
-    const [rows] = await conn.query(`SELECT SportID, SportName, ColorCode, IsActive FROM sport WHERE SportName = ? LIMIT 1`, [name]);
+    const [rows] = await conn.query(`SELECT SportID, SportName, ColorCode, IsActive, IsBookable FROM sport WHERE SportName = ? LIMIT 1`, [name]);
     return rows.length ? rows[0] : null;
 }
 
 async function listSports(search = "", conn = pool) {
     const q = `%${normalizeText(search)}%`;
     const [rows] = await conn.query(
-        `SELECT SportID, SportName, ColorCode, IsActive
+        `SELECT SportID, SportName, ColorCode, IsActive, IsBookable
      FROM sport
      WHERE IsActive = TRUE AND SportName LIKE ?
      ORDER BY SportName ASC
@@ -35,18 +35,18 @@ async function getSportIdByName(sportName, conn = pool) {
 }
 
 async function getSportById(sportId, conn = pool) {
-    const [rows] = await conn.query(`SELECT SportID, SportName, ColorCode, IsActive FROM sport WHERE SportID = ? LIMIT 1`, [sportId]);
+    const [rows] = await conn.query(`SELECT SportID, SportName, ColorCode, IsActive, IsBookable FROM sport WHERE SportID = ? LIMIT 1`, [sportId]);
     return rows.length ? rows[0] : null;
 }
 
-async function updateSport(sportId, sportName, colorCode, conn = pool) {
+async function updateSport(sportId, sportName, colorCode, isBookable, conn = pool) {
     const name = normalizeText(sportName);
     const color = normalizeText(colorCode) || '#1976d2';
     if (!name) return false;
 
     const [result] = await conn.query(
-        `UPDATE sport SET SportName = ?, ColorCode = ? WHERE SportID = ?`,
-        [name, color, sportId]
+        `UPDATE sport SET SportName = ?, ColorCode = ?, IsBookable = ? WHERE SportID = ?`,
+        [name, color, isBookable, sportId]
     );
     return result.affectedRows > 0;
 }
