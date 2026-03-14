@@ -1,244 +1,229 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { 
+  Box, 
+  Typography, 
+  Button, 
+  Grid, 
+  CircularProgress, 
+  Card, 
+  CardContent, 
+  Avatar, 
+  Chip,
+  Container
+} from "@mui/material";
+import { 
+  SportsCricket, 
+  SportsTennis, 
+  SportsSoccer, 
+  SportsBasketball, 
+  SportsVolleyball, 
+  Person, 
+  EventNote, 
+  Group, 
+  Payments,
+  ArrowBack
+} from "@mui/icons-material";
 import "../../styles/PlayerAvailableClasses.css";
 
-function formatLKR(n) {
-  if (!Number.isFinite(n)) return "-";
-  return `LKR ${n.toLocaleString("en-LK")}`;
-}
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-function formatSchedule(c) {
-  if (c.scheduleType === "ONETIME") {
-    return `${c.oneTimeDate || "-"} | ${c.startTime || "--:--"} - ${c.endTime || "--:--"}`;
-  }
-  const days = Array.isArray(c.days) && c.days.length ? c.days.join(", ") : "-";
-  return `${days} | ${c.startTime || "--:--"} - ${c.endTime || "--:--"}`;
-}
+const ICON_MAP = {
+  "Cricket": SportsCricket,
+  "Badminton": SportsTennis,
+  "Futsal": SportsSoccer,
+  "Basketball": SportsBasketball,
+  "Volleyball": SportsVolleyball,
+};
+
+const DEFAULT_ICON = SportsSoccer;
 
 export default function PlayerAvailableClasses() {
   const navigate = useNavigate();
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [classes] = useState([
-    {
-      id: "CL-800001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachName: "Sahan Fernando",
-      coachQualifications: "Level 1 Cricket Coach",
-      coachSpecialization: "Batting & Fielding",
-      scheduleType: "WEEKLY",
-      days: ["Mon", "Wed"],
-      oneTimeDate: "",
-      startTime: "16:00",
-      endTime: "17:30",
-      fee: 2500,
-      capacity: 20,
-      enrolledCount: 14,
-    },
-    {
-      id: "CL-800002",
-      sport: "BADMINTON",
-      className: "Badminton Drills",
-      coachName: "Dilani Jayasinghe",
-      coachQualifications: "National Coach Certificate",
-      coachSpecialization: "Footwork & Speed",
-      scheduleType: "ONETIME",
-      days: [],
-      oneTimeDate: "2026-10-02",
-      startTime: "18:00",
-      endTime: "19:00",
-      fee: 2000,
-      capacity: 16,
-      enrolledCount: 16,
-    },
-    {
-      id: "CL-800003",
-      sport: "FUTSAL",
-      className: "Futsal Training",
-      coachName: "Kasun Silva",
-      coachQualifications: "AFC Grassroots License",
-      coachSpecialization: "Defensive Play",
-      scheduleType: "WEEKLY",
-      days: ["Sat"],
-      oneTimeDate: "",
-      startTime: "09:00",
-      endTime: "10:30",
-      fee: 3000,
-      capacity: 18,
-      enrolledCount: 11,
-    },
-  ]);
+  useEffect(() => {
+    fetchAvailableClasses();
+  }, []);
 
-  const availableClasses = useMemo(() => {
-    return classes.filter((c) => Number(c.enrolledCount) < Number(c.capacity));
-  }, [classes]);
-
-  const [step, setStep] = useState("LIST");
-  const [selectedClass, setSelectedClass] = useState(null);
-
-  const [payMethod, setPayMethod] = useState("");
-  const [bankSlipFile, setBankSlipFile] = useState(null);
-
-  function onEnrollNow(item) {
-    setSelectedClass(item);
-    setPayMethod("");
-    setBankSlipFile(null);
-    setStep("PAY");
-  }
-
-  function submitPayment() {
-    if (!payMethod) return alert("Please select a payment method");
-
-    if (payMethod === "ONLINE") {
-      alert("Online payment gateway not added yet (UI-only).");
-      return;
-    }
-
-    if (payMethod === "BANKSLIP") {
-      if (!bankSlipFile) return alert("Please upload your bank slip");
-      setStep("DONE");
+  async function fetchAvailableClasses() {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/player/classes`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        setClasses(data.classes || []);
+      } else {
+        setError(data.message || "Failed to load classes");
+      }
+    } catch (err) {
+      setError("Connection error. Please check your internet.");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   }
+
+  const handleEnrollClick = (classId) => {
+    console.log("Enroll initiated for ClassID:", classId);
+    alert(`Enrolling in class ${classId}... (Logic coming soon)`);
+  };
 
   return (
-    <div className="pac-page">
-      <div className="pac-top">
-        <div>
-          <h2 className="pac-title">Available Classes</h2>
-          <div className="pac-sub">Only classes that still have capacity are shown.</div>
-        </div>
+    <div className="pac-portal-container">
+      <Container maxWidth="lg" sx={{ py: 6 }}>
+        {/* HEADER SECTION */}
+        <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h3" sx={{ 
+              fontWeight: 800, 
+              color: '#fff', 
+              mb: 1,
+              textShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            }}>
+              Available Classes
+            </Typography>
+            <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 400 }}>
+              Join a class to level up your skills with expert coaching.
+            </Typography>
+          </Box>
+          <Button 
+            startIcon={<ArrowBack />} 
+            onClick={() => navigate("/player")}
+            sx={{ 
+              color: '#fff', 
+              borderColor: 'rgba(255,255,255,0.3)',
+              textTransform: 'none',
+              borderRadius: '12px',
+              px: 3,
+              '&:hover': { borderColor: '#fff' }
+            }}
+            variant="outlined"
+          >
+            Dashboard
+          </Button>
+        </Box>
 
-        <button type="button" className="pac-outline-btn" onClick={() => navigate("/player")}>
-          ← Back
-        </button>
-      </div>
+        {/* LOADING STATE */}
+        {loading ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10 }}>
+            <CircularProgress sx={{ color: '#00e676', mb: 2 }} />
+            <Typography sx={{ color: '#fff', opacity: 0.8 }}>Searching for open classes...</Typography>
+          </Box>
+        ) : error ? (
+          /* ERROR STATE */
+          <Box sx={{ textAlign: 'center', py: 10, bgcolor: 'rgba(255,0,0,0.1)', borderRadius: '16px' }}>
+            <Typography variant="h6" sx={{ color: '#ff5252' }}>{error}</Typography>
+            <Button onClick={fetchAvailableClasses} sx={{ mt: 2, color: '#fff' }}>Try Again</Button>
+          </Box>
+        ) : classes.length === 0 ? (
+          /* EMPTY STATE */
+          <Box sx={{ 
+            textAlign: 'center', 
+            py: 12, 
+            bgcolor: 'rgba(255,255,255,0.05)', 
+            borderRadius: '24px',
+            border: '1px dashed rgba(255,255,255,0.1)'
+          }}>
+            <EventNote sx={{ fontSize: 64, color: 'rgba(255,255,255,0.2)', mb: 2 }} />
+            <Typography variant="h5" sx={{ color: '#fff', mb: 1 }}>No classes available right now</Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>All current classes are full or completed. Check back soon!</Typography>
+          </Box>
+        ) : (
+          /* CLASSES GRID */
+          <Grid container spacing={4}>
+            {classes.map((cls) => {
+              const IconComp = ICON_MAP[cls.SportName] || DEFAULT_ICON;
+              return (
+                <Grid item xs={12} sm={6} md={4} key={cls.ClassID}>
+                  <Card className="glass-card-class">
+                    <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      {/* HEADER: Sport Badge */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Avatar sx={{ bgcolor: 'rgba(0, 230, 118, 0.15)', color: '#00e676', width: 44, height: 44 }}>
+                            <IconComp />
+                          </Avatar>
+                          <Typography variant="subtitle2" sx={{ color: '#00e676', fontWeight: 700, letterSpacing: 1.2 }}>
+                            {cls.SportName.toUpperCase()}
+                          </Typography>
+                        </Box>
+                        <Chip 
+                          label={`${cls.EnrolledCount}/${cls.Capacity}`} 
+                          size="small"
+                          sx={{ 
+                            bgcolor: 'rgba(255,255,255,0.1)', 
+                            color: '#fff', 
+                            fontWeight: 600,
+                            border: '1px solid rgba(255,255,255,0.2)'
+                          }}
+                        />
+                      </Box>
 
-      {step === "LIST" && (
-        <>
-          {availableClasses.length === 0 ? (
-            <div className="pac-empty">
-              <div className="pac-empty-title">No available classes right now</div>
-              <div className="pac-empty-sub">All classes are currently full.</div>
-            </div>
-          ) : (
-            <div className="pac-grid">
-              {availableClasses.map((c) => (
-                <div key={c.id} className="pac-tile">
-                  <div className="pac-row">
-                    <div className="pac-name">{c.className}</div>
-                    <div className="pac-fee">{formatLKR(c.fee)}</div>
-                  </div>
+                      {/* TITLE */}
+                      <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, mb: 1.5, lineHeight: 1.2 }}>
+                        {cls.Title}
+                      </Typography>
 
-                  <div className="pac-meta">
-                    <div><strong>Coach:</strong> {c.coachName}</div>
-                    <div><strong>Qualification:</strong> {c.coachQualifications || "-"}</div>
-                    <div><strong>Specialization:</strong> {c.coachSpecialization || "-"}</div>
-                  </div>
+                      {/* DETAILS */}
+                      <Box sx={{ mb: 'auto' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
+                          <Person sx={{ fontSize: 18, color: '#40c4ff' }} />
+                          <Typography variant="body2" sx={{ color: '#fff' }}>
+                            Coach: <strong>{cls.CoachFirstName} {cls.CoachLastName}</strong>
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
+                          <EventNote sx={{ fontSize: 18, color: '#40c4ff' }} />
+                          <Typography variant="body2" sx={{ color: '#fff' }}>
+                            Starts: {new Date(cls.StartDate).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, opacity: 0.8 }}>
+                          <Group sx={{ fontSize: 18, color: '#40c4ff' }} />
+                          <Typography variant="body2" sx={{ color: '#fff' }}>
+                            {cls.Capacity - cls.EnrolledCount} Slots Remaining
+                          </Typography>
+                        </Box>
+                      </Box>
 
-                  <div className="pac-schedule">
-                    <strong>Schedule:</strong> {formatSchedule(c)}
-                  </div>
-
-                  <div className="pac-cap">
-                    <strong>Capacity:</strong> {c.enrolledCount}/{c.capacity}
-                  </div>
-
-                  <div className="pac-actions">
-                    <button type="button" className="pac-outline-btn" onClick={() => onEnrollNow(c)}>
-                      Enroll Now
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {step === "PAY" && selectedClass && (
-        <div className="pac-card">
-          <div className="pac-card-title">Payment for Enrollment</div>
-
-          <div className="pac-pay-box">
-            <div className="pac-pay-summary">
-              <div><strong>Class:</strong> {selectedClass.className}</div>
-              <div><strong>Coach:</strong> {selectedClass.coachName}</div>
-              <div><strong>Schedule:</strong> {formatSchedule(selectedClass)}</div>
-              <div className="pac-pay-total"><strong>Fee:</strong> {formatLKR(selectedClass.fee)}</div>
-            </div>
-
-            <div className="pac-pay-methods">
-              <div className="pac-pay-title">Choose Payment Method</div>
-
-              <label className="pac-radio">
-                <input
-                  type="radio"
-                  name="pay"
-                  value="ONLINE"
-                  checked={payMethod === "ONLINE"}
-                  onChange={(e) => setPayMethod(e.target.value)}
-                />
-                <span>Online Payment (Gateway coming soon)</span>
-              </label>
-
-              <label className="pac-radio">
-                <input
-                  type="radio"
-                  name="pay"
-                  value="BANKSLIP"
-                  checked={payMethod === "BANKSLIP"}
-                  onChange={(e) => setPayMethod(e.target.value)}
-                />
-                <span>Bank Slip Upload</span>
-              </label>
-
-              {payMethod === "BANKSLIP" && (
-                <div className="pac-upload">
-                  <label>Upload Bank Slip</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setBankSlipFile(e.target.files?.[0] || null)}
-                  />
-                  <div className="pac-upload-hint">
-                    Enrollment will be <strong>confirmed only after verification</strong>.
-                  </div>
-                </div>
-              )}
-
-              <div className="pac-pay-actions">
-                <button type="button" className="pac-outline-btn" onClick={() => setStep("LIST")}>
-                  Back
-                </button>
-                <button type="button" className="pac-primary-btn" onClick={submitPayment}>
-                  Submit Payment
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {step === "DONE" && selectedClass && (
-        <div className="pac-card">
-          <div className="pac-done">
-            <div className="pac-done-icon">✅</div>
-            <div className="pac-done-title">Payment Submitted</div>
-            <div className="pac-done-sub">
-              Your enrollment is now <strong>Pending Verification</strong>. It will become <strong>Confirmed</strong> after staff/admin verifies your payment.
-            </div>
-
-            <div className="pac-pay-actions">
-              <button type="button" className="pac-outline-btn" onClick={() => navigate("/player/my-payments")}>
-                Go to My Payments
-              </button>
-              <button type="button" className="pac-primary-btn" onClick={() => navigate("/player/my-classes")}>
-                Go to My Classes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                      {/* FEE & ACTION */}
+                      <Box sx={{ mt: 2, pt: 3, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Fee</Typography>
+                          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
+                            {cls.Fee} <span style={{ fontSize: '0.75rem', fontWeight: 400, opacity: 0.7 }}>/ {cls.BillingType}</span>
+                          </Typography>
+                        </Box>
+                        <Button 
+                          variant="contained" 
+                          onClick={() => handleEnrollClick(cls.ClassID)}
+                          sx={{ 
+                            bgcolor: '#00e676', 
+                            color: '#000', 
+                            fontWeight: 700,
+                            borderRadius: '10px',
+                            px: 3,
+                            '&:hover': { bgcolor: '#00c853' }
+                          }}
+                        >
+                          ENROLL NOW
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
+      </Container>
     </div>
   );
 }

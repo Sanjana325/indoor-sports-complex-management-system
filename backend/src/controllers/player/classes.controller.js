@@ -8,17 +8,19 @@ exports.getAvailableClasses = async (req, res, next) => {
             `SELECT c.ClassID, c.Title, c.StartDate, c.Capacity, c.Fee, c.BillingType,
                     s.SportName,
                     co.CoachID, ua.FirstName AS CoachFirstName, ua.LastName AS CoachLastName,
-                    crt.CourtName,
+                    GROUP_CONCAT(crt.CourtName) AS CourtNames,
                     (SELECT COUNT(*) FROM enrollment e WHERE e.ClassID = c.ClassID AND e.Status = 'ENROLLED') AS EnrolledCount
              FROM class c
              JOIN sport s ON c.SportID = s.SportID
              JOIN coach co ON c.CoachID = co.CoachID
              JOIN useraccount ua ON co.UserID = ua.UserID
-             JOIN court crt ON c.CourtID = crt.CourtID
+             LEFT JOIN class_court cc ON c.ClassID = cc.ClassID
+             LEFT JOIN court crt ON cc.CourtID = crt.CourtID
              WHERE c.Status = 'ACTIVE'
              AND c.ClassID NOT IN (
                  SELECT ClassID FROM enrollment WHERE UserID = ? AND Status = 'ENROLLED'
              )
+             GROUP BY c.ClassID
              ORDER BY c.StartDate ASC`,
             [userId]
         );
@@ -74,14 +76,16 @@ exports.getMyClasses = async (req, res, next) => {
                     c.ClassID, c.Title, c.StartDate, c.Fee, c.BillingType, c.Status AS ClassStatus,
                     s.SportName,
                     ua.FirstName AS CoachFirstName, ua.LastName AS CoachLastName,
-                    crt.CourtName
+                    GROUP_CONCAT(crt.CourtName) AS CourtNames
              FROM enrollment e
              JOIN class c ON e.ClassID = c.ClassID
              JOIN sport s ON c.SportID = s.SportID
              JOIN coach co ON c.CoachID = co.CoachID
              JOIN useraccount ua ON co.UserID = ua.UserID
-             JOIN court crt ON c.CourtID = crt.CourtID
+             LEFT JOIN class_court cc ON c.ClassID = cc.ClassID
+             LEFT JOIN court crt ON cc.CourtID = crt.CourtID
              WHERE e.UserID = ?
+             GROUP BY e.EnrollmentID
              ORDER BY e.EnrolledAt DESC`,
             [userId]
         );
