@@ -35,8 +35,13 @@ exports.getCourtAvailability = async (req, res, next) => {
 
         const startOfDay = `${date} 00:00:00`;
         const endOfDay = `${date} 23:59:59`;
+        
+        // Calculate weekday for recurring class checks (0=Sun, 1=Mon, ..., 6=Sat)
+        // Use UTC date to ensure the weekday matches the date string provided
+        const [y, m, d] = date.split('-').map(Number);
+        const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 
-        // Get bookings overlapping this date
+        // 1. Get bookings overlapping this date
         const [bookings] = await pool.query(
             `SELECT StartDateTime, EndDateTime 
              FROM booking 
@@ -45,7 +50,7 @@ exports.getCourtAvailability = async (req, res, next) => {
             [courtId, endOfDay, startOfDay]
         );
 
-        // Get blocked slots overlapping this date
+        // 2. Get blocked slots overlapping this date
         const [blocked] = await pool.query(
             `SELECT StartDateTime, EndDateTime, Reason
              FROM blockedslot
@@ -54,7 +59,36 @@ exports.getCourtAvailability = async (req, res, next) => {
             [courtId, endOfDay, startOfDay]
         );
 
-        res.json({ bookings, blocked });
+        // 3. Get active classes scheduled for this court on this date
+        const [classSlots] = await pool.query(
+            `SELECT sch.StartTime, sch.EndTime, c.Title AS Reason
+             FROM class c
+             JOIN class_court cc ON c.ClassID = cc.ClassID
+             JOIN classschedule sch ON c.ClassID = sch.ClassID
+             LEFT JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+             WHERE cc.CourtID = ?
+             AND c.Status = 'ACTIVE'
+             AND c.StartDate <= ?
+             AND (
+                 (sch.ScheduleType = 'ONE_TIME' AND sch.OneTimeDate = ?)
+                 OR
+                 (sch.ScheduleType = 'WEEKLY' AND csd.Weekday = ?)
+             )`,
+            [courtId, date, date, dayOfWeek]
+        );
+
+        // Map class slots to the same StartDateTime/EndDateTime format as bookings/blocked
+        const classExclusions = classSlots.map(cls => ({
+            StartDateTime: `${date} ${cls.StartTime}`,
+            EndDateTime: `${date} ${cls.EndTime}`,
+            Reason: `Class: ${cls.Reason}`,
+            isClass: true
+        }));
+
+        res.json({ 
+            bookings, 
+            blocked: [...blocked, ...classExclusions] 
+        });
     } catch (err) {
         next(err);
     }

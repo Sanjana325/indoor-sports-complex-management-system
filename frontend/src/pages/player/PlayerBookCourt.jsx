@@ -46,6 +46,8 @@ export default function PlayerBookCourt() {
   const [loadingSports, setLoadingSports] = useState(true);
   const [loadingCourts, setLoadingCourts] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [availability, setAvailability] = useState({ bookings: [], blocked: [] });
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   // UI Selections
   const [selectedSportId, setSelectedSportId] = useState("");
@@ -106,6 +108,38 @@ export default function PlayerBookCourt() {
     fetchCourts();
   }, [selectedSportId]);
 
+  // Fetch Availability when Court or Date changes
+  useEffect(() => {
+    if (!selectedCourtId || !selectedDate) {
+      setAvailability({ bookings: [], blocked: [] });
+      return;
+    }
+
+    async function fetchAvailability() {
+      try {
+        setLoadingAvailability(true);
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/player/courts/${selectedCourtId}/availability?date=${selectedDate}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setAvailability({
+            bookings: data.bookings || [],
+            blocked: data.blocked || []
+          });
+        } else {
+          console.error("Failed to load availability", data.message);
+        }
+      } catch (err) {
+        console.error("Connection error while loading availability.", err);
+      } finally {
+        setLoadingAvailability(false);
+      }
+    }
+    fetchAvailability();
+  }, [selectedCourtId, selectedDate]);
+
   // Derived state
   const selectedSport = useMemo(() => {
     return sports.find(s => String(s.SportID) === String(selectedSportId)) || null;
@@ -119,6 +153,37 @@ export default function PlayerBookCourt() {
     if (!selectedCourt) return 0;
     return selectedTimeSlots.length * Number(selectedCourt.PricePerHour || 0);
   }, [selectedTimeSlots, selectedCourt]);
+
+  const isSlotBlocked = (slotId) => {
+    const [startH] = slotId.split("-").map(Number);
+    const slotStart = new Date(`${selectedDate}T${String(startH).padStart(2, "0")}:00:00`);
+    const slotEnd = new Date(`${selectedDate}T${String(startH + 1).padStart(2, "0")}:00:00`);
+
+    // Check bookings
+    const hasBooking = availability.bookings.some(b => {
+      const bStart = new Date(b.StartDateTime);
+      const bEnd = new Date(b.EndDateTime);
+      return (slotStart < bEnd && slotEnd > bStart);
+    });
+    if (hasBooking) return true;
+
+    // Check blocked slots (includes classes)
+    const hasBlocked = availability.blocked.some(b => {
+      const bStart = new Date(b.StartDateTime);
+      const bEnd = new Date(b.EndDateTime);
+      return (slotStart < bEnd && slotEnd > bStart);
+    });
+    if (hasBlocked) return true;
+
+    return false;
+  };
+
+  const dynamicTimeSlots = useMemo(() => {
+    return TIME_SLOTS.map(slot => ({
+      ...slot,
+      available: !isSlotBlocked(slot.id)
+    }));
+  }, [selectedDate, availability, selectedCourtId]);
 
   // Handlers
   const handleSportSelect = (sportId) => {
@@ -235,23 +300,27 @@ export default function PlayerBookCourt() {
               <div className="pbc-hint-box">Please select a court and date to view time slots.</div>
             ) : (
               <div className="pbc-slots-grid">
-                {TIME_SLOTS.map(slot => {
-                  const isSelected = selectedTimeSlots.includes(slot.id);
-                  return (
-                    <button
-                      key={slot.id}
-                      className={`pbc-slot-card ${slot.available ? "available" : "unavailable"} ${isSelected ? "selected" : ""}`}
-                      onClick={() => slot.available && handleTimeSlotToggle(slot.id)}
-                      disabled={!slot.available}
-                    >
-                      <div className="slot-time">{slot.label}</div>
-                      <div className="slot-price-badge">
-                        <span className="slot-price">LKR {Number(selectedCourt?.PricePerHour || 0).toLocaleString("en-LK")}</span>
-                        <span className="slot-badge">{slot.available ? "AVAILABLE" : "BOOKED"}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+                {loadingAvailability ? (
+                  <div className="pbc-loading-indicator">Updating slot availability...</div>
+                ) : (
+                  dynamicTimeSlots.map(slot => {
+                    const isSelected = selectedTimeSlots.includes(slot.id);
+                    return (
+                      <button
+                        key={slot.id}
+                        className={`pbc-slot-card ${slot.available ? "available" : "unavailable"} ${isSelected ? "selected" : ""}`}
+                        onClick={() => slot.available && handleTimeSlotToggle(slot.id)}
+                        disabled={!slot.available}
+                      >
+                        <div className="slot-time">{slot.label}</div>
+                        <div className="slot-price-badge">
+                          <span className="slot-price">LKR {Number(selectedCourt?.PricePerHour || 0).toLocaleString("en-LK")}</span>
+                          <span className="slot-badge">{slot.available ? "AVAILABLE" : "BOOKED"}</span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </div>
             )}
           </section>
@@ -286,7 +355,7 @@ export default function PlayerBookCourt() {
               {selectedTimeSlots.length > 0 ? (
                 <ul className="summary-slots-list">
                   {selectedTimeSlots.map(slotId => (
-                    <li key={slotId}>{TIME_SLOTS.find(s => s.id === slotId)?.label}</li>
+                    <li key={slotId}>{dynamicTimeSlots.find(s => s.id === slotId)?.label}</li>
                   ))}
                 </ul>
               ) : (
