@@ -11,6 +11,7 @@ exports.getAvailableClasses = async (req, res, next) => {
                     GROUP_CONCAT(DISTINCT crt.CourtName) AS CourtNames,
                     MAX(sch.StartTime) AS StartTime, MAX(sch.EndTime) AS EndTime, MAX(sch.ScheduleType) AS ScheduleType,
                     GROUP_CONCAT(DISTINCT csd.Weekday) AS Weekdays,
+                    GROUP_CONCAT(DISTINCT q.QualificationName) AS CoachQualifications,
                     (SELECT COUNT(*) FROM enrollment e WHERE e.ClassID = c.ClassID AND e.Status = 'ENROLLED') AS EnrolledCount
              FROM class c
              JOIN sport s ON c.SportID = s.SportID
@@ -20,6 +21,8 @@ exports.getAvailableClasses = async (req, res, next) => {
              LEFT JOIN court crt ON cc.CourtID = crt.CourtID
              LEFT JOIN classschedule sch ON c.ClassID = sch.ClassID
              LEFT JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+             LEFT JOIN coachqualification cq ON co.CoachID = cq.CoachID
+             LEFT JOIN qualification q ON cq.QualificationID = q.QualificationID
              WHERE c.Status = 'ACTIVE'
              AND c.ClassID NOT IN (
                  SELECT ClassID FROM enrollment WHERE UserID = ? AND Status = 'ENROLLED'

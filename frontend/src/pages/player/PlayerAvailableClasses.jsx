@@ -10,7 +10,17 @@ import {
   CardContent, 
   Avatar, 
   Chip,
-  Container
+  Container,
+  Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider
 } from "@mui/material";
 import { 
   SportsCricket, 
@@ -23,7 +33,9 @@ import {
   Group, 
   Payments,
   ArrowBack,
-  Place
+  Place,
+  Verified,
+  Info
 } from "@mui/icons-material";
 import "../../styles/PlayerAvailableClasses.css";
 
@@ -65,6 +77,8 @@ export default function PlayerAvailableClasses() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedCoach, setSelectedCoach] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchAvailableClasses();
@@ -97,11 +111,19 @@ export default function PlayerAvailableClasses() {
     alert(`Enrolling in class ${classId}... (Logic coming soon)`);
   };
 
+  const handleSeeMoreCoach = (cls) => {
+    setSelectedCoach({
+      name: `${cls.CoachFirstName} ${cls.CoachLastName}`,
+      qualifications: cls.CoachQualifications ? cls.CoachQualifications.split(',') : []
+    });
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="pac-portal-container">
-      <Container maxWidth="lg" sx={{ py: 8 }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* HEADER SECTION */}
-        <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Typography variant="h3" sx={{ 
               fontWeight: 800, 
@@ -199,6 +221,21 @@ export default function PlayerAvailableClasses() {
                           <Person sx={{ fontSize: 18, color: '#40c4ff' }} />
                           <Typography variant="body2" sx={{ color: '#fff' }}>
                             Coach: <strong>{cls.CoachFirstName} {cls.CoachLastName}</strong>
+                            <Link 
+                              component="button"
+                              onClick={() => handleSeeMoreCoach(cls)}
+                              sx={{ 
+                                ml: 1, 
+                                color: '#00e676', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 600,
+                                textDecoration: 'none',
+                                verticalAlign: 'middle',
+                                '&:hover': { textDecoration: 'underline' }
+                              }}
+                            >
+                              (See More)
+                            </Link>
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
@@ -252,6 +289,64 @@ export default function PlayerAvailableClasses() {
             })}
           </Grid>
         )}
+
+        {/* COACH INFO POPUP */}
+        <Dialog 
+          open={isModalOpen} 
+          onClose={() => setIsModalOpen(false)}
+          PaperProps={{
+            sx: {
+              bgcolor: '#1a1a1a',
+              color: '#fff',
+              borderRadius: '16px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              minWidth: { xs: '90%', sm: '400px' }
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            pb: 1, 
+            fontWeight: 700, 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1.5,
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            mb: 1
+          }}>
+            <Person sx={{ color: '#00e676' }} />
+            {selectedCoach?.name}
+          </DialogTitle>
+          <DialogContent sx={{ py: 3 }}>
+            <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.5)', mb: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Professional Qualifications
+            </Typography>
+            {selectedCoach?.qualifications.length > 0 ? (
+              <List disablePadding>
+                {selectedCoach.qualifications.map((q, idx) => (
+                  <ListItem key={idx} disableGutters sx={{ py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <Verified sx={{ color: '#00e676', fontSize: 18 }} />
+                    </ListItemIcon>
+                    <ListItemText primary={q} primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500 }} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, opacity: 0.5, py: 2 }}>
+                <Info sx={{ fontSize: 18 }} />
+                <Typography variant="body2">No listed qualifications yet.</Typography>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <Button 
+              onClick={() => setIsModalOpen(false)} 
+              sx={{ color: 'rgba(255,255,255,0.7)', textTransform: 'none', fontWeight: 600 }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </div>
   );
