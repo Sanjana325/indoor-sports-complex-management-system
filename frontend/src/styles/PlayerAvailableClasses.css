@@ -1,26 +1,35 @@
 .pac-portal-container {
   min-height: 100vh;
-  background: transparent; /* Background is handled by PlayerLayout */
+  background: transparent !important;
   position: relative;
-  z-index: 1;
+  z-index: 10;
+  width: 100%;
 }
 
-.glass-card-class {
-  background: rgba(255, 255, 255, 0.08) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+.heavy-frost-card {
+  background: rgba(18, 18, 18, 0.85) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 20px !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
   overflow: hidden;
 }
 
-.glass-card-class:hover {
+.heavy-frost-card:hover {
   transform: translateY(-8px);
-  background: rgba(255, 255, 255, 0.12) !important;
   border-color: rgba(0, 230, 118, 0.4) !important;
-  box-shadow: 0 12px 40px 0 rgba(0, 230, 118, 0.2) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 230, 118, 0.25) !important;
+}
+
+.card-footer-flex {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
 }
 
 /* Custom Scrollbar for the portal */

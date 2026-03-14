@@ -8,7 +8,9 @@ exports.getAvailableClasses = async (req, res, next) => {
             `SELECT c.ClassID, c.Title, c.StartDate, c.Capacity, c.Fee, c.BillingType,
                     s.SportName,
                     co.CoachID, ua.FirstName AS CoachFirstName, ua.LastName AS CoachLastName,
-                    GROUP_CONCAT(crt.CourtName) AS CourtNames,
+                    GROUP_CONCAT(DISTINCT crt.CourtName) AS CourtNames,
+                    MAX(sch.StartTime) AS StartTime, MAX(sch.EndTime) AS EndTime, MAX(sch.ScheduleType) AS ScheduleType,
+                    GROUP_CONCAT(DISTINCT csd.Weekday) AS Weekdays,
                     (SELECT COUNT(*) FROM enrollment e WHERE e.ClassID = c.ClassID AND e.Status = 'ENROLLED') AS EnrolledCount
              FROM class c
              JOIN sport s ON c.SportID = s.SportID
@@ -16,6 +18,8 @@ exports.getAvailableClasses = async (req, res, next) => {
              JOIN useraccount ua ON co.UserID = ua.UserID
              LEFT JOIN class_court cc ON c.ClassID = cc.ClassID
              LEFT JOIN court crt ON cc.CourtID = crt.CourtID
+             LEFT JOIN classschedule sch ON c.ClassID = sch.ClassID
+             LEFT JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
              WHERE c.Status = 'ACTIVE'
              AND c.ClassID NOT IN (
                  SELECT ClassID FROM enrollment WHERE UserID = ? AND Status = 'ENROLLED'
@@ -73,10 +77,11 @@ exports.getMyClasses = async (req, res, next) => {
 
         const [rows] = await pool.query(
             `SELECT e.EnrollmentID, e.EnrolledAt, e.Status AS EnrollmentStatus,
-                    c.ClassID, c.Title, c.StartDate, c.Fee, c.BillingType, c.Status AS ClassStatus,
-                    s.SportName,
-                    ua.FirstName AS CoachFirstName, ua.LastName AS CoachLastName,
-                    GROUP_CONCAT(crt.CourtName) AS CourtNames
+                    c.ClassID, MAX(c.Title) AS Title, MAX(c.StartDate) AS StartDate, 
+                    MAX(c.Fee) AS Fee, MAX(c.BillingType) AS BillingType, MAX(c.Status) AS ClassStatus,
+                    MAX(s.SportName) AS SportName,
+                    MAX(ua.FirstName) AS CoachFirstName, MAX(ua.LastName) AS CoachLastName,
+                    GROUP_CONCAT(DISTINCT crt.CourtName) AS CourtNames
              FROM enrollment e
              JOIN class c ON e.ClassID = c.ClassID
              JOIN sport s ON c.SportID = s.SportID

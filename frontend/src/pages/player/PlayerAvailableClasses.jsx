@@ -22,7 +22,8 @@ import {
   EventNote, 
   Group, 
   Payments,
-  ArrowBack
+  ArrowBack,
+  Place
 } from "@mui/icons-material";
 import "../../styles/PlayerAvailableClasses.css";
 
@@ -37,6 +38,27 @@ const ICON_MAP = {
 };
 
 const DEFAULT_ICON = SportsSoccer;
+
+const DAY_MAP = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatTime(t) {
+  if (!t) return "";
+  return t.slice(0, 5); // 09:00:00 -> 09:00
+}
+
+function formatSchedule(cls) {
+  const timeRange = `${formatTime(cls.StartTime)} - ${formatTime(cls.EndTime)}`;
+  if (cls.ScheduleType === "ONETIME") {
+    return `One-Time | ${timeRange}`;
+  }
+  if (cls.Weekdays) {
+    const days = cls.Weekdays.split(',')
+      .map(d => DAY_MAP[parseInt(d)])
+      .join(", ");
+    return `${days} | ${timeRange}`;
+  }
+  return timeRange;
+}
 
 export default function PlayerAvailableClasses() {
   const navigate = useNavigate();
@@ -77,7 +99,7 @@ export default function PlayerAvailableClasses() {
 
   return (
     <div className="pac-portal-container">
-      <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Container maxWidth="lg" sx={{ py: 8 }}>
         {/* HEADER SECTION */}
         <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
@@ -142,7 +164,7 @@ export default function PlayerAvailableClasses() {
               const IconComp = ICON_MAP[cls.SportName] || DEFAULT_ICON;
               return (
                 <Grid item xs={12} sm={6} md={4} key={cls.ClassID}>
-                  <Card className="glass-card-class">
+                  <Card className="heavy-frost-card">
                     <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
                       {/* HEADER: Sport Badge */}
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
@@ -182,7 +204,13 @@ export default function PlayerAvailableClasses() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
                           <EventNote sx={{ fontSize: 18, color: '#40c4ff' }} />
                           <Typography variant="body2" sx={{ color: '#fff' }}>
-                            Starts: {new Date(cls.StartDate).toLocaleDateString()}
+                            Schedule: <strong>{formatSchedule(cls)}</strong>
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
+                          <Place sx={{ fontSize: 18, color: '#40c4ff' }} />
+                          <Typography variant="body2" sx={{ color: '#fff' }}>
+                            Court: <strong>{cls.CourtNames || "TBA"}</strong>
                           </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, opacity: 0.8 }}>
@@ -193,12 +221,12 @@ export default function PlayerAvailableClasses() {
                         </Box>
                       </Box>
 
-                      {/* FEE & ACTION */}
-                      <Box sx={{ mt: 2, pt: 3, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      {/* FOOTER: FEE & ACTION */}
+                      <Box className="card-footer-flex">
                         <Box>
                           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Fee</Typography>
                           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
-                            {cls.Fee} <span style={{ fontSize: '0.75rem', fontWeight: 400, opacity: 0.7 }}>/ {cls.BillingType}</span>
+                            LKR {Number(cls.Fee).toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 400, opacity: 0.7 }}>/ {cls.BillingType === 'MONTHLY' ? 'Mo' : 'Once'}</span>
                           </Typography>
                         </Box>
                         <Button 
@@ -210,10 +238,11 @@ export default function PlayerAvailableClasses() {
                             fontWeight: 700,
                             borderRadius: '10px',
                             px: 3,
-                            '&:hover': { bgcolor: '#00c853' }
+                            '&:hover': { bgcolor: '#00c853' },
+                            textTransform: 'none'
                           }}
                         >
-                          ENROLL NOW
+                          Enroll Now
                         </Button>
                       </Box>
                     </CardContent>
