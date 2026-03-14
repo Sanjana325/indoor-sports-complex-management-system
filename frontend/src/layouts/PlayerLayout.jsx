@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import "../styles/AdminLayout.css"; // ✅ reuse same layout styles
+import "../styles/PlayerLayout.css";
 
 function getInitials(firstName = "", lastName = "") {
   const a = (firstName || "").trim().charAt(0).toUpperCase();
@@ -53,9 +53,9 @@ export default function PlayerLayout() {
   }
 
   return (
-    <div className="admin-layout">
+    <div className="player-layout">
       {/* SIDEBAR */}
-      <aside className="admin-sidebar">
+      <aside className="player-sidebar">
         <h2 className="sidebar-title">ArenaPro</h2>
 
         <nav className="sidebar-nav">
@@ -78,9 +78,11 @@ export default function PlayerLayout() {
       </aside>
 
       {/* MAIN */}
-      <main className="admin-main">
-        <div className="admin-topbar">
-          <strong>ArenaPro - Player Dashboard</strong>
+      <main className="player-main">
+        <div className="player-topbar">
+          <div className="topbar-left">
+            {/* Logo or empty space */}
+          </div>
 
           <div className="topbar-right" ref={profileRef}>
             <button
@@ -128,7 +130,7 @@ export default function PlayerLayout() {
           </div>
         </div>
 
-        <div className="admin-content">
+        <div className="player-content">
           <Outlet />
         </div>
       </main>

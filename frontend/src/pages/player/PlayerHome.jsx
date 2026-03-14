@@ -1,41 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Event, SportsEsports, Schedule } from "@mui/icons-material";
 import "../../styles/PlayerHome.css";
-
-import CalendarPanel from "../../components/CalendarPanel";
-import DayDetailsModal from "../../components/DayDetailsModal";
-import AvailabilityPanel from "../../components/AvailabilityPanel";
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-function toISODate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-function fmtDuration(start, end) {
-  if (!start || !end) return "-";
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  const mins = eh * 60 + em - (sh * 60 + sm);
-  if (!Number.isFinite(mins) || mins <= 0) return "-";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
-
-function sportKeyFromText(t = "") {
-  const lower = t.toLowerCase();
-  if (lower.includes("cricket")) return "cricket";
-  if (lower.includes("badminton")) return "badminton";
-  if (lower.includes("futsal")) return "futsal";
-  return "cricket";
-}
 
 export default function PlayerHome() {
   const navigate = useNavigate();
 
+  // Mock Data
   const [bookings] = useState([
     { id: "B-700001", playerName: "You", court: "Court A", date: "2025-10-19", time: "16:00-18:00", status: "CONFIRMED" },
     { id: "B-700002", playerName: "You", court: "Court B", date: "2025-10-21", time: "10:00-12:00", status: "PENDING_PAYMENT" },
@@ -45,73 +16,15 @@ export default function PlayerHome() {
     { id: "BS-900001", court: "Court A", date: "2025-10-20", startTime: "12:00", endTime: "14:00", reason: "Maintenance" },
   ]);
 
-  const [classes] = useState([
-    { id: "CL-800001", sport: "CRICKET", className: "Beginner Cricket", coachName: "Sahan Fernando", date: "2025-10-21", startTime: "16:00", endTime: "17:30" },
-  ]);
-
-  const [monthDate, setMonthDate] = useState(() => {
-    const t = new Date();
-    return new Date(t.getFullYear(), t.getMonth(), 1);
+  // Derive today's date for availability
+  const [selectedDateISO] = useState(() => {
+    const d = new Date();
+    const pad2 = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   });
 
-  const [selectedDateISO, setSelectedDateISO] = useState(() => toISODate(new Date()));
-  const [isDayOpen, setIsDayOpen] = useState(false);
-
-  const eventsByDate = useMemo(() => {
-    const map = {};
-    function ensure(dateISO) {
-      if (!map[dateISO]) map[dateISO] = { cricket: 0, badminton: 0, futsal: 0, classes: 0, blocked: 0 };
-      return map[dateISO];
-    }
-
-    bookings.forEach((b) => {
-      const key = ensure(b.date);
-      const sportKey = sportKeyFromText(b.court);
-      if (sportKey === "cricket") key.cricket += 1;
-      if (sportKey === "badminton") key.badminton += 1;
-      if (sportKey === "futsal") key.futsal += 1;
-    });
-
-    blockedSlots.forEach((x) => {
-      const key = ensure(x.date);
-      key.blocked += 1;
-    });
-
-    classes.forEach((c) => {
-      const key = ensure(c.date);
-      key.classes += 1;
-    });
-
-    return map;
-  }, [bookings, blockedSlots, classes]);
-
-  const dayData = useMemo(() => {
-    const dateISO = selectedDateISO;
-
-    const dayBookings = bookings
-      .filter((b) => b.date === dateISO)
-      .map((b) => ({
-        id: b.id,
-        playerName: b.playerName,
-        court: b.court,
-        time: b.time.replace("-", " - "),
-        statusKey: b.status === "CONFIRMED" ? "confirmed" : "pending",
-        statusLabel: b.status === "CONFIRMED" ? "Confirmed" : "Pending",
-        sportKey: sportKeyFromText(b.court),
-        sportLabel: "Court Booking",
-      }));
-
-    const dayBlocked = blockedSlots.filter((x) => x.date === dateISO);
-
-    const dayClasses = classes
-      .filter((c) => c.date === dateISO)
-      .map((c) => ({
-        ...c,
-        duration: fmtDuration(c.startTime, c.endTime),
-      }));
-
-    return { bookings: dayBookings, blocked: dayBlocked, classes: dayClasses };
-  }, [selectedDateISO, bookings, blockedSlots, classes]);
+  // Next booking logic
+  const nextBooking = useMemo(() => bookings[0] || null, [bookings]);
 
   const availability = useMemo(() => {
     const dateISO = selectedDateISO;
@@ -137,11 +50,6 @@ export default function PlayerHome() {
     });
   }, [selectedDateISO, bookings, blockedSlots]);
 
-  function handleSelectDate(dateISO) {
-    setSelectedDateISO(dateISO);
-    setIsDayOpen(true);
-  }
-
   function onBookCourt() {
     navigate("/player/book-court");
   }
@@ -151,56 +59,61 @@ export default function PlayerHome() {
   }
 
   return (
-    <div className="ph-page">
+    <div className="ph-page glass-page">
       <div className="ph-container">
-        <header className="ph-header">
-          <div className="ph-header-content">
-            <h1 className="ph-title">ArenaPro - Player Dashboard</h1>
-            <p className="ph-subtitle">Manage your bookings, classes, and court availability</p>
+        
+        {/* HERO SECTION */}
+        <section className="ph-hero glass-panel">
+          <div className="ph-hero-text">
+            <h1 className="ph-title-glass">Welcome to the Arena!</h1>
+            <p className="ph-subtitle-glass">Your personal sports dashboard.</p>
           </div>
+          
+          <div className="ph-hero-widget glass-widget">
+            <h3 className="widget-title"><Schedule fontSize="small" /> Next Upcoming Booking</h3>
+            {nextBooking ? (
+              <div className="next-booking-details">
+                <div className="nb-court">{nextBooking.court}</div>
+                <div className="nb-time">{nextBooking.date} • {nextBooking.time}</div>
+                <div className={`nb-status status-${nextBooking.status.toLowerCase()}`}>{nextBooking.status}</div>
+              </div>
+            ) : (
+              <div className="no-booking">No upcoming bookings.</div>
+            )}
+          </div>
+        </section>
 
-          <div className="ph-actions">
-            <button type="button" className="ph-btn ph-btn-primary" onClick={onBookCourt}>
-              <svg className="ph-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-              Book a Court
-            </button>
-            <button type="button" className="ph-btn ph-btn-secondary" onClick={onViewClasses}>
-              <svg className="ph-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              View Classes
-            </button>
-          </div>
-        </header>
+        <div className="ph-main-grid">
+          {/* QUICK ACTIONS */}
+          <section className="ph-quick-actions">
+            <h2 className="section-title-glass">Quick Actions</h2>
+            <div className="quick-actions-grid">
+              <button className="action-card glass-button" onClick={onBookCourt}>
+                <Event className="action-icon vibrant-icon" />
+                <span>Book a Court</span>
+              </button>
+              <button className="action-card glass-button" onClick={onViewClasses}>
+                <SportsEsports className="action-icon vibrant-icon" />
+                <span>Join a Class</span>
+              </button>
+            </div>
+          </section>
 
-        <div className="ph-content">
-          <div className="ph-calendar-section">
-            <CalendarPanel
-              monthDate={monthDate}
-              selectedDateISO={selectedDateISO}
-              onChangeMonth={setMonthDate}
-              onSelectDate={handleSelectDate}
-              eventsByDate={eventsByDate}
-            />
-          </div>
-
-          <div className="ph-availability-section">
-            <AvailabilityPanel title={`Availability (${selectedDateISO})`} courts={availability} />
-          </div>
+          {/* AVAILABILITY WIDGET */}
+          <section className="ph-availability-widget glass-panel">
+            <h2 className="section-title-glass">Today's Availability</h2>
+            <div className="availability-list">
+              {availability.map((court, idx) => (
+                <div key={idx} className={`avail-item status-${court.statusKey}`}>
+                  <span className="avail-court-name">{court.name}</span>
+                  <span className="avail-status-badge">{court.statusLabel}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
-      </div>
 
-      {isDayOpen && (
-        <DayDetailsModal dateISO={selectedDateISO} data={dayData} onClose={() => setIsDayOpen(false)} />
-      )}
+      </div>
     </div>
   );
 }
