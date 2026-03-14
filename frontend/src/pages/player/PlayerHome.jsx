@@ -86,7 +86,6 @@ export default function PlayerHome() {
         <div className="ph-main-grid">
           {/* QUICK ACTIONS */}
           <section className="ph-quick-actions">
-            <h2 className="section-title-glass">Quick Actions</h2>
             <div className="quick-actions-grid">
               <button className="action-card glass-button" onClick={onBookCourt}>
                 <Event className="action-icon vibrant-icon" />
