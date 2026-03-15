@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { SportsCricket, SportsTennis, SportsSoccer, Event, Place, CheckCircle, SportsBasketball, SportsVolleyball, ErrorOutline } from "@mui/icons-material";
+import { 
+  SportsCricket, SportsTennis, SportsSoccer, Event, Place, 
+  CheckCircle, SportsBasketball, SportsVolleyball, ErrorOutline,
+  CreditCard, Receipt
+} from "@mui/icons-material";
+import { 
+  Dialog, DialogTitle, DialogContent, DialogActions, 
+  Card, Box, Typography, Button, IconButton 
+} from "@mui/material";
+import CloseIcon from '@mui/icons-material/Close';
 import "../../styles/PlayerBookCourt.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -54,6 +63,9 @@ export default function PlayerBookCourt() {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
+
+  // Payment Modal State
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   // Fetch Sports on Mount
   useEffect(() => {
@@ -199,13 +211,12 @@ export default function PlayerBookCourt() {
     });
   };
 
-  const handleConfirm = () => {
+  const handleOpenPayment = () => {
     if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0) {
       alert("Please complete all selections before confirming.");
       return;
     }
-    alert("In-progress: Submit Booking POST request is not yet implemented.");
-    navigate("/player/my-bookings");
+    setPaymentModalOpen(true);
   };
 
   return (
@@ -371,14 +382,59 @@ export default function PlayerBookCourt() {
             <button 
               className="pbc-confirm-btn"
               disabled={!selectedSportId || !selectedCourtId || selectedTimeSlots.length === 0}
-              onClick={handleConfirm}
+              onClick={handleOpenPayment}
             >
               CONFIRM BOOKING
             </button>
           </div>
         </div>
-
       </div>
+
+      {/* PAYMENT SELECTION MODAL */}
+      <Dialog 
+        open={paymentModalOpen} 
+        onClose={() => setPaymentModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          className: "pbc-payment-dialog"
+        }}
+      >
+        <DialogTitle className="pbc-dialog-title">
+          Complete Payment
+          <IconButton
+            aria-label="close"
+            onClick={() => setPaymentModalOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent className="pbc-dialog-content">
+          <Typography variant="body1" className="pbc-dialog-subtext">
+            Your booking is reserved for 10 minutes. Please complete the payment of <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm.
+          </Typography>
+
+          <Box className="pbc-payment-options">
+            <Card className="pbc-payment-card" onClick={() => console.log('Selected Online')}>
+              <CreditCard className="pbc-payment-icon" />
+              <Typography variant="h6">Online Payment</Typography>
+              <Typography variant="body2">Pay instantly via secure gateway</Typography>
+            </Card>
+
+            <Card className="pbc-payment-card" onClick={() => console.log('Selected Bank Transfer')}>
+              <Receipt className="pbc-payment-icon" />
+              <Typography variant="h6">Bank Transfer</Typography>
+              <Typography variant="body2">Upload bank deposit slip</Typography>
+            </Card>
+          </Box>
+        </DialogContent>
+        <DialogActions className="pbc-dialog-actions">
+          <Button onClick={() => setPaymentModalOpen(false)} className="pbc-cancel-btn">
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
