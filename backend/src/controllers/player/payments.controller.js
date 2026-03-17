@@ -1,5 +1,5 @@
 const { pool } = require("../../config/db");
-const { generatePaymentHash } = require("../../utils/payhere");
+const { generatePaymentHash, verifyNotificationHash } = require("../../utils/payhere");
 
 exports.getMyPayments = async (req, res, next) => {
     try {
@@ -100,11 +100,58 @@ exports.initiateBookingPayment = async (req, res, next) => {
 };
 
 exports.handlePayHereNotify = async (req, res, next) => {
+    let connection;
     try {
-        // This will be implemented in the next step
-        console.log("PayHere Notification Received:", req.body);
+        const {
+            order_id,
+            status_code
+        } = req.body;
+
+        // 1. Verify Hash
+        const isValid = verifyNotificationHash(req.body);
+        if (!isValid) {
+            console.error("Invalid PayHere Notification Hash");
+            return res.status(400).json({ message: "Invalid signature" });
+        }
+
+        // 2. Process Successful Payment (status_code 2)
+        if (status_code == '2') {
+            connection = await pool.getConnection();
+            await connection.beginTransaction();
+
+            // 3. Update Payment Table
+            const [updatePayRes] = await connection.query(
+                `UPDATE payment 
+                 SET Status = 'VERIFIED', PaidAt = NOW(), VerifiedAt = NOW() 
+                 WHERE PaymentID = ? AND Status != 'VERIFIED'`,
+                [order_id]
+            );
+
+            if (updatePayRes.affectedRows > 0) {
+                // 4. Find and Update related booking
+                const [links] = await connection.query(
+                    "SELECT BookingID FROM bookingpayment WHERE PaymentID = ?",
+                    [order_id]
+                );
+
+                if (links.length > 0) {
+                    await connection.query(
+                        "UPDATE booking SET Status = 'CONFIRMED' WHERE BookingID = ?",
+                        [links[0].BookingID]
+                    );
+                }
+            }
+
+            await connection.commit();
+        } else {
+            console.log(`PayHere Notification: Status code ${status_code} for Order ${order_id}`);
+        }
+
         res.status(200).send("OK");
     } catch (err) {
+        if (connection) await connection.rollback();
         next(err);
+    } finally {
+        if (connection) connection.release();
     }
 };
