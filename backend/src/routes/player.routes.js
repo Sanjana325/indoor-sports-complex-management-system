@@ -32,5 +32,6 @@ router.get("/player/my-classes", classesController.getMyClasses);
 
 // Payments
 router.get("/player/payments", paymentsController.getMyPayments);
+router.post("/player/payments/initiate-booking", paymentsController.initiateBookingPayment);
 
 module.exports = router;

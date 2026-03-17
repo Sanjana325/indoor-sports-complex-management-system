@@ -98,3 +98,13 @@ exports.initiateBookingPayment = async (req, res, next) => {
         if (connection) connection.release();
     }
 };
+
+exports.handlePayHereNotify = async (req, res, next) => {
+    try {
+        // This will be implemented in the next step
+        console.log("PayHere Notification Received:", req.body);
+        res.status(200).send("OK");
+    } catch (err) {
+        next(err);
+    }
+};
