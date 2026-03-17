@@ -219,6 +219,87 @@ export default function PlayerBookCourt() {
     setPaymentModalOpen(true);
   };
 
+  const handleOnlinePayment = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      
+      // 1. Create the booking FIRST (if not already created)
+      // Note: In a real flow, you might want to create the booking in 'PENDING_PAYMENT' state
+      // For this implementation, we follow the user request to call initiate-booking
+      
+      const bookingRes = await fetch(`${API_BASE}/api/player/bookings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          courtId: selectedCourtId,
+          sportId: selectedSportId,
+          startDateTime: `${selectedDate} ${TIME_SLOTS.find(s => s.id === selectedTimeSlots[0]).label.split(" - ")[0]}`,
+          // Note: Full logic would handle multiple slots, but we keep it simple per current UI
+          endDateTime: `${selectedDate} ${TIME_SLOTS.find(s => s.id === selectedTimeSlots[selectedTimeSlots.length - 1]).label.split(" - ")[1]}`
+        })
+      });
+
+      const bookingData = await bookingRes.json();
+      if (!bookingRes.ok) {
+        alert(bookingData.message || "Failed to create booking");
+        return;
+      }
+
+      const bookingId = bookingData.bookingId;
+
+      // 2. Initiate Payment
+      const payRes = await fetch(`${API_BASE}/api/player/payments/initiate-booking`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ bookingId })
+      });
+
+      const payData = await payRes.json();
+      if (!payRes.ok) {
+        alert(payData.message || "Failed to initiate payment");
+        return;
+      }
+
+      // 3. Construct PayHere Object
+      const payment = {
+        sandbox: true,
+        merchant_id: payData.merchant_id,
+        return_url: window.location.origin + "/player/bookings",
+        cancel_url: window.location.origin + "/player/bookings",
+        notify_url: "http://localhost:5000/api/payments/notify", // Placeholder for local testing
+        order_id: payData.order_id,
+        items: payData.items,
+        amount: payData.amount,
+        currency: payData.currency,
+        first_name: payData.customer_details.first_name,
+        last_name: payData.customer_details.last_name,
+        email: payData.customer_details.email,
+        phone: payData.customer_details.phone,
+        address: "N/A",
+        city: "Colombo",
+        country: "Sri Lanka",
+        hash: payData.hash
+      };
+
+      // 4. Trigger PayHere
+      if (window.payhere) {
+        window.payhere.startPayment(payment);
+      } else {
+        alert("PayHere SDK not loaded. Please refresh the page.");
+      }
+
+    } catch (err) {
+      console.error("Payment Error:", err);
+      alert("An error occurred during payment initiation.");
+    }
+  };
+
   return (
     <div className="pbc-page">
       <div className="pbc-header">
@@ -416,7 +497,7 @@ export default function PlayerBookCourt() {
           </Typography>
 
           <Box className="pbc-payment-options">
-            <Card className="pbc-payment-card" onClick={() => console.log('Selected Online')}>
+            <Card className="pbc-payment-card" onClick={handleOnlinePayment}>
               <CreditCard className="pbc-payment-icon" />
               <Typography variant="h6">Online Payment</Typography>
               <Typography variant="body2">Pay instantly via secure gateway</Typography>
