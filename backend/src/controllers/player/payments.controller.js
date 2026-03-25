@@ -3,7 +3,7 @@ const { generatePaymentHash, verifyNotificationHash } = require("../../utils/pay
 
 exports.getMyPayments = async (req, res, next) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
 
         const [rows] = await pool.query(
             `SELECT PaymentID, Amount, Method, Status, PaidAt, VerifiedAt
@@ -22,14 +22,17 @@ exports.getMyPayments = async (req, res, next) => {
 exports.initiateBookingPayment = async (req, res, next) => {
     let connection;
     try {
+        if (!req.user || !req.user.UserID) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
         const { bookingId } = req.body;
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
 
         if (!bookingId) {
             return res.status(400).json({ message: "Missing booking ID" });
         }
 
-        // 1. Verify booking belongs to player and get details (including price)
         const [bookings] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, c.PricePerHour
              FROM booking b
@@ -39,32 +42,26 @@ exports.initiateBookingPayment = async (req, res, next) => {
         );
 
         if (bookings.length === 0) {
-            return res.status(404).json({ message: "Pending booking not found" });
+            return res.status(404).json({ message: "Booking not found" });
         }
 
         const booking = bookings[0];
 
-        // 2. Calculate amount
         const start = new Date(booking.StartDateTime);
         const end = new Date(booking.EndDateTime);
         const durationHours = (end - start) / (1000 * 60 * 60);
         const amount = Number(booking.PricePerHour) * durationHours;
 
-        if (amount <= 0) {
-            return res.status(400).json({ message: "Invalid booking duration or price" });
-        }
-
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // 3. Create payment record
         const [payRes] = await connection.query(
             "INSERT INTO payment (UserID, Amount, Method, Status) VALUES (?, ?, 'ONLINE', 'PENDING')",
             [userId, amount]
         );
+
         const paymentId = payRes.insertId;
 
-        // 4. Create bookingpayment record
         await connection.query(
             "INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)",
             [paymentId, bookingId]
@@ -72,22 +69,21 @@ exports.initiateBookingPayment = async (req, res, next) => {
 
         await connection.commit();
 
-        // 5. Generate PayHere payload
         const formattedAmount = amount.toFixed(2);
-        const hash = generatePaymentHash(paymentId, formattedAmount, "LKR");
+        const hash = generatePaymentHash(String(paymentId), formattedAmount, "LKR");
 
-        res.status(200).json({
+        res.json({
             merchant_id: process.env.PAYHERE_MERCHANT_ID,
-            order_id: paymentId,
+            order_id: String(paymentId),
             amount: formattedAmount,
             currency: "LKR",
-            hash: hash,
+            hash,
             items: `Booking #${bookingId}`,
             customer_details: {
-                first_name: req.user.firstName || "Player",
-                last_name: req.user.lastName || "",
-                email: req.user.email || "",
-                phone: req.user.phoneNumber || ""
+                first_name: req.user.FirstName || "Player",
+                last_name: req.user.LastName || "",
+                email: req.user.Email || "",
+                phone: req.user.PhoneNumber || ""
             }
         });
 
@@ -102,33 +98,25 @@ exports.initiateBookingPayment = async (req, res, next) => {
 exports.handlePayHereNotify = async (req, res, next) => {
     let connection;
     try {
-        const {
-            order_id,
-            status_code
-        } = req.body;
+        const { order_id, status_code } = req.body;
 
-        // 1. Verify Hash
         const isValid = verifyNotificationHash(req.body);
         if (!isValid) {
-            console.error("Invalid PayHere Notification Hash");
-            return res.status(400).json({ message: "Invalid signature" });
+            return res.status(400).send("Invalid signature");
         }
 
-        // 2. Process Successful Payment (status_code 2)
-        if (status_code == '2') {
+        if (status_code === '2') {
             connection = await pool.getConnection();
             await connection.beginTransaction();
 
-            // 3. Update Payment Table
             const [updatePayRes] = await connection.query(
                 `UPDATE payment 
-                 SET Status = 'VERIFIED', PaidAt = NOW(), VerifiedAt = NOW() 
+                 SET Status = 'VERIFIED', PaidAt = NOW(), VerifiedAt = NOW()
                  WHERE PaymentID = ? AND Status != 'VERIFIED'`,
                 [order_id]
             );
 
             if (updatePayRes.affectedRows > 0) {
-                // 4. Find and Update related booking
                 const [links] = await connection.query(
                     "SELECT BookingID FROM bookingpayment WHERE PaymentID = ?",
                     [order_id]
@@ -143,11 +131,9 @@ exports.handlePayHereNotify = async (req, res, next) => {
             }
 
             await connection.commit();
-        } else {
-            console.log(`PayHere Notification: Status code ${status_code} for Order ${order_id}`);
         }
 
-        res.status(200).send("OK");
+        res.send("OK");
     } catch (err) {
         if (connection) await connection.rollback();
         next(err);

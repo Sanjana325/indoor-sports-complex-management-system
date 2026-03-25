@@ -3,7 +3,7 @@ const { pool } = require("../../config/db");
 exports.createBooking = async (req, res, next) => {
     try {
         const { courtId, sportId, startDateTime, endDateTime } = req.body;
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
 
         if (!courtId || !sportId || !startDateTime || !endDateTime) {
             return res.status(400).json({ message: "Missing required fields" });
@@ -22,7 +22,7 @@ exports.createBooking = async (req, res, next) => {
 
 exports.getMyBookings = async (req, res, next) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
         const [rows] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
                     c.CourtName, s.SportName
@@ -42,7 +42,7 @@ exports.getMyBookings = async (req, res, next) => {
 exports.cancelBooking = async (req, res, next) => {
     try {
         const bookingId = Number(req.params.id);
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
 
         if (!Number.isFinite(bookingId)) {
             return res.status(400).json({ message: "Invalid booking ID" });

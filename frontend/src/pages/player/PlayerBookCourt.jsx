@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  SportsCricket, SportsTennis, SportsSoccer, Event, Place, 
+import {
+  SportsCricket, SportsTennis, SportsSoccer, Event, Place,
   CheckCircle, SportsBasketball, SportsVolleyball, ErrorOutline,
   CreditCard, Receipt
 } from "@mui/icons-material";
-import { 
-  Dialog, DialogTitle, DialogContent, DialogActions, 
-  Card, Box, Typography, Button, IconButton 
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Card, Box, Typography, Button, IconButton
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import "../../styles/PlayerBookCourt.css";
 
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 
 // Map names to icons locally
 const ICON_MAP = {
@@ -23,7 +25,9 @@ const ICON_MAP = {
   "Volleyball": SportsVolleyball,
 };
 
+
 const DEFAULT_ICON = SportsSoccer;
+
 
 const TIME_SLOTS = [
   { id: "08-09", label: "08:00 AM - 09:00 AM", available: true },
@@ -40,14 +44,17 @@ const TIME_SLOTS = [
   { id: "19-20", label: "07:00 PM - 08:00 PM", available: true },
 ];
 
+
 function todayISO() {
   const d = new Date();
   const pad2 = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+
 export default function PlayerBookCourt() {
   const navigate = useNavigate();
+
 
   // API State
   const [sports, setSports] = useState([]);
@@ -58,14 +65,17 @@ export default function PlayerBookCourt() {
   const [availability, setAvailability] = useState({ bookings: [], blocked: [] });
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
+
   // UI Selections
   const [selectedSportId, setSelectedSportId] = useState("");
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
 
+
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
 
   // Fetch Sports on Mount
   useEffect(() => {
@@ -91,12 +101,14 @@ export default function PlayerBookCourt() {
     fetchSports();
   }, []);
 
+
   // Fetch Courts when Sport changes
   useEffect(() => {
     if (!selectedSportId) {
       setCourts([]);
       return;
     }
+
 
     async function fetchCourts() {
       try {
@@ -120,12 +132,14 @@ export default function PlayerBookCourt() {
     fetchCourts();
   }, [selectedSportId]);
 
+
   // Fetch Availability when Court or Date changes
   useEffect(() => {
     if (!selectedCourtId || !selectedDate) {
       setAvailability({ bookings: [], blocked: [] });
       return;
     }
+
 
     async function fetchAvailability() {
       try {
@@ -152,24 +166,29 @@ export default function PlayerBookCourt() {
     fetchAvailability();
   }, [selectedCourtId, selectedDate]);
 
+
   // Derived state
   const selectedSport = useMemo(() => {
     return sports.find(s => String(s.SportID) === String(selectedSportId)) || null;
   }, [sports, selectedSportId]);
 
+
   const selectedCourt = useMemo(() => {
     return courts.find(c => String(c.CourtID) === String(selectedCourtId)) || null;
   }, [courts, selectedCourtId]);
+
 
   const totalAmount = useMemo(() => {
     if (!selectedCourt) return 0;
     return selectedTimeSlots.length * Number(selectedCourt.PricePerHour || 0);
   }, [selectedTimeSlots, selectedCourt]);
 
+
   const isSlotBlocked = (slotId) => {
     const [startH] = slotId.split("-").map(Number);
     const slotStart = new Date(`${selectedDate}T${String(startH).padStart(2, "0")}:00:00`);
     const slotEnd = new Date(`${selectedDate}T${String(startH + 1).padStart(2, "0")}:00:00`);
+
 
     // Check bookings
     const hasBooking = availability.bookings.some(b => {
@@ -179,6 +198,7 @@ export default function PlayerBookCourt() {
     });
     if (hasBooking) return true;
 
+
     // Check blocked slots (includes classes)
     const hasBlocked = availability.blocked.some(b => {
       const bStart = new Date(b.StartDateTime);
@@ -187,8 +207,10 @@ export default function PlayerBookCourt() {
     });
     if (hasBlocked) return true;
 
+
     return false;
   };
+
 
   const dynamicTimeSlots = useMemo(() => {
     return TIME_SLOTS.map(slot => ({
@@ -197,6 +219,7 @@ export default function PlayerBookCourt() {
     }));
   }, [selectedDate, availability, selectedCourtId]);
 
+
   // Handlers
   const handleSportSelect = (sportId) => {
     setSelectedSportId(sportId);
@@ -204,12 +227,14 @@ export default function PlayerBookCourt() {
     setSelectedTimeSlots([]);
   };
 
+
   const handleTimeSlotToggle = (slotId) => {
     setSelectedTimeSlots(prev => {
       if (prev.includes(slotId)) return prev.filter(id => id !== slotId);
       return [...prev, slotId];
     });
   };
+
 
   const handleOpenPayment = () => {
     if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0) {
@@ -219,14 +244,19 @@ export default function PlayerBookCourt() {
     setPaymentModalOpen(true);
   };
 
+
   const handleOnlinePayment = async () => {
     try {
       const token = localStorage.getItem("token");
-      
+
       // 1. Create the booking FIRST (if not already created)
       // Note: In a real flow, you might want to create the booking in 'PENDING_PAYMENT' state
       // For this implementation, we follow the user request to call initiate-booking
-      
+
+      const sortedSlots = [...selectedTimeSlots].sort();
+      const startHour = sortedSlots[0].split("-")[0];
+      const endHour = sortedSlots[sortedSlots.length - 1].split("-")[1];
+
       const bookingRes = await fetch(`${API_BASE}/api/player/bookings`, {
         method: "POST",
         headers: {
@@ -236,11 +266,11 @@ export default function PlayerBookCourt() {
         body: JSON.stringify({
           courtId: selectedCourtId,
           sportId: selectedSportId,
-          startDateTime: `${selectedDate} ${TIME_SLOTS.find(s => s.id === selectedTimeSlots[0]).label.split(" - ")[0]}`,
-          // Note: Full logic would handle multiple slots, but we keep it simple per current UI
-          endDateTime: `${selectedDate} ${TIME_SLOTS.find(s => s.id === selectedTimeSlots[selectedTimeSlots.length - 1]).label.split(" - ")[1]}`
+          startDateTime: `${selectedDate} ${startHour}:00:00`,
+          endDateTime: `${selectedDate} ${endHour}:00:00`
         })
       });
+
 
       const bookingData = await bookingRes.json();
       if (!bookingRes.ok) {
@@ -248,7 +278,9 @@ export default function PlayerBookCourt() {
         return;
       }
 
+
       const bookingId = bookingData.bookingId;
+
 
       // 2. Initiate Payment
       const payRes = await fetch(`${API_BASE}/api/player/payments/initiate-booking`, {
@@ -260,11 +292,13 @@ export default function PlayerBookCourt() {
         body: JSON.stringify({ bookingId })
       });
 
+
       const payData = await payRes.json();
       if (!payRes.ok) {
         alert(payData.message || "Failed to initiate payment");
         return;
       }
+
 
       // 3. Construct PayHere Object
       const payment = {
@@ -287,6 +321,7 @@ export default function PlayerBookCourt() {
         hash: payData.hash
       };
 
+
       // 4. Trigger PayHere
       if (window.payhere) {
         window.payhere.startPayment(payment);
@@ -294,11 +329,13 @@ export default function PlayerBookCourt() {
         alert("PayHere SDK not loaded. Please refresh the page.");
       }
 
+
     } catch (err) {
       console.error("Payment Error:", err);
       alert("An error occurred during payment initiation.");
     }
   };
+
 
   return (
     <div className="pbc-page">
@@ -309,15 +346,16 @@ export default function PlayerBookCourt() {
         </button>
       </div>
 
+
       <div className="pbc-layout">
         {/* LEFT COLUMN: Main Flow (70%) */}
         <div className="pbc-main-flow">
-          
+
           {/* STEP 1: Select Sport */}
           <section className="pbc-section glass-panel">
             <h2 className="pbc-section-title">1. Select Sport</h2>
             {apiError && <div className="pbc-error-inline"><ErrorOutline fontSize="small" /> {apiError}</div>}
-            
+
             {loadingSports ? (
               <div className="pbc-loading-indicator">Updating available sports...</div>
             ) : (
@@ -341,10 +379,11 @@ export default function PlayerBookCourt() {
             )}
           </section>
 
+
           {/* STEP 2: Date & Space */}
           <section className="pbc-section glass-panel">
             <h2 className="pbc-section-title">2. Select Date & Space</h2>
-            
+
             {!selectedSportId ? (
               <div className="pbc-hint-box">Please select a sport first.</div>
             ) : loadingCourts ? (
@@ -353,18 +392,18 @@ export default function PlayerBookCourt() {
               <div className="pbc-inline-selectors">
                 <div className="pbc-control">
                   <label><Event fontSize="small" /> Date</label>
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     className="pbc-input-glass"
-                    value={selectedDate} 
-                    onChange={(e) => setSelectedDate(e.target.value)} 
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
                     min={todayISO()}
                   />
                 </div>
-                
+
                 <div className="pbc-control">
                   <label><Place fontSize="small" /> Court</label>
-                  <select 
+                  <select
                     className="pbc-input-glass"
                     value={selectedCourtId}
                     onChange={(e) => {
@@ -384,10 +423,11 @@ export default function PlayerBookCourt() {
             )}
           </section>
 
+
           {/* STEP 3: Available Time Slots */}
           <section className="pbc-section glass-panel">
             <h2 className="pbc-section-title">3. Available Time Slots</h2>
-            
+
             {!selectedCourtId ? (
               <div className="pbc-hint-box">Please select a court and date to view time slots.</div>
             ) : (
@@ -417,33 +457,35 @@ export default function PlayerBookCourt() {
             )}
           </section>
 
+
         </div>
+
 
         {/* RIGHT COLUMN: Sticky Summary (30%) */}
         <div className="pbc-sidebar">
           <div className="pbc-summary-card glass-panel sticky">
             <h3 className="summary-title">Booking Summary</h3>
-            
+
             <div className="summary-details">
               <div className="summary-row">
                 <span className="summary-label">Sport:</span>
                 <span className="summary-value">{selectedSport?.SportName || "-"}</span>
               </div>
-              
+
               <div className="summary-row">
                 <span className="summary-label">Court:</span>
                 <span className="summary-value">{selectedCourt?.CourtName || "-"}</span>
               </div>
-              
+
               <div className="summary-row">
                 <span className="summary-label">Date:</span>
                 <span className="summary-value">{selectedDate || "-"}</span>
               </div>
-              
+
               <div className="summary-row separator">
                 <span className="summary-label">Time Slots ({selectedTimeSlots.length}):</span>
               </div>
-              
+
               {selectedTimeSlots.length > 0 ? (
                 <ul className="summary-slots-list">
                   {selectedTimeSlots.map(slotId => (
@@ -454,13 +496,14 @@ export default function PlayerBookCourt() {
                 <div className="summary-empty-slots">No slots selected.</div>
               )}
             </div>
-            
+
             <div className="summary-total-section">
               <div className="summary-total-label">Total</div>
               <div className="summary-total-amount">LKR {totalAmount.toLocaleString("en-LK")}</div>
             </div>
 
-            <button 
+
+            <button
               className="pbc-confirm-btn"
               disabled={!selectedSportId || !selectedCourtId || selectedTimeSlots.length === 0}
               onClick={handleOpenPayment}
@@ -471,9 +514,10 @@ export default function PlayerBookCourt() {
         </div>
       </div>
 
+
       {/* PAYMENT SELECTION MODAL */}
-      <Dialog 
-        open={paymentModalOpen} 
+      <Dialog
+        open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         maxWidth="sm"
         fullWidth
@@ -496,12 +540,14 @@ export default function PlayerBookCourt() {
             Your booking is reserved for 10 minutes. Please complete the payment of <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm.
           </Typography>
 
+
           <Box className="pbc-payment-options">
             <Card className="pbc-payment-card" onClick={handleOnlinePayment}>
               <CreditCard className="pbc-payment-icon" />
               <Typography variant="h6">Online Payment</Typography>
               <Typography variant="body2">Pay instantly via secure gateway</Typography>
             </Card>
+
 
             <Card className="pbc-payment-card" onClick={() => console.log('Selected Bank Transfer')}>
               <Receipt className="pbc-payment-icon" />
@@ -519,3 +565,4 @@ export default function PlayerBookCourt() {
     </div>
   );
 }
+

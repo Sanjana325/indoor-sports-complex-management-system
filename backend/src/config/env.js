@@ -26,6 +26,11 @@ const env = {
   auth: {
     jwtSecret: mustGet("JWT_SECRET"),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || "2h"
+  },
+  
+  payhere: {
+    merchantId: process.env.PAYHERE_MERCHANT_ID,
+    merchantSecret: process.env.PAYHERE_SECRET
   }
 };
 

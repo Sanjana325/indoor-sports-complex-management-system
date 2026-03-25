@@ -2,7 +2,7 @@ const { pool } = require("../../config/db");
 
 exports.getAvailableClasses = async (req, res, next) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
 
         const [rows] = await pool.query(
             `SELECT c.ClassID, c.Title, c.StartDate, c.Capacity, c.Fee, c.BillingType,
@@ -41,7 +41,7 @@ exports.getAvailableClasses = async (req, res, next) => {
 exports.enrollInClass = async (req, res, next) => {
     try {
         const classId = Number(req.params.id);
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
 
         if (!Number.isFinite(classId)) {
             return res.status(400).json({ message: "Invalid class ID" });
@@ -76,7 +76,7 @@ exports.enrollInClass = async (req, res, next) => {
 
 exports.getMyClasses = async (req, res, next) => {
     try {
-        const userId = req.user.userId;
+        const userId = req.user.UserID;
 
         const [rows] = await pool.query(
             `SELECT e.EnrollmentID, e.EnrolledAt, e.Status AS EnrollmentStatus,
