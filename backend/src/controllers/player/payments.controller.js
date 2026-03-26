@@ -37,7 +37,7 @@ exports.initiateBookingPayment = async (req, res, next) => {
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, c.PricePerHour
              FROM booking b
              JOIN court c ON b.CourtID = c.CourtID
-             WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING'`,
+             WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING_PAYMENT'`,
             [bookingId, userId]
         );
 

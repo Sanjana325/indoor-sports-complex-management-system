@@ -45,7 +45,7 @@ exports.getCourtAvailability = async (req, res, next) => {
         const [bookings] = await pool.query(
             `SELECT StartDateTime, EndDateTime 
              FROM booking 
-             WHERE CourtID = ? AND Status != 'CANCELLED'
+             WHERE CourtID = ? AND Status IN ('PENDING_PAYMENT', 'WAITING_VERIFICATION', 'CONFIRMED')
              AND (StartDateTime < ? AND EndDateTime > ?)`,
             [courtId, endOfDay, startOfDay]
         );

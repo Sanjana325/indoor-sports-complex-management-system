@@ -306,7 +306,7 @@ export default function PlayerBookCourt() {
         merchant_id: payData.merchant_id,
         return_url: window.location.origin + "/player/bookings",
         cancel_url: window.location.origin + "/player/bookings",
-        notify_url: "http://localhost:5000/api/payments/notify", // Placeholder for local testing
+        notify_url: import.meta.env.VITE_PAYHERE_NOTIFY_URL,
         order_id: payData.order_id,
         items: payData.items,
         amount: payData.amount,

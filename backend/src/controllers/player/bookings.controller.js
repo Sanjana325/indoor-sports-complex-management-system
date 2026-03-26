@@ -10,7 +10,7 @@ exports.createBooking = async (req, res, next) => {
         }
 
         const [result] = await pool.query(
-            "INSERT INTO booking (CourtID, SportID, UserID, StartDateTime, EndDateTime, Status) VALUES (?, ?, ?, ?, ?, 'PENDING')",
+            "INSERT INTO booking (CourtID, SportID, UserID, StartDateTime, EndDateTime, Status) VALUES (?, ?, ?, ?, ?, 'PENDING_PAYMENT')",
             [courtId, sportId, userId, startDateTime, endDateTime]
         );
 

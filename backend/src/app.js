@@ -13,6 +13,7 @@ const app = express();
 app.use(helmet());
 app.use(cors({ origin: env.corsOrigin }));
 app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 app.use("/api", routes);
