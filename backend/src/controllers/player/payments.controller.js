@@ -141,3 +141,82 @@ exports.handlePayHereNotify = async (req, res, next) => {
         if (connection) connection.release();
     }
 };
+
+exports.uploadBankSlip = async (req, res, next) => {
+    let connection;
+    try {
+        if (!req.user || !req.user.UserID) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const { bookingId } = req.body;
+        const userId = req.user.UserID;
+
+        if (!bookingId) {
+            return res.status(400).json({ message: "Missing booking ID" });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: "Bank slip file is required" });
+        }
+
+        const slipUrl = req.file.path;
+
+        connection = await pool.getConnection();
+
+        // Calculate amount to store in payment table
+        const [bookings] = await connection.query(
+            `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, c.PricePerHour
+             FROM booking b
+             JOIN court c ON b.CourtID = c.CourtID
+             WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING_PAYMENT'`,
+            [bookingId, userId]
+        );
+
+        if (bookings.length === 0) {
+            connection.release();
+            return res.status(404).json({ message: "Booking not found or not pending payment" });
+        }
+
+        const booking = bookings[0];
+
+        const start = new Date(booking.StartDateTime);
+        const end = new Date(booking.EndDateTime);
+        const durationHours = (end - start) / (1000 * 60 * 60);
+        const amount = Number(booking.PricePerHour) * durationHours;
+
+        await connection.beginTransaction();
+
+        const [payRes] = await connection.query(
+            "INSERT INTO payment (UserID, Amount, Method, SlipPath, Status) VALUES (?, ?, 'BANK_SLIP', ?, 'PENDING')",
+            [userId, amount, slipUrl]
+        );
+
+        const paymentId = payRes.insertId;
+
+        await connection.query(
+            "INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)",
+            [paymentId, bookingId]
+        );
+
+        await connection.query(
+            "UPDATE booking SET Status = 'WAITING_VERIFICATION' WHERE BookingID = ?",
+            [bookingId]
+        );
+
+        await connection.commit();
+
+        res.json({
+            message: "Bank slip uploaded successfully",
+            paymentId: paymentId
+        });
+
+    } catch (err) {
+        if (connection) await connection.rollback();
+        next(err);
+    } finally {
+        if (connection && connection.release) {
+            connection.release();
+        }
+    }
+};

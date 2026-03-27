@@ -8,6 +8,7 @@ const courtsController = require("../controllers/player/courts.controller");
 const bookingsController = require("../controllers/player/bookings.controller");
 const classesController = require("../controllers/player/classes.controller");
 const paymentsController = require("../controllers/player/payments.controller");
+const uploadSlip = require("../middleware/uploadSlip");
 
 // Apply middleware to all routes in this router
 router.use(requireAuth);
@@ -33,5 +34,6 @@ router.get("/player/my-classes", classesController.getMyClasses);
 // Payments
 router.get("/player/payments", paymentsController.getMyPayments);
 router.post("/player/payments/initiate-booking", paymentsController.initiateBookingPayment);
+router.post("/player/payments/slip", uploadSlip.single("slip"), paymentsController.uploadBankSlip);
 
 module.exports = router;
