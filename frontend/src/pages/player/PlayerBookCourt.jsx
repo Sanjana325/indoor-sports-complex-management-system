@@ -75,6 +75,10 @@ export default function PlayerBookCourt() {
 
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentModalStep, setPaymentModalStep] = useState(1);
+  const [createdBookingId, setCreatedBookingId] = useState(null);
+  const [slipFile, setSlipFile] = useState(null);
+  const [uploadingSlip, setUploadingSlip] = useState(false);
 
 
   // Fetch Sports on Mount
@@ -241,6 +245,9 @@ export default function PlayerBookCourt() {
       alert("Please complete all selections before confirming.");
       return;
     }
+    setPaymentModalStep(1);
+    setSlipFile(null);
+    setCreatedBookingId(null);
     setPaymentModalOpen(true);
   };
 
@@ -250,36 +257,34 @@ export default function PlayerBookCourt() {
       const token = localStorage.getItem("token");
 
       // 1. Create the booking FIRST (if not already created)
-      // Note: In a real flow, you might want to create the booking in 'PENDING_PAYMENT' state
-      // For this implementation, we follow the user request to call initiate-booking
+      let bookingId = createdBookingId;
+      if (!bookingId) {
+        const sortedSlots = [...selectedTimeSlots].sort();
+        const startHour = sortedSlots[0].split("-")[0];
+        const endHour = sortedSlots[sortedSlots.length - 1].split("-")[1];
 
-      const sortedSlots = [...selectedTimeSlots].sort();
-      const startHour = sortedSlots[0].split("-")[0];
-      const endHour = sortedSlots[sortedSlots.length - 1].split("-")[1];
+        const bookingRes = await fetch(`${API_BASE}/api/player/bookings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            courtId: selectedCourtId,
+            sportId: selectedSportId,
+            startDateTime: `${selectedDate} ${startHour}:00:00`,
+            endDateTime: `${selectedDate} ${endHour}:00:00`
+          })
+        });
 
-      const bookingRes = await fetch(`${API_BASE}/api/player/bookings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          courtId: selectedCourtId,
-          sportId: selectedSportId,
-          startDateTime: `${selectedDate} ${startHour}:00:00`,
-          endDateTime: `${selectedDate} ${endHour}:00:00`
-        })
-      });
-
-
-      const bookingData = await bookingRes.json();
-      if (!bookingRes.ok) {
-        alert(bookingData.message || "Failed to create booking");
-        return;
+        const bookingData = await bookingRes.json();
+        if (!bookingRes.ok) {
+          alert(bookingData.message || "Failed to create booking");
+          return;
+        }
+        bookingId = bookingData.bookingId;
+        setCreatedBookingId(bookingId);
       }
-
-
-      const bookingId = bookingData.bookingId;
 
 
       // 2. Initiate Payment
@@ -333,6 +338,84 @@ export default function PlayerBookCourt() {
     } catch (err) {
       console.error("Payment Error:", err);
       alert("An error occurred during payment initiation.");
+    }
+  };
+
+  const handleBankTransferClick = async () => {
+    try {
+      setUploadingSlip(true);
+      const token = localStorage.getItem("token");
+
+      let bookingId = createdBookingId;
+      if (!bookingId) {
+        const sortedSlots = [...selectedTimeSlots].sort();
+        const startHour = sortedSlots[0].split("-")[0];
+        const endHour = sortedSlots[sortedSlots.length - 1].split("-")[1];
+
+        const bookingRes = await fetch(`${API_BASE}/api/player/bookings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            courtId: selectedCourtId,
+            sportId: selectedSportId,
+            startDateTime: `${selectedDate} ${startHour}:00:00`,
+            endDateTime: `${selectedDate} ${endHour}:00:00`
+          })
+        });
+
+        const bookingData = await bookingRes.json();
+        if (!bookingRes.ok) {
+          alert(bookingData.message || "Failed to create booking");
+          return;
+        }
+        bookingId = bookingData.bookingId;
+        setCreatedBookingId(bookingId);
+      }
+
+      setPaymentModalStep(2);
+    } catch (err) {
+      console.error(err);
+      alert("Error preparing bank transfer booking.");
+    } finally {
+      setUploadingSlip(false);
+    }
+  };
+
+  const handleBankSlipSubmit = async () => {
+    if (!slipFile) {
+      alert("Please select a file to upload.");
+      return;
+    }
+    try {
+      setUploadingSlip(true);
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append("bookingId", createdBookingId);
+      formData.append("slip", slipFile);
+
+      const res = await fetch(`${API_BASE}/api/player/payments/slip`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || "Failed to upload bank slip.");
+        return;
+      }
+
+      alert("Bank slip uploaded successfully! It is pending admin verification.");
+      setPaymentModalOpen(false);
+      navigate("/player/my-payments", { replace: true });
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("An error occurred during slip upload.");
+    } finally {
+      setUploadingSlip(false);
     }
   };
 
@@ -536,25 +619,57 @@ export default function PlayerBookCourt() {
           </IconButton>
         </DialogTitle>
         <DialogContent className="pbc-dialog-content">
-          <Typography variant="body1" className="pbc-dialog-subtext">
-            Your booking is reserved for 10 minutes. Please complete the payment of <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm.
-          </Typography>
+          {paymentModalStep === 1 ? (
+            <>
+              <Typography variant="body1" className="pbc-dialog-subtext">
+                Your booking is reserved for 10 minutes. Please complete the payment of <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm.
+              </Typography>
 
+              <Box className="pbc-payment-options">
+                <Card className="pbc-payment-card" onClick={handleOnlinePayment}>
+                  <CreditCard className="pbc-payment-icon" />
+                  <Typography variant="h6">Online Payment</Typography>
+                  <Typography variant="body2">Pay instantly via secure gateway</Typography>
+                </Card>
 
-          <Box className="pbc-payment-options">
-            <Card className="pbc-payment-card" onClick={handleOnlinePayment}>
-              <CreditCard className="pbc-payment-icon" />
-              <Typography variant="h6">Online Payment</Typography>
-              <Typography variant="body2">Pay instantly via secure gateway</Typography>
-            </Card>
-
-
-            <Card className="pbc-payment-card" onClick={() => console.log('Selected Bank Transfer')}>
-              <Receipt className="pbc-payment-icon" />
-              <Typography variant="h6">Bank Transfer</Typography>
-              <Typography variant="body2">Upload bank deposit slip</Typography>
-            </Card>
-          </Box>
+                <Card className="pbc-payment-card" onClick={handleBankTransferClick}>
+                  <Receipt className="pbc-payment-icon" />
+                  <Typography variant="h6">Bank Transfer</Typography>
+                  <Typography variant="body2">Upload bank deposit slip</Typography>
+                </Card>
+              </Box>
+            </>
+          ) : (
+             <Box sx={{ mt: 2, color: 'white' }}>
+                 <Typography variant="body1" sx={{ mb: 2 }}>
+                     Please deposit <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to the following account:
+                 </Typography>
+                 <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2, mb: 3 }}>
+                     <Typography><strong>Bank:</strong> Bank of Ceylon</Typography>
+                     <Typography><strong>Branch:</strong> City Center</Typography>
+                     <Typography><strong>Acc Name:</strong> Indoor Sports Complex</Typography>
+                     <Typography><strong>Acc Number:</strong> 0012 3456 7890 001</Typography>
+                 </Box>
+                 
+                 <Typography variant="body2" sx={{ mb: 1 }}>Upload your deposit slip (JPG, PNG, PDF):</Typography>
+                 <input 
+                    type="file" 
+                    accept="image/jpeg,image/png,application/pdf"
+                    onChange={(e) => setSlipFile(e.target.files[0])}
+                    style={{ marginBottom: '20px', display: 'block', width: '100%' }}
+                 />
+                 
+                 <Button 
+                    variant="contained" 
+                    fullWidth
+                    color="primary" 
+                    disabled={!slipFile || uploadingSlip}
+                    onClick={handleBankSlipSubmit}
+                 >
+                    {uploadingSlip ? "Uploading..." : "Submit Bank Slip"}
+                 </Button>
+             </Box>
+          )}
         </DialogContent>
         <DialogActions className="pbc-dialog-actions">
           <Button onClick={() => setPaymentModalOpen(false)} className="pbc-cancel-btn">

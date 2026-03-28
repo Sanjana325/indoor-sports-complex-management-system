@@ -36,29 +36,13 @@ exports.createOnlinePayment = async (userId, bookingId, userDetails) => {
         const durationHours = (end - start) / (1000 * 60 * 60);
         const amount = Number(booking.PricePerHour) * durationHours;
 
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-
-        const [payRes] = await connection.query(
-            "INSERT INTO payment (UserID, Amount, Method, Status) VALUES (?, ?, 'ONLINE', 'PENDING')",
-            [userId, amount]
-        );
-
-        const paymentId = payRes.insertId;
-
-        await connection.query(
-            "INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)",
-            [paymentId, bookingId]
-        );
-
-        await connection.commit();
-
         const formattedAmount = amount.toFixed(2);
-        const hash = generatePaymentHash(String(paymentId), formattedAmount, "LKR");
+        // Use the BookingID as the PayHere order_id instead of inserting a dummy payment
+        const hash = generatePaymentHash(String(bookingId), formattedAmount, "LKR");
 
         return {
             merchant_id: process.env.PAYHERE_MERCHANT_ID,
-            order_id: String(paymentId),
+            order_id: String(bookingId),
             amount: formattedAmount,
             currency: "LKR",
             hash,
@@ -72,10 +56,7 @@ exports.createOnlinePayment = async (userId, bookingId, userDetails) => {
         };
 
     } catch (err) {
-        if (connection) await connection.rollback();
         throw err;
-    } finally {
-        if (connection) connection.release();
     }
 };
 
@@ -94,25 +75,39 @@ exports.verifyPayHerePayment = async (body) => {
             connection = await pool.getConnection();
             await connection.beginTransaction();
 
-            const [updatePayRes] = await connection.query(
-                `UPDATE payment 
-                 SET Status = 'VERIFIED', PaidAt = NOW(), VerifiedAt = NOW()
-                 WHERE PaymentID = ? AND Status != 'VERIFIED'`,
+            // 1. Fetch booking to calculate amount and get UserID
+            const [bookings] = await connection.query(
+                `SELECT b.UserID, b.StartDateTime, b.EndDateTime, c.PricePerHour, b.Status 
+                 FROM booking b 
+                 JOIN court c ON b.CourtID = c.CourtID 
+                 WHERE b.BookingID = ?`,
                 [order_id]
             );
 
-            if (updatePayRes.affectedRows > 0) {
-                const [links] = await connection.query(
-                    "SELECT BookingID FROM bookingpayment WHERE PaymentID = ?",
-                    [order_id]
+            if (bookings.length > 0 && bookings[0].Status === 'PENDING_PAYMENT') {
+                const booking = bookings[0];
+                const start = new Date(booking.StartDateTime);
+                const end = new Date(booking.EndDateTime);
+                const durationHours = (end - start) / (1000 * 60 * 60);
+                const amount = Number(booking.PricePerHour) * durationHours;
+
+                // 2. Insert the officially verified online payment record
+                const [payRes] = await connection.query(
+                    "INSERT INTO payment (UserID, Amount, Method, Status, PaidAt, VerifiedAt) VALUES (?, ?, 'ONLINE', 'VERIFIED', NOW(), NOW())",
+                    [booking.UserID, amount]
                 );
 
-                if (links.length > 0) {
-                    await connection.query(
-                        "UPDATE booking SET Status = 'CONFIRMED' WHERE BookingID = ?",
-                        [links[0].BookingID]
-                    );
-                }
+                // 3. Link it
+                await connection.query(
+                    "INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)",
+                    [payRes.insertId, order_id]
+                );
+
+                // 4. Confirm the booking
+                await connection.query(
+                    "UPDATE booking SET Status = 'CONFIRMED' WHERE BookingID = ?",
+                    [order_id]
+                );
             }
 
             await connection.commit();

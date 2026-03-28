@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/PlayerPaymentsTabs.css";
 
 function formatLKR(n) {
@@ -9,15 +9,13 @@ function formatLKR(n) {
 
 function statusKey(status) {
   const s = (status || "").toLowerCase().trim();
-  if (s === "verified") return "VERIFIED";
-  if (s === "completed") return "COMPLETED";
+  if (s === "verified" || s === "completed") return "COMPLETED";
   if (s === "cancelled") return "CANCELLED";
   return "PENDING";
 }
 
 function statusLabel(key) {
   if (key === "PENDING") return "Pending";
-  if (key === "VERIFIED") return "Verified";
   if (key === "COMPLETED") return "Completed";
   if (key === "CANCELLED") return "Cancelled";
   return key;
@@ -25,7 +23,7 @@ function statusLabel(key) {
 
 function statusPillClass(key) {
   const k = (key || "").toLowerCase();
-  if (k === "verified" || k === "completed") return "pp-pill verified";
+  if (k === "completed") return "pp-pill verified";
   if (k === "cancelled") return "pp-pill cancelled";
   return "pp-pill pending";
 }
@@ -60,48 +58,59 @@ export default function PlayerMyPayments() {
   const [courtStatus, setCourtStatus] = useState("ALL");
   const [classStatus, setClassStatus] = useState("ALL");
 
-  const [courtPayments, setCourtPayments] = useState([
-    {
-      paymentId: "CP-900002",
-      date: "2025-10-21",
-      amount: 4500,
-      method: "Bank Slip",
-      status: "Pending",
-      slipUploaded: false,
-    },
-    {
-      paymentId: "CP-900001",
-      date: "2025-10-19",
-      amount: 5000,
-      method: "Online",
-      status: "Verified",
-      slipUploaded: true,
-    },
-  ]);
+  const [courtPayments, setCourtPayments] = useState([]);
+  const [classPayments, setClassPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [classPayments, setClassPayments] = useState([
-    {
-      paymentId: "CLP-800004",
-      date: "2025-10-22",
-      amount: 2000,
-      method: "Bank Slip",
-      status: "Pending",
-      className: "Badminton Drills",
-      slipUploaded: false,
-    },
-    {
-      paymentId: "CLP-800003",
-      date: "2025-10-20",
-      amount: 2500,
-      method: "Online",
-      status: "Verified",
-      className: "Beginner Cricket",
-      slipUploaded: true,
-    },
-  ]);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    async function fetchPayments() {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/player/payments`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (res.ok && Array.isArray(data.payments)) {
+          const formatted = data.payments.map((p) => {
+            const rawStatus = String(p?.Status || "PENDING");
+            const safeStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+            
+            let safeDate;
+            try {
+               const d = new Date(p?.PaidAt || p?.VerifiedAt || Date.now());
+               safeDate = isNaN(d.getTime()) ? new Date().toISOString().split('T')[0] : d.toISOString().split('T')[0];
+            } catch(e) {
+               safeDate = new Date().toISOString().split('T')[0];
+            }
+
+            return {
+              paymentId: `PAY-${p?.PaymentID || 'Unknown'}`,
+              date: safeDate,
+              amount: Number(p?.Amount || 0),
+              method: p?.Method === "BANK_SLIP" ? "Bank Slip" : "Online",
+              status: safeStatus,
+              slipUploaded: p?.Method === "BANK_SLIP" && rawStatus !== "PENDING",
+              rawBookingId: null
+            };
+          });
+          setCourtPayments(formatted);
+          setClassPayments([]); 
+        }
+      } catch (err) {
+        console.error("Failed to load payments", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPayments();
+  }, []);
 
   const courtCounts = useMemo(() => {
-    const counts = { ALL: courtPayments.length, PENDING: 0, VERIFIED: 0, COMPLETED: 0, CANCELLED: 0 };
+    const counts = { ALL: courtPayments.length, PENDING: 0, COMPLETED: 0, CANCELLED: 0 };
     courtPayments.forEach((p) => {
       const k = statusKey(p.status);
       counts[k] = (counts[k] || 0) + 1;
@@ -110,7 +119,7 @@ export default function PlayerMyPayments() {
   }, [courtPayments]);
 
   const classCounts = useMemo(() => {
-    const counts = { ALL: classPayments.length, PENDING: 0, VERIFIED: 0, COMPLETED: 0, CANCELLED: 0 };
+    const counts = { ALL: classPayments.length, PENDING: 0, COMPLETED: 0, CANCELLED: 0 };
     classPayments.forEach((p) => {
       const k = statusKey(p.status);
       counts[k] = (counts[k] || 0) + 1;
@@ -162,7 +171,7 @@ export default function PlayerMyPayments() {
   }
 
   function StatusChips({ value, onChange, counts }) {
-    const items = ["ALL", "PENDING", "VERIFIED", "COMPLETED", "CANCELLED"];
+    const items = ["ALL", "PENDING", "COMPLETED"];
     return (
       <div className="pp-chips">
         {items.map((k) => (
