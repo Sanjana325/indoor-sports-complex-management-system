@@ -3,7 +3,7 @@ const userModel = require("../models/user.model");
 const { hashPassword, verifyPassword } = require("../utils/password");
 const { signToken } = require("../utils/jwt");
 const { pool } = require("../config/db");
-const { sendPasswordResetEmail } = require("../utils/email");
+const { sendPasswordResetEmail } = require("../services/email.service");
 
 const RESET_EXP_MINUTES = 30;
 

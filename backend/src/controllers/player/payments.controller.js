@@ -1,26 +1,16 @@
-const { pool } = require("../../config/db");
-const { generatePaymentHash, verifyNotificationHash } = require("../../utils/payhere");
+const paymentService = require("../../services/payment.service");
 
 exports.getMyPayments = async (req, res, next) => {
     try {
         const userId = req.user.UserID;
-
-        const [rows] = await pool.query(
-            `SELECT PaymentID, Amount, Method, Status, PaidAt, VerifiedAt
-             FROM payment
-             WHERE UserID = ?
-             ORDER BY PaidAt DESC`,
-            [userId]
-        );
-
-        res.json({ payments: rows });
+        const payments = await paymentService.getUserPayments(userId);
+        res.json({ payments });
     } catch (err) {
         next(err);
     }
 };
 
 exports.initiateBookingPayment = async (req, res, next) => {
-    let connection;
     try {
         if (!req.user || !req.user.UserID) {
             return res.status(401).json({ message: "Unauthorized" });
@@ -33,117 +23,37 @@ exports.initiateBookingPayment = async (req, res, next) => {
             return res.status(400).json({ message: "Missing booking ID" });
         }
 
-        const [bookings] = await pool.query(
-            `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, c.PricePerHour
-             FROM booking b
-             JOIN court c ON b.CourtID = c.CourtID
-             WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING_PAYMENT'`,
-            [bookingId, userId]
-        );
+        const userDetails = {
+            FirstName: req.user.FirstName,
+            LastName: req.user.LastName,
+            Email: req.user.Email,
+            PhoneNumber: req.user.PhoneNumber
+        };
 
-        if (bookings.length === 0) {
-            return res.status(404).json({ message: "Booking not found" });
-        }
-
-        const booking = bookings[0];
-
-        const start = new Date(booking.StartDateTime);
-        const end = new Date(booking.EndDateTime);
-        const durationHours = (end - start) / (1000 * 60 * 60);
-        const amount = Number(booking.PricePerHour) * durationHours;
-
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-
-        const [payRes] = await connection.query(
-            "INSERT INTO payment (UserID, Amount, Method, Status) VALUES (?, ?, 'ONLINE', 'PENDING')",
-            [userId, amount]
-        );
-
-        const paymentId = payRes.insertId;
-
-        await connection.query(
-            "INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)",
-            [paymentId, bookingId]
-        );
-
-        await connection.commit();
-
-        const formattedAmount = amount.toFixed(2);
-        const hash = generatePaymentHash(String(paymentId), formattedAmount, "LKR");
-
-        res.json({
-            merchant_id: process.env.PAYHERE_MERCHANT_ID,
-            order_id: String(paymentId),
-            amount: formattedAmount,
-            currency: "LKR",
-            hash,
-            items: `Booking #${bookingId}`,
-            customer_details: {
-                first_name: req.user.FirstName || "Player",
-                last_name: req.user.LastName || "",
-                email: req.user.Email || "",
-                phone: req.user.PhoneNumber || ""
-            }
-        });
+        const paymentData = await paymentService.createOnlinePayment(userId, bookingId, userDetails);
+        res.json(paymentData);
 
     } catch (err) {
-        if (connection) await connection.rollback();
+        if (err.message === "Booking not found or not pending payment") {
+            return res.status(404).json({ message: err.message });
+        }
         next(err);
-    } finally {
-        if (connection) connection.release();
     }
 };
 
 exports.handlePayHereNotify = async (req, res, next) => {
-    let connection;
     try {
-        const { order_id, status_code } = req.body;
-
-        const isValid = verifyNotificationHash(req.body);
-        if (!isValid) {
-            return res.status(400).send("Invalid signature");
-        }
-
-        if (status_code === '2') {
-            connection = await pool.getConnection();
-            await connection.beginTransaction();
-
-            const [updatePayRes] = await connection.query(
-                `UPDATE payment 
-                 SET Status = 'VERIFIED', PaidAt = NOW(), VerifiedAt = NOW()
-                 WHERE PaymentID = ? AND Status != 'VERIFIED'`,
-                [order_id]
-            );
-
-            if (updatePayRes.affectedRows > 0) {
-                const [links] = await connection.query(
-                    "SELECT BookingID FROM bookingpayment WHERE PaymentID = ?",
-                    [order_id]
-                );
-
-                if (links.length > 0) {
-                    await connection.query(
-                        "UPDATE booking SET Status = 'CONFIRMED' WHERE BookingID = ?",
-                        [links[0].BookingID]
-                    );
-                }
-            }
-
-            await connection.commit();
-        }
-
+        await paymentService.verifyPayHerePayment(req.body);
         res.send("OK");
     } catch (err) {
-        if (connection) await connection.rollback();
+        if (err.message === "Invalid signature") {
+            return res.status(400).send("Invalid signature");
+        }
         next(err);
-    } finally {
-        if (connection) connection.release();
     }
 };
 
 exports.uploadBankSlip = async (req, res, next) => {
-    let connection;
     try {
         if (!req.user || !req.user.UserID) {
             return res.status(401).json({ message: "Unauthorized" });
@@ -162,61 +72,13 @@ exports.uploadBankSlip = async (req, res, next) => {
 
         const slipUrl = req.file.path;
 
-        connection = await pool.getConnection();
-
-        // Calculate amount to store in payment table
-        const [bookings] = await connection.query(
-            `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, c.PricePerHour
-             FROM booking b
-             JOIN court c ON b.CourtID = c.CourtID
-             WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING_PAYMENT'`,
-            [bookingId, userId]
-        );
-
-        if (bookings.length === 0) {
-            connection.release();
-            return res.status(404).json({ message: "Booking not found or not pending payment" });
-        }
-
-        const booking = bookings[0];
-
-        const start = new Date(booking.StartDateTime);
-        const end = new Date(booking.EndDateTime);
-        const durationHours = (end - start) / (1000 * 60 * 60);
-        const amount = Number(booking.PricePerHour) * durationHours;
-
-        await connection.beginTransaction();
-
-        const [payRes] = await connection.query(
-            "INSERT INTO payment (UserID, Amount, Method, SlipPath, Status) VALUES (?, ?, 'BANK_SLIP', ?, 'PENDING')",
-            [userId, amount, slipUrl]
-        );
-
-        const paymentId = payRes.insertId;
-
-        await connection.query(
-            "INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)",
-            [paymentId, bookingId]
-        );
-
-        await connection.query(
-            "UPDATE booking SET Status = 'WAITING_VERIFICATION' WHERE BookingID = ?",
-            [bookingId]
-        );
-
-        await connection.commit();
-
-        res.json({
-            message: "Bank slip uploaded successfully",
-            paymentId: paymentId
-        });
+        const result = await paymentService.processBankSlip(userId, bookingId, slipUrl);
+        res.json(result);
 
     } catch (err) {
-        if (connection) await connection.rollback();
-        next(err);
-    } finally {
-        if (connection && connection.release) {
-            connection.release();
+        if (err.message === "Booking not found or not pending payment") {
+            return res.status(404).json({ message: err.message });
         }
+        next(err);
     }
 };
