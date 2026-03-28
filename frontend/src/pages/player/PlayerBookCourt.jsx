@@ -32,16 +32,19 @@ const DEFAULT_ICON = SportsSoccer;
 const TIME_SLOTS = [
   { id: "08-09", label: "08:00 AM - 09:00 AM", available: true },
   { id: "09-10", label: "09:00 AM - 10:00 AM", available: true },
-  { id: "10-11", label: "10:00 AM - 11:00 AM", available: false },
+  { id: "10-11", label: "10:00 AM - 11:00 AM", available: true },
   { id: "11-12", label: "11:00 AM - 12:00 PM", available: true },
   { id: "12-13", label: "12:00 PM - 01:00 PM", available: true },
   { id: "13-14", label: "01:00 PM - 02:00 PM", available: true },
-  { id: "14-15", label: "02:00 PM - 03:00 PM", available: false },
+  { id: "14-15", label: "02:00 PM - 03:00 PM", available: true },
   { id: "15-16", label: "03:00 PM - 04:00 PM", available: true },
   { id: "16-17", label: "04:00 PM - 05:00 PM", available: true },
   { id: "17-18", label: "05:00 PM - 06:00 PM", available: true },
   { id: "18-19", label: "06:00 PM - 07:00 PM", available: true },
   { id: "19-20", label: "07:00 PM - 08:00 PM", available: true },
+  { id: "20-21", label: "08:00 PM - 09:00 PM", available: true },
+  { id: "21-22", label: "09:00 PM - 10:00 PM", available: true },
+  { id: "22-23", label: "10:00 PM - 11:00 PM", available: true },
 ];
 
 
@@ -193,6 +196,10 @@ export default function PlayerBookCourt() {
     const slotStart = new Date(`${selectedDate}T${String(startH).padStart(2, "0")}:00:00`);
     const slotEnd = new Date(`${selectedDate}T${String(startH + 1).padStart(2, "0")}:00:00`);
 
+    // Check if slot has already passed
+    if (slotStart < new Date()) {
+        return true;
+    }
 
     // Check bookings
     const hasBooking = availability.bookings.some(b => {
@@ -220,7 +227,7 @@ export default function PlayerBookCourt() {
     return TIME_SLOTS.map(slot => ({
       ...slot,
       available: !isSlotBlocked(slot.id)
-    }));
+    })).filter(slot => slot.available);
   }, [selectedDate, availability, selectedCourtId]);
 
 
@@ -517,20 +524,21 @@ export default function PlayerBookCourt() {
               <div className="pbc-slots-grid">
                 {loadingAvailability ? (
                   <div className="pbc-loading-indicator">Updating slot availability...</div>
+                ) : dynamicTimeSlots.length === 0 ? (
+                  <div className="pbc-hint-box" style={{ gridColumn: "1 / -1" }}>No available slots for this date.</div>
                 ) : (
                   dynamicTimeSlots.map(slot => {
                     const isSelected = selectedTimeSlots.includes(slot.id);
                     return (
                       <button
                         key={slot.id}
-                        className={`pbc-slot-card ${slot.available ? "available" : "unavailable"} ${isSelected ? "selected" : ""}`}
-                        onClick={() => slot.available && handleTimeSlotToggle(slot.id)}
-                        disabled={!slot.available}
+                        className={`pbc-slot-card available ${isSelected ? "selected" : ""}`}
+                        onClick={() => handleTimeSlotToggle(slot.id)}
                       >
                         <div className="slot-time">{slot.label}</div>
                         <div className="slot-price-badge">
                           <span className="slot-price">LKR {Number(selectedCourt?.PricePerHour || 0).toLocaleString("en-LK")}</span>
-                          <span className="slot-badge">{slot.available ? "AVAILABLE" : "BOOKED"}</span>
+                          <span className="slot-badge">AVAILABLE</span>
                         </div>
                       </button>
                     );
