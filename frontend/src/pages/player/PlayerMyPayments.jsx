@@ -93,8 +93,9 @@ export default function PlayerMyPayments() {
               amount: Number(p?.Amount || 0),
               method: p?.Method === "BANK_SLIP" ? "Bank Slip" : "Online",
               status: safeStatus,
-              slipUploaded: p?.Method === "BANK_SLIP" && rawStatus !== "PENDING",
-              rawBookingId: null
+              slipUploaded: p?.Method === "BANK_SLIP" && !!p?.SlipPath,
+              slipPath: p?.SlipPath || null,
+              rawBookingId: p?.BookingID || null
             };
           });
           setCourtPayments(formatted);
@@ -166,8 +167,12 @@ export default function PlayerMyPayments() {
     );
   }
 
-  function handleViewSlip(paymentId) {
-    alert(`View slip for ${paymentId} (UI-only for now)`);
+  function handleViewSlip(slipPath) {
+    if (slipPath) {
+      window.open(slipPath, '_blank');
+    } else {
+      alert("Slip not available.");
+    }
   }
 
   function StatusChips({ value, onChange, counts }) {
@@ -283,7 +288,7 @@ export default function PlayerMyPayments() {
                   {visibleCourt.map((p) => {
                     const sk = statusKey(p.status);
                     const canSlip = p.method === "Bank Slip";
-                    const showUpload = canSlip && sk === "PENDING";
+                    const showUpload = canSlip && sk === "PENDING" && !p.slipUploaded;
                     const showView = canSlip && p.slipUploaded;
 
                     return (
@@ -330,7 +335,7 @@ export default function PlayerMyPayments() {
                               Upload Slip
                             </button>
                           ) : showView ? (
-                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.paymentId)}>
+                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.slipPath)}>
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>
@@ -398,7 +403,7 @@ export default function PlayerMyPayments() {
                   {visibleClass.map((p) => {
                     const sk = statusKey(p.status);
                     const canSlip = p.method === "Bank Slip";
-                    const showUpload = canSlip && sk === "PENDING";
+                    const showUpload = canSlip && sk === "PENDING" && !p.slipUploaded;
                     const showView = canSlip && p.slipUploaded;
 
                     return (
@@ -454,7 +459,7 @@ export default function PlayerMyPayments() {
                               Upload Slip
                             </button>
                           ) : showView ? (
-                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.paymentId)}>
+                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.slipPath)}>
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                 <circle cx="12" cy="12" r="3"/>

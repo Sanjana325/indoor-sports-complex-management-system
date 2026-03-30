@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/PlayerTables.css";
 
 function pillClass(status) {
@@ -11,8 +11,25 @@ function pillClass(status) {
 function normalizeStatus(s) {
   const v = (s || "").toLowerCase();
   if (v === "confirmed") return "confirmed";
-  if (v === "cancelled") return "cancelled";
+  if (v === "cancelled" || v === "expired") return "cancelled";
   return "pending";
+}
+
+function formatTimeRange(startIso, endIso) {
+  const s = new Date(startIso);
+  const e = new Date(endIso);
+  
+  const formatTime = (date) => {
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0'+minutes : minutes;
+    return hours + ':' + minutes + ' ' + ampm;
+  };
+  
+  return `${formatTime(s)} - ${formatTime(e)}`;
 }
 
 function isSameOrAfter(a, b) {
@@ -22,40 +39,52 @@ function isSameOrAfter(a, b) {
 export default function PlayerMyBookings() {
   const [sortOrder, setSortOrder] = useState("NEWEST");
   const [activeTab, setActiveTab] = useState("UPCOMING");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const rows = useMemo(
-    () => [
-      {
-        bookingId: "B-700021",
-        courtName: "Court A",
-        date: "2026-01-28",
-        timeDuration: "4:00 PM - 6:00 PM",
-        bookingStatus: "Confirmed",
-      },
-      {
-        bookingId: "B-700022",
-        courtName: "Court B",
-        date: "2026-01-30",
-        timeDuration: "10:00 AM - 12:00 PM",
-        bookingStatus: "Pending",
-      },
-      {
-        bookingId: "B-700019",
-        courtName: "Court C",
-        date: "2026-01-10",
-        timeDuration: "6:00 PM - 7:30 PM",
-        bookingStatus: "Confirmed",
-      },
-      {
-        bookingId: "B-700018",
-        courtName: "Badminton - A",
-        date: "2025-12-22",
-        timeDuration: "9:00 AM - 10:00 AM",
-        bookingStatus: "Cancelled",
-      },
-    ],
-    []
-  );
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    async function fetchBookings() {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/player/bookings`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (res.ok && Array.isArray(data.bookings)) {
+          const formatted = data.bookings.map(b => {
+             const safeDate = new Date(b.StartDateTime).toISOString().split('T')[0];
+             const rawStatus = b.Status || "PENDING";
+             // Clean presentation status mapping
+             let displayStatus = "Pending";
+             if (rawStatus === 'CONFIRMED') displayStatus = "Confirmed";
+             else if (rawStatus === 'CANCELLED') displayStatus = "Cancelled";
+             else if (rawStatus === 'EXPIRED') displayStatus = "Expired";
+             else if (rawStatus === 'WAITING_VERIFICATION') displayStatus = "Waiting Verification";
+             else if (rawStatus === 'PENDING_PAYMENT') displayStatus = "Pending Payment";
+
+             return {
+                bookingId: `B-${String(b.BookingID).padStart(6, '0')}`,
+                courtName: b.CourtName || "Court",
+                date: safeDate,
+                timeDuration: formatTimeRange(b.StartDateTime, b.EndDateTime),
+                bookingStatus: displayStatus,
+                rawStartTime: b.StartDateTime
+             };
+          });
+          setRows(formatted);
+        }
+      } catch (err) {
+        console.error("Failed to load bookings", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBookings();
+  }, []);
 
   const computed = useMemo(() => {
     const today = new Date();
@@ -158,7 +187,9 @@ export default function PlayerMyBookings() {
           </button>
         </div>
 
-        {list.length === 0 ? (
+        {loading ? (
+          <div className="pt-loading-indicator">Loading your bookings...</div>
+        ) : list.length === 0 ? (
           <div className="pt-empty-state">
             <svg className="pt-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 2v4m6-4v4M4 11h16M6 4h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>

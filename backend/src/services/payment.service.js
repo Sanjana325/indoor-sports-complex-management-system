@@ -4,7 +4,7 @@ const { generatePaymentHash, verifyNotificationHash } = require("./paymentGatewa
 // Get user payments
 exports.getUserPayments = async (userId) => {
     const [rows] = await pool.query(
-        `SELECT PaymentID, Amount, Method, Status, PaidAt, VerifiedAt
+        `SELECT PaymentID, Amount, Method, Status, PaidAt, VerifiedAt, SlipPath
          FROM payment
          WHERE UserID = ?
          ORDER BY PaidAt DESC`,

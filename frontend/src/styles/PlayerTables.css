@@ -1,26 +1,26 @@
 /* ========================================
-   CSS Variables
+   Glassmorphism CSS Variables
    ======================================== */
 :root {
-  --pt-primary: #6366f1;
-  --pt-primary-dark: #4f46e5;
-  --pt-secondary: #8b5cf6;
-  --pt-success: #10b981;
+  --pt-primary: #00d4ff;
+  --pt-primary-dark: #33e0ff;
+  --pt-secondary: #00ff88;
+  --pt-success: #00ff88;
   --pt-warning: #f59e0b;
-  --pt-danger: #ef4444;
-  --pt-surface: #ffffff;
-  --pt-background: #f8fafc;
-  --pt-text-primary: #1e293b;
-  --pt-text-secondary: #64748b;
-  --pt-border: #e2e8f0;
-  --pt-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --pt-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --pt-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --pt-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --pt-danger: #ff6b6b;
+  --pt-surface: rgba(0, 0, 0, 0.2);
+  --pt-background: transparent;
+  --pt-text-primary: #ffffff;
+  --pt-text-secondary: rgba(255, 255, 255, 0.7);
+  --pt-border: rgba(255, 255, 255, 0.25);
+  --pt-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --pt-shadow-md: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --pt-shadow-lg: 0 12px 48px 0 rgba(0, 0, 0, 0.4);
+  --pt-shadow-xl: 0 16px 64px 0 rgba(0, 0, 0, 0.5);
   --pt-radius-md: 12px;
   --pt-radius-lg: 16px;
   --pt-radius-xl: 20px;
-  --pt-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --pt-transition: all 0.3s ease;
 }
 
 /* ========================================
@@ -28,20 +28,14 @@
    ======================================== */
 .pt-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #e9e6ff 0%, #f3f1ff 100%);
   padding: 2rem;
   animation: pt-fade-in 0.5s ease-out;
+  color: #fff;
 }
 
 @keyframes pt-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .pt-container {
@@ -50,18 +44,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  animation: pt-slide-up 0.6s ease-out;
-}
-
-@keyframes pt-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* ========================================
@@ -69,42 +51,24 @@
    ======================================== */
 .pt-header {
   background: var(--pt-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--pt-radius-xl);
   padding: 2rem 2.5rem;
-  box-shadow: var(--pt-shadow-lg);
+  box-shadow: var(--pt-shadow-md);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  animation: pt-scale-in 0.5s ease-out 0.1s both;
-}
-
-@keyframes pt-scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.pt-header-content {
-  flex: 1;
+  border: 1px solid var(--pt-border);
 }
 
 .pt-title {
   margin: 0 0 0.5rem 0;
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: var(--pt-text-primary);
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--pt-primary) 0%, var(--pt-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .pt-subtitle {
@@ -134,8 +98,8 @@
 .pt-sort {
   padding: 0.75rem 1rem 0.75rem 2.75rem;
   border-radius: var(--pt-radius-md);
-  border: 2px solid var(--pt-border);
-  background: white;
+  border: 1px solid var(--pt-border);
+  background: rgba(0, 0, 0, 0.4);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -145,13 +109,19 @@
 
 .pt-sort:hover {
   border-color: var(--pt-primary);
-  box-shadow: var(--pt-shadow-md);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
 }
 
 .pt-sort:focus {
   outline: none;
   border-color: var(--pt-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.pt-sort option {
+  background: #222;
+  color: #fff;
 }
 
 /* ========================================
@@ -161,18 +131,6 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
-  animation: pt-fade-slide-in 0.6s ease-out 0.2s both;
-}
-
-@keyframes pt-fade-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
 }
 
 .pt-tab {
@@ -181,27 +139,25 @@
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
   border-radius: var(--pt-radius-md);
-  border: 2px solid var(--pt-border);
-  background: white;
+  border: 1px solid var(--pt-border);
+  background: rgba(0, 0, 0, 0.3);
   color: var(--pt-text-primary);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
   transition: var(--pt-transition);
-  position: relative;
 }
 
 .pt-tab:hover {
-  border-color: var(--pt-primary);
-  transform: translateY(-2px);
-  box-shadow: var(--pt-shadow-md);
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(0, 212, 255, 0.4);
 }
 
 .pt-tab.active {
-  background: linear-gradient(135deg, var(--pt-primary) 0%, var(--pt-primary-dark) 100%);
-  border-color: var(--pt-primary-dark);
-  color: white;
-  box-shadow: var(--pt-shadow-lg);
+  background: rgba(0, 212, 255, 0.15);
+  border-color: var(--pt-primary);
+  color: var(--pt-primary);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
 }
 
 .pt-tab-icon {
@@ -217,26 +173,28 @@
   height: 24px;
   padding: 0 0.5rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
   font-size: 0.75rem;
   font-weight: 700;
 }
 
 .pt-tab.active .pt-tab-count {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 212, 255, 0.2);
+  color: var(--pt-primary);
 }
 
 /* ========================================
    Empty State
    ======================================== */
 .pt-empty-state {
-  background: white;
+  background: var(--pt-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--pt-radius-xl);
   padding: 4rem 2rem;
   text-align: center;
   box-shadow: var(--pt-shadow-md);
   border: 1px solid var(--pt-border);
-  animation: pt-scale-in 0.5s ease-out 0.3s both;
 }
 
 .pt-empty-icon {
@@ -254,10 +212,12 @@
   color: var(--pt-text-primary);
 }
 
-.pt-empty-text {
-  margin: 0;
+.pt-loading-indicator {
+  text-align: center;
+  padding: 4rem 2rem;
   color: var(--pt-text-secondary);
-  font-size: 0.95rem;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 /* ========================================
@@ -270,35 +230,21 @@
 }
 
 .pt-booking-card {
-  background: white;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--pt-radius-lg);
   padding: 1.5rem;
-  box-shadow: var(--pt-shadow-md);
+  box-shadow: var(--pt-shadow-sm);
   border: 1px solid var(--pt-border);
   transition: var(--pt-transition);
-  animation: pt-card-in 0.4s ease-out both;
-}
-
-.pt-booking-card:nth-child(1) { animation-delay: 0.1s; }
-.pt-booking-card:nth-child(2) { animation-delay: 0.15s; }
-.pt-booking-card:nth-child(3) { animation-delay: 0.2s; }
-.pt-booking-card:nth-child(4) { animation-delay: 0.25s; }
-
-@keyframes pt-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .pt-booking-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--pt-shadow-xl);
-  border-color: var(--pt-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--pt-shadow-md);
+  border-color: rgba(0, 255, 136, 0.4);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .pt-booking-header {
@@ -327,7 +273,7 @@
   gap: 0.5rem;
   color: var(--pt-text-secondary);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .pt-meta-icon {
@@ -343,7 +289,6 @@
 
 .pt-meta-dot {
   opacity: 0.4;
-  font-weight: 700;
 }
 
 .pt-booking-side {
@@ -356,10 +301,10 @@
 
 .pt-booking-id {
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--pt-text-secondary);
-  background: var(--pt-background);
-  padding: 0.25rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.3rem 0.8rem;
   border-radius: 999px;
 }
 
@@ -370,96 +315,41 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 1rem;
   border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.8rem;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .pt-pill.confirmed {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(0, 255, 136, 0.2);
   color: var(--pt-success);
-  border: 1.5px solid var(--pt-success);
+  border: 1px solid rgba(0, 255, 136, 0.4);
 }
 
 .pt-pill.pending {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(245, 158, 11, 0.2);
   color: var(--pt-warning);
-  border: 1.5px solid var(--pt-warning);
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .pt-pill.cancelled {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(255, 107, 107, 0.2);
   color: var(--pt-danger);
-  border: 1.5px solid var(--pt-danger);
+  border: 1px solid rgba(255, 107, 107, 0.4);
 }
 
 /* ========================================
    Responsive Design
    ======================================== */
 @media (max-width: 768px) {
-  .pt-page {
-    padding: 1rem;
-  }
-
-  .pt-header {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 1.5rem;
-  }
-
-  .pt-sort-wrapper {
-    width: 100%;
-  }
-
-  .pt-sort {
-    width: 100%;
-  }
-
-  .pt-title {
-    font-size: 1.5rem;
-  }
-
-  .pt-subtitle {
-    font-size: 0.875rem;
-  }
-
-  .pt-tabs {
-    flex-direction: column;
-  }
-
-  .pt-tab {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .pt-booking-header {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .pt-booking-side {
-    width: 100%;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .pt-booking-card {
-    padding: 1.25rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .pt-booking-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .pt-meta-dot {
-    display: none;
-  }
+  .pt-page { padding: 1rem; }
+  .pt-header { flex-direction: column; align-items: stretch; padding: 1.5rem; }
+  .pt-sort-wrapper, .pt-sort { width: 100%; }
+  .pt-tabs { flex-direction: column; }
+  .pt-tab { width: 100%; justify-content: center; }
+  .pt-booking-header { flex-direction: column; gap: 1rem; }
+  .pt-booking-side { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
 }
