@@ -9,6 +9,7 @@ const sportsController = require("../controllers/admin/sports.controller");
 const courtsController = require("../controllers/admin/courts.controller");
 const qualificationsController = require("../controllers/admin/qualifications.controller");
 const classesController = require("../controllers/admin/classes.controller");
+const paymentsController = require("../controllers/admin/payments.controller");
 
 // Test endpoint logic was in admin key "test", but not in any new controller. 
 // I will inline it or create a general admin controller if needed. 
@@ -63,5 +64,9 @@ router.get("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), c
 router.post("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.createClass);
 router.patch("/admin/classes/:classId/deactivate", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.deactivateClass);
 router.patch("/admin/classes/:classId/activate", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.activateClass);
+
+router.get("/admin/payments", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), paymentsController.listPayments);
+router.patch("/admin/payments/:id/verify", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), paymentsController.verifyPayment);
+router.patch("/admin/payments/:id/reject", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), paymentsController.rejectPayment);
 
 module.exports = router;

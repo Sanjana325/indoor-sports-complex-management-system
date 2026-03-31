@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/Payments.css";
 
-const STATUS_OPTIONS = ["ALL", "PENDING", "VERIFIED", "COMPLETED", "CANCELLED"];
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+const STATUS_OPTIONS = ["ALL", "PENDING", "VERIFIED", "COMPLETED", "REJECTED"];
 
 function formatPaidAt(isoString) {
   if (!isoString) return "—";
@@ -22,75 +24,78 @@ function isDash(v) {
 }
 
 export default function Payments() {
-  const [payments, setPayments] = useState([
-    {
-      id: "PAY001",
-      name: "Nuwan Perera",
-      type: "Court Booking",
-      method: "Bank Slip",
-      amount: 2500,
-      slip: true,
-      status: "PENDING",
-      paidAt: "2026-01-22T10:18:00",
-    },
-    {
-      id: "PAY002",
-      name: "Saman Silva",
-      type: "Class Fee",
-      method: "Online",
-      amount: 3000,
-      slip: false,
-      status: "PENDING",
-      paidAt: "2026-01-22T11:05:00",
-    },
-    {
-      id: "PAY003",
-      name: "Kavindi Silva",
-      type: "Court Booking",
-      method: "Bank Slip",
-      amount: 2000,
-      slip: true,
-      status: "VERIFIED",
-      paidAt: "2026-01-21T16:40:00",
-    },
-    {
-      id: "PAY004",
-      name: "Ishan Fernando",
-      type: "Class Fee",
-      method: "Online",
-      amount: 3500,
-      slip: false,
-      status: "COMPLETED",
-      paidAt: "2026-01-20T09:55:00",
-    },
-    {
-      id: "PAY005",
-      name: "Kasun Silva",
-      type: "Court Booking",
-      method: "Bank Slip",
-      amount: 2500,
-      slip: true,
-      status: "CANCELLED",
-      paidAt: "2026-01-21T08:30:00",
-    },
-  ]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  function verifyPayment(id) {
-    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: "VERIFIED" } : p)));
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/payments`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPayments(data.payments || []);
+      } else {
+        console.error(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  async function verifyPayment(id, rawPaymentId) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/payments/${rawPaymentId}/verify`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: "VERIFIED" } : p)));
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to verify payment");
+      }
+    } catch (err) {
+      alert("Error verifying payment");
+    }
   }
 
-  function rejectPayment(id) {
-    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: "CANCELLED" } : p)));
+  async function rejectPayment(id, rawPaymentId) {
+    if (!window.confirm("Are you sure you want to REJECT this payment? This will cancel the associated booking/cycle.")) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/payments/${rawPaymentId}/reject`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: "REJECTED" } : p)));
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to reject payment");
+      }
+    } catch (err) {
+      alert("Error rejecting payment");
+    }
   }
 
   function statusLabel(status) {
     if (status === "PENDING") return "Pending";
     if (status === "VERIFIED") return "Verified";
     if (status === "COMPLETED") return "Completed";
-    if (status === "CANCELLED") return "Cancelled";
+    if (status === "REJECTED") return "Rejected";
     return status;
   }
 
@@ -120,8 +125,12 @@ export default function Payments() {
     [filteredPayments]
   );
 
-  function handleViewSlip(paymentId) {
-    alert(`View slip for ${paymentId} (UI-only for now)`);
+  function handleViewSlip(slipPath) {
+    if (slipPath) {
+      window.open(slipPath, '_blank');
+    } else {
+      alert("Slip not available.");
+    }
   }
 
   return (
@@ -150,24 +159,33 @@ export default function Payments() {
 
       <section className="pay-section">
         <h3 className="pay-section-title">Court Booking Payments</h3>
-        <PaymentsTable
-          rows={bookingPayments}
-          onVerify={verifyPayment}
-          onReject={rejectPayment}
-          onViewSlip={handleViewSlip}
-          statusLabel={statusLabel}
-        />
+        {loading ? (
+           <p style={{color: '#888', padding: '20px 0'}}>Loading payments...</p>
+        ) : (
+          <PaymentsTable
+            rows={bookingPayments}
+            onVerify={verifyPayment}
+            onReject={rejectPayment}
+            onViewSlip={handleViewSlip}
+            statusLabel={statusLabel}
+            showBookingId={true}
+          />
+        )}
       </section>
 
       <section className="pay-section">
         <h3 className="pay-section-title">Class Fee Payments</h3>
-        <PaymentsTable
-          rows={classFeePayments}
-          onVerify={verifyPayment}
-          onReject={rejectPayment}
-          onViewSlip={handleViewSlip}
-          statusLabel={statusLabel}
-        />
+        {loading ? (
+             <p style={{color: '#888', padding: '20px 0'}}>Loading payments...</p>
+        ) : (
+            <PaymentsTable
+              rows={classFeePayments}
+              onVerify={verifyPayment}
+              onReject={rejectPayment}
+              onViewSlip={handleViewSlip}
+              statusLabel={statusLabel}
+            />
+        )}
       </section>
 
       <p className="pay-hint">
@@ -177,13 +195,14 @@ export default function Payments() {
   );
 }
 
-function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel }) {
+function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel, showBookingId }) {
   return (
     <div className="pay-table-wrap">
       <table className="pay-table">
         <thead>
           <tr>
             <th>Payment ID</th>
+            {showBookingId && <th>Booking ID</th>}
             <th>Name</th>
             <th>Method</th>
             <th>Amount</th>
@@ -209,6 +228,7 @@ function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel }) {
               return (
                 <tr key={p.id}>
                   <td>{p.id}</td>
+                  {showBookingId && <td>#{p.bookingId || "N/A"}</td>}
                   <td>{p.name}</td>
                   <td>{p.method}</td>
                   <td className="pay-mono">LKR {Number(p.amount).toLocaleString("en-LK")}</td>
@@ -217,7 +237,7 @@ function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel }) {
 
                   <td className={showSlipView ? "" : "pay-dash"}>
                     {showSlipView ? (
-                      <button className="pay-link-btn" type="button" onClick={() => onViewSlip(p.id)}>
+                      <button className="pay-link-btn" type="button" onClick={() => onViewSlip(p.slip)}>
                         View
                       </button>
                     ) : (
@@ -232,10 +252,10 @@ function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel }) {
                   <td className="pay-center">
                     {p.status === "PENDING" ? (
                       <div className="pay-actions">
-                        <button className="pay-verify-btn" type="button" onClick={() => onVerify(p.id)}>
+                        <button className="pay-verify-btn" type="button" onClick={() => onVerify(p.id, p.paymentIdStr)}>
                           Verify
                         </button>
-                        <button className="pay-reject-btn" type="button" onClick={() => onReject(p.id)}>
+                        <button className="pay-reject-btn" type="button" onClick={() => onReject(p.id, p.paymentIdStr)}>
                           Reject
                         </button>
                       </div>
