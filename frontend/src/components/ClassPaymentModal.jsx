@@ -5,6 +5,7 @@ import {
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { CreditCard, Receipt } from "@mui/icons-material";
+import { BANK_DETAILS } from "../utils/constants";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -126,18 +127,75 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
             </Box>
           </>
         ) : (
-          <Box>
-            <Typography variant="body1" sx={{ mb: 2 }}>Deposit <strong>LKR {Number(classData?.Fee).toLocaleString()}</strong> to:</Typography>
-            <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2, mb: 3, fontSize: '0.9rem' }}>
-              <Typography variant="body2">Bank: Bank of Ceylon</Typography>
-              <Typography variant="body2">Acc Name: Indoor Sports Complex</Typography>
-              <Typography variant="body2">Acc Number: 0012 3456 7890 001</Typography>
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="body1" sx={{ mb: 2, opacity: 0.9 }}>
+                Deposit <strong>LKR {Number(classData?.Fee).toLocaleString()}</strong> to the following account:
+            </Typography>
+            
+            <Box sx={{ 
+                p: 2.5, 
+                bgcolor: 'rgba(255,255,255,0.03)', 
+                borderRadius: 3, 
+                mb: 3, 
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1
+            }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="caption" sx={{ opacity: 0.5 }}>Bank</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{BANK_DETAILS.bankName}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="caption" sx={{ opacity: 0.5 }}>Branch</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{BANK_DETAILS.branch}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Typography variant="caption" sx={{ opacity: 0.5 }}>Acc Name</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{BANK_DETAILS.accountName}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, pt: 1, borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                <Typography variant="caption" sx={{ opacity: 0.5 }}>Acc Number</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#00e676', letterSpacing: 1 }}>{BANK_DETAILS.accountNumber}</Typography>
+              </Box>
             </Box>
-            <input type="file" accept="image/*,application/pdf" onChange={(e) => setSlipFile(e.target.files[0])} style={{ color: '#fff', marginBottom: '20px', display: 'block' }} />
-            <Button variant="contained" fullWidth sx={{ bgcolor: '#00e676', color: '#000', fontWeight: 700 }} onClick={handleBankSlipSubmit} disabled={!slipFile || uploading}>
+
+            <Typography variant="caption" sx={{ display: 'block', mb: 1, opacity: 0.7, fontWeight: 600 }}>Upload Slip (JPG, PNG, PDF):</Typography>
+            <Box sx={{ 
+                p: 2, 
+                border: '1px dashed rgba(255,255,255,0.2)', 
+                borderRadius: 2, 
+                mb: 3,
+                '&:hover': { borderColor: '#40c4ff', bgcolor: 'rgba(64,196,255,0.05)' }
+            }}>
+                <input 
+                    type="file" 
+                    accept="image/*,application/pdf" 
+                    onChange={(e) => setSlipFile(e.target.files[0])} 
+                    style={{ color: '#888', width: '100%', cursor: 'pointer' }} 
+                />
+            </Box>
+
+            <Button 
+                variant="contained" 
+                fullWidth 
+                sx={{ 
+                    bgcolor: '#40c4ff', 
+                    color: '#000', 
+                    fontWeight: 800,
+                    py: 1.2,
+                    borderRadius: 2,
+                    boxShadow: '0 4px 15px rgba(64,196,255,0.3)',
+                    '&:hover': { bgcolor: '#00b0ff' }
+                }} 
+                onClick={handleBankSlipSubmit} 
+                disabled={!slipFile || uploading}
+            >
               {uploading ? "Uploading..." : "Submit Slip"}
             </Button>
-            <Button fullWidth sx={{ mt: 1, color: 'rgba(255,255,255,0.5)' }} onClick={() => setStep(1)}>Back</Button>
+            <Button fullWidth onClick={() => setStep(1)} sx={{ mt: 1.5, color: 'rgba(255,255,255,0.4)', textTransform: 'none' }}>
+                Back to Payment Options
+            </Button>
           </Box>
         )}
       </DialogContent>

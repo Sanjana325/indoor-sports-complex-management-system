@@ -10,6 +10,7 @@ import {
   Card, Box, Typography, Button, IconButton
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
+import { BANK_DETAILS } from "../../utils/constants";
 import "../../styles/PlayerBookCourt.css";
 
 
@@ -629,7 +630,7 @@ export default function PlayerBookCourt() {
         <DialogContent className="pbc-dialog-content">
           {paymentModalStep === 1 ? (
             <>
-              <Typography variant="body1" className="pbc-dialog-subtext">
+              <Typography variant="body1" className="pbc-dialog-subtext" sx={{ color: 'rgba(255,255,255,0.7)' }}>
                 Your booking is reserved for 10 minutes. Please complete the payment of <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm.
               </Typography>
 
@@ -648,31 +649,47 @@ export default function PlayerBookCourt() {
               </Box>
             </>
           ) : (
-             <Box sx={{ mt: 2, color: 'white' }}>
-                 <Typography variant="body1" sx={{ mb: 2 }}>
-                     Please deposit <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to the following account:
+             <Box sx={{ mt: 2 }}>
+                 <Typography variant="body1" sx={{ mb: 2, opacity: 0.9, color: '#fff' }}>
+                     Please deposit <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to the following account and upload your deposit slip.
                  </Typography>
-                 <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 2, mb: 3 }}>
-                     <Typography><strong>Bank:</strong> Bank of Ceylon</Typography>
-                     <Typography><strong>Branch:</strong> City Center</Typography>
-                     <Typography><strong>Acc Name:</strong> Indoor Sports Complex</Typography>
-                     <Typography><strong>Acc Number:</strong> 0012 3456 7890 001</Typography>
+                 
+                 <Box className="pbc-bank-details-card" sx={{ bgcolor: 'rgba(255,255,255,0.05)', p: 3, borderRadius: 3 }}>
+                     <div className="bank-info-row" style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Bank</span>
+                         <span className="info-value" style={{ color: '#fff', fontWeight: 600 }}>{BANK_DETAILS.bankName}</span>
+                     </div>
+                     <div className="bank-info-row" style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Branch</span>
+                         <span className="info-value" style={{ color: '#fff', fontWeight: 600 }}>{BANK_DETAILS.branch}</span>
+                     </div>
+                     <div className="bank-info-row" style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Acc Name</span>
+                         <span className="info-value" style={{ color: '#fff', fontWeight: 600 }}>{BANK_DETAILS.accountName}</span>
+                     </div>
+                     <div className="bank-info-row highlighted" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Acc Number</span>
+                         <span className="info-value" style={{ color: '#00ff88', fontWeight: 700, fontSize: '1.2rem', letterSpacing: '1px' }}>{BANK_DETAILS.accountNumber}</span>
+                     </div>
                  </Box>
                  
-                 <Typography variant="body2" sx={{ mb: 1 }}>Upload your deposit slip (JPG, PNG, PDF):</Typography>
-                 <input 
-                    type="file" 
-                    accept="image/jpeg,image/png,application/pdf"
-                    onChange={(e) => setSlipFile(e.target.files[0])}
-                    style={{ marginBottom: '20px', display: 'block', width: '100%' }}
-                 />
+                 <Typography variant="body2" sx={{ mb: 1, opacity: 0.7, fontWeight: 600, color: '#fff' }}>Upload Slip (JPG, PNG, PDF):</Typography>
+                 <div className="pbc-file-upload-wrapper">
+                    <input 
+                        type="file" 
+                        accept="image/jpeg,image/png,application/pdf"
+                        onChange={(e) => setSlipFile(e.target.files[0])}
+                        style={{ color: '#aaa' }}
+                    />
+                 </div>
                  
                  <Button 
                     variant="contained" 
                     fullWidth
-                    color="primary" 
+                    className="pbc-submit-slip-btn"
                     disabled={!slipFile || uploadingSlip}
                     onClick={handleBankSlipSubmit}
+                    sx={{ mt: 2 }}
                  >
                     {uploadingSlip ? "Uploading..." : "Submit Bank Slip"}
                  </Button>

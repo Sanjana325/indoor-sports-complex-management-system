@@ -440,21 +440,27 @@
   }
 }
 
-/* Payment Selection Modal */
-.pbc-payment-dialog .MuiPaper-root {
-  background: #1e1e1e !important;
-  color: #fff !important;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 16px !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+/* Payment Selection Modal - Fixing selector to target the Paper component correctly */
+.MuiPaper-root.pbc-payment-dialog {
+  background: #0f172a !important; /* Deep dark blue-black */
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(0, 212, 255, 0.1) 0px, transparent 50%), 
+    radial-gradient(at 100% 0%, rgba(0, 255, 136, 0.1) 0px, transparent 50%) !important;
+  color: #f8fafc !important; /* High contrast white */
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
 }
 
 .pbc-dialog-title {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   font-weight: 800 !important;
   font-size: 1.5rem !important;
   padding: 1.5rem !important;
-  position: relative;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .pbc-dialog-subtext {
@@ -514,6 +520,85 @@
 .pbc-cancel-btn:hover {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Bank Details Styling */
+.pbc-bank-details-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bank-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+.bank-info-row .info-label {
+  opacity: 0.6;
+  font-weight: 500;
+}
+
+.bank-info-row .info-value {
+  font-weight: 600;
+  color: #fff;
+}
+
+.bank-info-row.highlighted .info-value {
+  color: #00ff88;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+
+.pbc-file-upload-wrapper {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.pbc-file-upload-wrapper:hover {
+  border-color: #00d4ff;
+  background: rgba(0, 212, 255, 0.05);
+}
+
+.pbc-file-upload-wrapper input {
+  width: 100%;
+  color: #888;
+  cursor: pointer;
+}
+
+.pbc-submit-slip-btn {
+  background: linear-gradient(135deg, #00e676 0%, #00c853 100%) !important;
+  color: #000 !important;
+  font-weight: 800 !important;
+  padding: 0.8rem !important;
+  border-radius: 8px !important;
+  text-transform: none !important;
+  font-size: 1rem !important;
+  box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3) !important;
+}
+
+.pbc-submit-slip-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 230, 118, 0.4) !important;
+}
+
+.pbc-submit-slip-btn:disabled {
+  opacity: 0.5;
+  background: #333 !important;
+  color: #666 !important;
+  box-shadow: none !important;
 }
 
 @media (max-width: 600px) {
