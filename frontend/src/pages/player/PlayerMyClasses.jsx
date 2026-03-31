@@ -1,5 +1,68 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { 
+  Box, 
+  Typography, 
+  Button, 
+  Grid, 
+  CircularProgress, 
+  Card, 
+  CardContent, 
+  Avatar, 
+  Chip,
+  Container,
+  IconButton
+} from "@mui/material";
+import { 
+  Person, 
+  EventNote, 
+  Place, 
+  ArrowBack,
+  Info,
+  Payments,
+  Schedule,
+  CalendarMonth
+} from "@mui/icons-material";
 import "../../styles/PlayerMyClasses.css";
+import ClassPaymentModal from "../../components/ClassPaymentModal";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+const DAY_MAP = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatTime(t) {
+  if (!t) return "";
+  const timeStr = String(t);
+  return timeStr.includes(':') ? timeStr.slice(0, 5) : timeStr;
+}
+
+function formatScheduleDetailed(c) {
+  console.log("[Format] Class:", c.Title, "Start:", c.StartTime, "Days:", c.Weekdays);
+  const start = formatTime(c.StartTime);
+  const end = formatTime(c.EndTime);
+  const timeRange = start && end ? `${start} - ${end}` : (start || end || "");
+
+  if (c.ScheduleType === "ONETIME") {
+    return `One-Time | ${timeRange || "No time set"}`;
+  }
+
+  if (c.Weekdays) {
+    try {
+      const days = String(c.Weekdays).split(',')
+        .map(d => {
+          const idx = parseInt(d.trim());
+          return !isNaN(idx) ? DAY_MAP[idx] : d;
+        })
+        .filter(d => d)
+        .join(", ");
+      return days ? `${days} | ${timeRange}` : timeRange;
+    } catch (e) {
+      console.error("[Format] Weekdays error:", e);
+    }
+  }
+  
+  return timeRange || "Schedule TBA";
+}
 
 function formatLKR(n) {
   const num = Number(n);
@@ -7,257 +70,225 @@ function formatLKR(n) {
   return `LKR ${num.toLocaleString("en-LK")}`;
 }
 
-function formatSchedule(c) {
-  if (c.scheduleType === "ONETIME") {
-    return `${c.oneTimeDate} | ${c.startTime} - ${c.endTime}`;
-  }
-  return `${c.days.join(", ")} | ${c.startTime} - ${c.endTime}`;
-}
-
-function statusPillClass(status) {
-  const s = status.toUpperCase();
-  if (s === "PAID") return "pmc-pill paid";
-  if (s === "PENDING_VERIFICATION") return "pmc-pill pending";
-  return "pmc-pill paid";
-}
-
-function statusLabel(status) {
-  if (status === "PAID") return "Paid";
-  if (status === "PENDING_VERIFICATION") return "Pending Verification";
-  return status;
-}
-
 export default function PlayerMyClasses() {
+  const navigate = useNavigate();
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedCoach, setSelectedCoach] = useState(null);
 
-  const [classes] = useState([
-    {
-      enrollmentId: "ENR-500001",
-      className: "Beginner Cricket",
-      coachName: "Sahan Fernando",
-      coachSpecialization: "Cricket Batting & Bowling Techniques",
-      coachQualification: "Level 2 Cricket Coach, ICC Certified",
-      scheduleType: "WEEKLY",
-      days: ["Mon", "Wed"],
-      oneTimeDate: "",
-      startTime: "16:00",
-      endTime: "17:30",
-      billingType: "MONTHLY",
-      fee: 2500,
-      paymentStatus: "PAID",
-      nextPaymentDue: "2026-02",
-    },
-    {
-      enrollmentId: "ENR-500002",
-      className: "Futsal Training",
-      coachName: "Kasun Silva",
-      coachSpecialization: "Futsal Strategy & Team Play",
-      coachQualification: "UEFA B License, 10+ years experience",
-      scheduleType: "WEEKLY",
-      days: ["Sat"],
-      oneTimeDate: "",
-      startTime: "09:00",
-      endTime: "10:30",
-      billingType: "MONTHLY",
-      fee: 3000,
-      paymentStatus: "PENDING_VERIFICATION",
-      nextPaymentDue: "2026-02",
-    },
-    {
-      enrollmentId: "ENR-500003",
-      className: "Chess for Beginners",
-      coachName: "Ishan Fernando",
-      coachSpecialization: "Chess Fundamentals & Strategy",
-      coachQualification: "FIDE Master, National Champion 2022",
-      scheduleType: "ONETIME",
-      days: [],
-      oneTimeDate: "2026-02-02",
-      startTime: "10:00",
-      endTime: "12:00",
-      billingType: "ONE_TIME",
-      fee: 2000,
-      paymentStatus: "PAID",
-      nextPaymentDue: null,
-    },
-  ]);
+  // Payment Modal State
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [payClassData, setPayClassData] = useState(null);
 
-  const tiles = useMemo(() => classes, [classes]);
+  useEffect(() => {
+    fetchMyClasses();
+  }, []);
 
-  const handleViewCoach = (classItem) => {
-    setSelectedCoach({
-      name: classItem.coachName,
-      specialization: classItem.coachSpecialization,
-      qualification: classItem.coachQualification,
-    });
+  const fetchMyClasses = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/player/my-classes`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        console.log("[MyClasses] Enrollments:", data.enrollments);
+        setEnrollments(data.enrollments || []);
+      } else {
+        setError(data.message || "Failed to load classes");
+      }
+    } catch (err) {
+      setError("Connection error");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const closeCoachModal = () => {
-    setSelectedCoach(null);
+  const handleLeaveClass = async (enrollmentId) => {
+    if (!window.confirm("Are you sure you want to leave this class? Recurring payments will be stopped.")) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/player/my-classes/${enrollmentId}/leave`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        alert("Successfully left the class.");
+        fetchMyClasses();
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to leave class");
+      }
+    } catch (err) {
+      alert("Error leaving class");
+    }
+  };
+
+  const handlePayNow = (e, enrollment) => {
+    e.stopPropagation();
+    setPayClassData({
+      ClassID: enrollment.ClassID,
+      Title: enrollment.Title,
+      Fee: enrollment.Fee
+    });
+    setPaymentModalOpen(true);
   };
 
   return (
     <div className="pmc-page">
-      <div className="pmc-container">
-        <header className="pmc-header">
-          <div className="pmc-header-content">
-            <h1 className="pmc-title">My Classes</h1>
-            <p className="pmc-subtitle">View and manage your enrolled classes</p>
-          </div>
-        </header>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* HEADER SECTION */}
+        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h3" sx={{ 
+              fontWeight: 800, 
+              color: '#fff', 
+              mb: 1,
+              textShadow: '0 4px 12px rgba(0,0,0,0.3)'
+            }}>
+              My Classes
+            </Typography>
+            <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 400 }}>
+              Manage your enrollments and track your progress.
+            </Typography>
+          </Box>
+          <Button 
+            startIcon={<ArrowBack />} 
+            onClick={() => navigate("/player")}
+            sx={{ 
+              color: '#fff', 
+              borderColor: 'rgba(255,255,255,0.3)',
+              textTransform: 'none',
+              borderRadius: '12px',
+              px: 3,
+              '&:hover': { borderColor: '#fff' }
+            }}
+            variant="outlined"
+          >
+            Dashboard
+          </Button>
+        </Box>
 
-        {tiles.length === 0 ? (
-          <div className="pmc-empty-state">
-            <svg className="pmc-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <h3 className="pmc-empty-title">No enrolled classes yet</h3>
-            <p className="pmc-empty-text">Your paid classes will appear here once you enroll.</p>
-          </div>
+        {/* CONTENT */}
+        {loading ? (
+             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10 }}>
+                <CircularProgress sx={{ color: '#00e676', mb: 2 }} />
+                <Typography sx={{ color: '#fff', opacity: 0.8 }}>Loading your classes...</Typography>
+             </Box>
+        ) : enrollments.length === 0 ? (
+          <Box className="heavy-frost-card" sx={{ textAlign: 'center', py: 12 }}>
+            <CalendarMonth sx={{ fontSize: 64, color: 'rgba(255,255,255,0.2)', mb: 2 }} />
+            <Typography variant="h5" sx={{ color: '#fff', mb: 1 }}>No enrolled classes yet</Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>Your joined classes will appear here after payment.</Typography>
+          </Box>
         ) : (
-          <div className="pmc-grid">
-            {tiles.map((c) => (
-              <div key={c.enrollmentId} className="pmc-class-card">
-                <div className="pmc-card-header">
-                  <div className="pmc-class-info">
-                    <h3 className="pmc-class-name">{c.className}</h3>
-                    <div className="pmc-enrollment-id">#{c.enrollmentId}</div>
-                  </div>
-                  <span className={statusPillClass(c.paymentStatus)}>
-                    {statusLabel(c.paymentStatus)}
-                  </span>
-                </div>
+          <Grid container spacing={3}>
+            {enrollments.map((c) => (
+              <Grid item xs={12} md={6} key={c.EnrollmentID}>
+                <Card className="heavy-frost-card">
+                  <CardContent sx={{ p: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                       <Box>
+                          <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, mb: 0.5 }}>{c.Title}</Typography>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>#ENR-{c.EnrollmentID}</Typography>
+                       </Box>
+                       <Chip 
+                         label={(c.PaymentStatus || "ACTIVE").toUpperCase()} 
+                         sx={{ 
+                            bgcolor: c.PaymentStatus === 'PAID' ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 167, 38, 0.15)',
+                            color: c.PaymentStatus === 'PAID' ? '#00e676' : '#ffa726',
+                            fontWeight: 700,
+                            border: `1px solid ${c.PaymentStatus === 'PAID' ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 167, 38, 0.3)'}`
+                         }}
+                       />
+                    </Box>
 
-                <div className="pmc-card-body">
-                  <div className="pmc-detail-row">
-                    <div className="pmc-detail-icon">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                      </svg>
-                    </div>
-                    <div className="pmc-detail-content">
-                      <span className="pmc-detail-label">Coach</span>
-                      <div className="pmc-coach-row">
-                        <span className="pmc-detail-value">{c.coachName}</span>
-                        <button 
-                          type="button" 
-                          className="pmc-view-more-btn"
-                          onClick={() => handleViewCoach(c)}
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                       <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                            <Person sx={{ color: '#40c4ff', fontSize: 20 }} />
+                            <Box>
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Coach</Typography>
+                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{c.CoachFirstName} {c.CoachLastName}</Typography>
+                            </Box>
+                          </Box>
+                       </Grid>
+                       <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                            <Schedule sx={{ color: '#40c4ff', fontSize: 20 }} />
+                            <Box>
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Schedule</Typography>
+                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{formatScheduleDetailed(c)}</Typography>
+                            </Box>
+                          </Box>
+                       </Grid>
+                       <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Place sx={{ color: '#40c4ff', fontSize: 20 }} />
+                            <Box>
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Location</Typography>
+                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{c.CourtNames || "TBA"}</Typography>
+                            </Box>
+                          </Box>
+                       </Grid>
+                       <Grid item xs={12} sm={6}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Payments sx={{ color: '#40c4ff', fontSize: 20 }} />
+                            <Box>
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Fee</Typography>
+                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{formatLKR(c.Fee)} / {c.BillingType === 'MONTHLY' ? 'Mo' : 'Once'}</Typography>
+                            </Box>
+                          </Box>
+                       </Grid>
+                    </Grid>
+
+                    {c.PaymentStatus !== "PAID" && (
+                         <Box sx={{ 
+                            mt: 2, p: 2, 
+                            borderRadius: '12px', 
+                            background: 'rgba(255, 167, 38, 0.1)', 
+                            border: '1px solid rgba(255, 167, 38, 0.2)',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                         }}>
+                            <Typography variant="body2" sx={{ color: '#ffa726', fontWeight: 600 }}>Payment is Due</Typography>
+                            <Button 
+                              size="small" 
+                              variant="contained" 
+                              sx={{ bgcolor: '#ffa726', color: '#000', fontWeight: 700, '&:hover': { bgcolor: '#fb8c00' } }}
+                              onClick={(e) => handlePayNow(e, c)}
+                            >
+                                Pay Now
+                            </Button>
+                         </Box>
+                    )}
+
+                    <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button 
+                          onClick={() => handleLeaveClass(c.EnrollmentID)}
+                          sx={{ color: '#ff5252', textTransform: 'none', fontWeight: 600, '&:hover': { background: 'rgba(255,82,82,0.1)' } }}
                         >
-                          View More
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pmc-detail-row">
-                    <div className="pmc-detail-icon">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
-                    </div>
-                    <div className="pmc-detail-content">
-                      <span className="pmc-detail-label">Schedule</span>
-                      <span className="pmc-detail-value">{formatSchedule(c)}</span>
-                    </div>
-                  </div>
-
-                  <div className="pmc-detail-row">
-                    <div className="pmc-detail-icon">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="1" x2="12" y2="23"/>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                      </svg>
-                    </div>
-                    <div className="pmc-detail-content">
-                      <span className="pmc-detail-label">
-                        {c.billingType === "ONE_TIME" ? "One-time Fee" : "Monthly Fee"}
-                      </span>
-                      <span className="pmc-detail-value pmc-fee">{formatLKR(c.fee)}</span>
-                    </div>
-                  </div>
-
-                  {c.billingType === "MONTHLY" && c.nextPaymentDue && (
-                    <div className="pmc-payment-due">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      <span>Next payment due: <strong>{c.nextPaymentDue}</strong></span>
-                    </div>
-                  )}
-
-                  {c.paymentStatus === "PENDING_VERIFICATION" && (
-                    <div className="pmc-verification-notice">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
-                      </svg>
-                      <span>Payment submitted. Waiting for admin verification.</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                          Leave Class
+                        </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
             ))}
-          </div>
+          </Grid>
         )}
-      </div>
+      </Container>
 
-      {/* Coach Details Modal */}
-      {selectedCoach && (
-        <div className="pmc-modal-overlay" onClick={closeCoachModal}>
-          <div className="pmc-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="pmc-modal-close" onClick={closeCoachModal}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
-
-            <div className="pmc-modal-header">
-              <div className="pmc-modal-avatar">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-              </div>
-              <h2 className="pmc-modal-title">{selectedCoach.name}</h2>
-            </div>
-
-            <div className="pmc-modal-body">
-              <div className="pmc-modal-section">
-                <div className="pmc-modal-label">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                    <path d="M2 17l10 5 10-5"/>
-                    <path d="M2 12l10 5 10-5"/>
-                  </svg>
-                  Specialization
-                </div>
-                <p className="pmc-modal-text">{selectedCoach.specialization}</p>
-              </div>
-
-              <div className="pmc-modal-section">
-                <div className="pmc-modal-label">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                    <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-                  </svg>
-                  Qualification
-                </div>
-                <p className="pmc-modal-text">{selectedCoach.qualification}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Class Payment Modal */}
+      {payClassData && (
+          <ClassPaymentModal 
+            open={paymentModalOpen}
+            onClose={() => setPaymentModalOpen(false)}
+            classData={payClassData}
+            onPaymentSuccess={fetchMyClasses}
+          />
       )}
     </div>
   );
-}
+}

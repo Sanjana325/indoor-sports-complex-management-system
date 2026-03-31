@@ -38,6 +38,7 @@ import {
   Info
 } from "@mui/icons-material";
 import "../../styles/PlayerAvailableClasses.css";
+import ClassPaymentModal from "../../components/ClassPaymentModal";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -79,6 +80,10 @@ export default function PlayerAvailableClasses() {
   const [error, setError] = useState("");
   const [selectedCoach, setSelectedCoach] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Payment Modal State
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [enrollClassData, setEnrollClassData] = useState(null);
 
   useEffect(() => {
     fetchAvailableClasses();
@@ -106,9 +111,24 @@ export default function PlayerAvailableClasses() {
     }
   }
 
-  const handleEnrollClick = (classId) => {
-    console.log("Enroll initiated for ClassID:", classId);
-    alert(`Enrolling in class ${classId}... (Logic coming soon)`);
+  const handleEnrollClick = async (classId) => {
+    try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/player/classes/${classId}/enroll`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            setEnrollClassData(data.class);
+            setPaymentModalOpen(true);
+        } else {
+            alert(data.message || "Enrollment check failed");
+        }
+    } catch (err) {
+        alert("Failed to initiate enrollment. Please try again.");
+    }
   };
 
   const handleSeeMoreCoach = (cls) => {
@@ -118,6 +138,7 @@ export default function PlayerAvailableClasses() {
     });
     setIsModalOpen(true);
   };
+
 
   return (
     <div className="pac-portal-container">
@@ -347,6 +368,16 @@ export default function PlayerAvailableClasses() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* PAYMENT MODAL */}
+        {enrollClassData && (
+            <ClassPaymentModal 
+                open={paymentModalOpen}
+                onClose={() => setPaymentModalOpen(false)}
+                classData={enrollClassData}
+                onPaymentSuccess={() => navigate("/player/my-classes")}
+            />
+        )}
       </Container>
     </div>
   );

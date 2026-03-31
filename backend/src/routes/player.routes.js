@@ -30,10 +30,13 @@ router.patch("/player/bookings/:id/cancel", bookingsController.cancelBooking);
 router.get("/player/classes", classesController.getAvailableClasses);
 router.post("/player/classes/:id/enroll", classesController.enrollInClass);
 router.get("/player/my-classes", classesController.getMyClasses);
+router.patch("/player/my-classes/:id/leave", classesController.leaveClass);
+
 
 // Payments
 router.get("/player/payments", paymentsController.getMyPayments);
 router.post("/player/payments/initiate-booking", paymentsController.initiateBookingPayment);
+router.post("/player/payments/initiate-enrollment", paymentsController.initiateEnrollmentPayment);
 router.post("/player/payments/slip", storageService.single("slip"), paymentsController.uploadBankSlip);
 
 module.exports = router;

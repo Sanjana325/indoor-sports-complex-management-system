@@ -95,11 +95,13 @@ export default function PlayerMyPayments() {
               status: safeStatus,
               slipUploaded: p?.Method === "BANK_SLIP" && !!p?.SlipPath,
               slipPath: p?.SlipPath || null,
-              rawBookingId: p?.BookingID || null
+              rawBookingId: p?.BookingID || null,
+              className: p?.ClassTitle || null,
+              type: p?.ClassTitle ? "CLASS" : "COURT"
             };
           });
-          setCourtPayments(formatted);
-          setClassPayments([]); 
+          setCourtPayments(formatted.filter(p => p.type === "COURT"));
+          setClassPayments(formatted.filter(p => p.type === "CLASS"));
         }
       } catch (err) {
         console.error("Failed to load payments", err);

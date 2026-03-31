@@ -3,9 +3,13 @@ const env = require("./config/env");
 const { testDbConnection } = require("./config/db");
 
 const { pool } = require("./config/db");
+const { initCronJobs } = require("./services/cron.service");
 
 async function start() {
   await testDbConnection();
+
+  // Start cron jobs
+  initCronJobs();
 
   // Background scheduler: expire unpaid bookings older than 10 minutes
   setInterval(async () => {

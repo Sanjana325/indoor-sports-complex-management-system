@@ -8,7 +8,10 @@ const playerRoutes = require("./player.routes");
 const paymentsController = require("../controllers/player/payments.controller");
 
 router.use(healthRoutes);
-router.post("/payments/notify", paymentsController.handlePayHereNotify);
+router.post("/payments/notify", (req, res, next) => {
+    console.log(">>> [GLOBAL] POST /api/payments/notify hit! Body:", JSON.stringify(req.body));
+    next();
+}, paymentsController.handlePayHereNotify);
 router.use(authRoutes);
 router.use(adminRoutes);
 router.use(playerRoutes);

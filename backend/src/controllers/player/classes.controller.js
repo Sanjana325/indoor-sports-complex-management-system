@@ -27,7 +27,8 @@ exports.getAvailableClasses = async (req, res, next) => {
              AND c.ClassID NOT IN (
                  SELECT ClassID FROM enrollment WHERE UserID = ? AND Status = 'ENROLLED'
              )
-             GROUP BY c.ClassID
+             GROUP BY c.ClassID, c.Title, c.StartDate, c.Capacity, c.Fee, c.BillingType,
+                      s.SportName, co.CoachID, ua.FirstName, ua.LastName
              ORDER BY c.StartDate ASC`,
             [userId]
         );
@@ -48,7 +49,7 @@ exports.enrollInClass = async (req, res, next) => {
         }
 
         const [[classData]] = await pool.query(
-            `SELECT Capacity,
+            `SELECT ClassID, Title, Fee, Capacity,
              (SELECT COUNT(*) FROM enrollment WHERE ClassID = ? AND Status = 'ENROLLED') as CurrentEnrolled
              FROM class WHERE ClassID = ? AND Status = 'ACTIVE'`,
             [classId, classId]
@@ -61,14 +62,12 @@ exports.enrollInClass = async (req, res, next) => {
             return res.status(400).json({ message: "Class is full" });
         }
 
-        await pool.query(
-            `INSERT INTO enrollment (ClassID, UserID, Status) 
-             VALUES (?, ?, 'ENROLLED')
-             ON DUPLICATE KEY UPDATE Status = 'ENROLLED'`,
-            [classId, userId]
-        );
-
-        res.status(201).json({ message: "Successfully enrolled in class" });
+        // Instead of enrolling, we return the data needed for the payment modal.
+        // The actual enrollment happens in the payment webhook/service.
+        res.json({ 
+            message: "Class available for enrollment",
+            class: classData
+        });
     } catch (err) {
         next(err);
     }
@@ -77,23 +76,42 @@ exports.enrollInClass = async (req, res, next) => {
 exports.getMyClasses = async (req, res, next) => {
     try {
         const userId = req.user.UserID;
+        console.log(`[getMyClasses] Fetching for UserID: ${userId}`);
 
+        // Fetch enrollments with current month status
+        // We join with enrollmentmonth to get the latest cycle's status
         const [rows] = await pool.query(
             `SELECT e.EnrollmentID, e.EnrolledAt, e.Status AS EnrollmentStatus,
-                    c.ClassID, MAX(c.Title) AS Title, MAX(c.StartDate) AS StartDate, 
-                    MAX(c.Fee) AS Fee, MAX(c.BillingType) AS BillingType, MAX(c.Status) AS ClassStatus,
-                    MAX(s.SportName) AS SportName,
-                    MAX(ua.FirstName) AS CoachFirstName, MAX(ua.LastName) AS CoachLastName,
-                    GROUP_CONCAT(DISTINCT crt.CourtName) AS CourtNames
+                    c.ClassID, c.Title, c.Fee, c.BillingType, c.Status AS ClassStatus,
+                    s.SportName,
+                    ua.FirstName AS CoachFirstName, ua.LastName AS CoachLastName,
+                    GROUP_CONCAT(DISTINCT crt.CourtName) AS CourtNames,
+                    MAX(sch.StartTime) AS StartTime, MAX(sch.EndTime) AS EndTime, MAX(sch.ScheduleType) AS ScheduleType,
+                    GROUP_CONCAT(DISTINCT csd.Weekday) AS Weekdays,
+                    em.Status AS PaymentStatus, em.PeriodMonth, em.EnrollmentMonthID
              FROM enrollment e
              JOIN class c ON e.ClassID = c.ClassID
-             JOIN sport s ON c.SportID = s.SportID
-             JOIN coach co ON c.CoachID = co.CoachID
-             JOIN useraccount ua ON co.UserID = ua.UserID
+             LEFT JOIN sport s ON c.SportID = s.SportID
+             LEFT JOIN coach co ON c.CoachID = co.CoachID
+             LEFT JOIN useraccount ua ON co.UserID = ua.UserID
              LEFT JOIN class_court cc ON c.ClassID = cc.ClassID
              LEFT JOIN court crt ON cc.CourtID = crt.CourtID
-             WHERE e.UserID = ?
-             GROUP BY e.EnrollmentID
+             LEFT JOIN classschedule sch ON c.ClassID = sch.ClassID
+             LEFT JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+             LEFT JOIN (
+                 SELECT EnrollmentID, Status, PeriodMonth, EnrollmentMonthID
+                 FROM enrollmentmonth em1
+                 WHERE em1.EnrollmentMonthID = (
+                     SELECT MAX(EnrollmentMonthID) 
+                     FROM enrollmentmonth em2 
+                     WHERE em2.EnrollmentID = em1.EnrollmentID
+                 )
+             ) em ON e.EnrollmentID = em.EnrollmentID
+             WHERE e.UserID = ? AND e.Status != 'CANCELLED'
+             GROUP BY e.EnrollmentID, e.EnrolledAt, e.Status, 
+                      c.ClassID, c.Title, c.Fee, c.BillingType, c.Status,
+                      s.SportName, ua.FirstName, ua.LastName,
+                      em.Status, em.PeriodMonth, em.EnrollmentMonthID
              ORDER BY e.EnrolledAt DESC`,
             [userId]
         );
@@ -103,3 +121,25 @@ exports.getMyClasses = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.leaveClass = async (req, res, next) => {
+    try {
+        const enrollmentId = req.params.id;
+        const userId = req.user.UserID;
+
+        const [result] = await pool.query(
+            "UPDATE enrollment SET Status = 'CANCELLED' WHERE EnrollmentID = ? AND UserID = ?",
+            [enrollmentId, userId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Enrollment not found" });
+        }
+
+        res.json({ message: "Successfully left the class. Recurring billing has been stopped." });
+    } catch (err) {
+        next(err);
+    }
+};
+
+

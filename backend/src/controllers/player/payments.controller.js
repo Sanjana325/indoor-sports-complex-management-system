@@ -41,6 +41,37 @@ exports.initiateBookingPayment = async (req, res, next) => {
     }
 };
 
+exports.initiateEnrollmentPayment = async (req, res, next) => {
+    try {
+        if (!req.user || !req.user.UserID) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const { classId } = req.body;
+        const userId = req.user.UserID;
+
+        if (!classId) {
+            return res.status(400).json({ message: "Missing class ID" });
+        }
+
+        const userDetails = {
+            FirstName: req.user.FirstName,
+            LastName: req.user.LastName,
+            Email: req.user.Email,
+            PhoneNumber: req.user.PhoneNumber
+        };
+
+        const paymentData = await paymentService.createEnrollmentPayment(userId, classId, userDetails);
+        res.json(paymentData);
+
+    } catch (err) {
+        if (err.message === "Class not found or not active") {
+            return res.status(404).json({ message: err.message });
+        }
+        next(err);
+    }
+};
+
 exports.handlePayHereNotify = async (req, res, next) => {
     try {
         await paymentService.verifyPayHerePayment(req.body);
@@ -59,11 +90,13 @@ exports.uploadBankSlip = async (req, res, next) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const { bookingId } = req.body;
+        const { bookingId, classId, type } = req.body;
         const userId = req.user.UserID;
 
-        if (!bookingId) {
-            return res.status(400).json({ message: "Missing booking ID" });
+        const targetId = type === "CLASS" ? classId : bookingId;
+
+        if (!targetId) {
+            return res.status(400).json({ message: `Missing ${type === "CLASS" ? "class" : "booking"} ID` });
         }
 
         if (!req.file) {
@@ -72,11 +105,11 @@ exports.uploadBankSlip = async (req, res, next) => {
 
         const slipUrl = req.file.path;
 
-        const result = await paymentService.processBankSlip(userId, bookingId, slipUrl);
+        const result = await paymentService.processBankSlip(userId, targetId, slipUrl, type);
         res.json(result);
 
     } catch (err) {
-        if (err.message === "Booking not found or not pending payment") {
+        if (err.message.includes("not found")) {
             return res.status(404).json({ message: err.message });
         }
         next(err);
