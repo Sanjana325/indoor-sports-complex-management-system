@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/Enrollments.css";
 
-const STATUS_OPTIONS = ["ALL", "ENROLLED", "CANCELLED"];
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+const STATUS_OPTIONS = ["ALL", "ENROLLED", "CANCELLED", "COMPLETED"];
 
 function statusLabel(s) {
   if (s === "ENROLLED") return "Enrolled";
   if (s === "CANCELLED") return "Cancelled";
+  if (s === "COMPLETED") return "Completed";
   return s;
 }
 
@@ -18,52 +21,36 @@ function feeStatusLabel(s) {
   if (s === "DUE") return "Due";
   if (s === "PENDING_VERIFICATION") return "Pending Verification";
   if (s === "OVERDUE") return "Overdue";
-  return "—";
+  return s;
 }
 
 export default function Enrollments() {
-  const [enrollments, setEnrollments] = useState([
-    {
-      enrollmentId: "ENR-600001",
-      playerName: "Kavindi Silva",
-      className: "Beginner Cricket",
-      billingType: "MONTHLY",
-      currentPeriod: "2026-01",
-      currentFeeStatus: "PAID",
-      enrolledAt: "2026-01-18",
-      status: "ENROLLED",
-    },
-    {
-      enrollmentId: "ENR-600002",
-      playerName: "Nuwan Perera",
-      className: "Badminton Intermediate",
-      billingType: "MONTHLY",
-      currentPeriod: "2026-01",
-      currentFeeStatus: "PENDING_VERIFICATION",
-      enrolledAt: "2026-01-19",
-      status: "ENROLLED",
-    },
-    {
-      enrollmentId: "ENR-600003",
-      playerName: "Saman Silva",
-      className: "Karate Basics",
-      billingType: "ONE_TIME",
-      currentPeriod: "One-time",
-      currentFeeStatus: "PAID",
-      enrolledAt: "2026-01-19",
-      status: "ENROLLED",
-    },
-    {
-      enrollmentId: "ENR-600004",
-      playerName: "Ishan Fernando",
-      className: "Chess for Beginners",
-      billingType: "ONE_TIME",
-      currentPeriod: "One-time",
-      currentFeeStatus: "PAID",
-      enrolledAt: "2026-01-20",
-      status: "CANCELLED",
-    },
-  ]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEnrollments();
+  }, []);
+
+  const fetchEnrollments = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/enrollments`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEnrollments(data.enrollments || []);
+      } else {
+        console.error(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const classOptions = useMemo(() => {
     const unique = Array.from(new Set(enrollments.map((e) => e.className)));
@@ -82,13 +69,27 @@ export default function Enrollments() {
     });
   }, [enrollments, classFilter, statusFilter]);
 
-  function handleCancel(enrollmentId) {
-    const ok = window.confirm("Cancel this enrollment?");
+  async function handleCancel(enrollmentId, rawId) {
+    const ok = window.confirm("Cancel this enrollment? This ensures the player loses access to the class without deleting their historical billing records.");
     if (!ok) return;
 
-    setEnrollments((prev) =>
-      prev.map((e) => (e.enrollmentId === enrollmentId ? { ...e, status: "CANCELLED" } : e))
-    );
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/enrollments/${rawId}/cancel`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setEnrollments((prev) =>
+          prev.map((e) => (e.id === rawId ? { ...e, status: "CANCELLED" } : e))
+        );
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to cancel enrollment");
+      }
+    } catch (err) {
+       alert("Error contacting the server");
+    }
   }
 
   return (
@@ -125,6 +126,7 @@ export default function Enrollments() {
         <table className="enr-table">
           <thead>
             <tr>
+              <th>Enrollment ID</th>
               <th>Player</th>
               <th>Class</th>
               <th>Billing</th>
@@ -137,15 +139,22 @@ export default function Enrollments() {
           </thead>
 
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+                <tr>
+                 <td colSpan="9" className="enr-empty" style={{color: '#888'}}>
+                   Loading enrollments...
+                 </td>
+               </tr>
+            ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan="8" className="enr-empty">
+                <td colSpan="9" className="enr-empty">
                   No enrollments found.
                 </td>
               </tr>
             ) : (
               filtered.map((e) => (
                 <tr key={e.enrollmentId}>
+                  <td className="enr-mono">{e.enrollmentId}</td>
                   <td>{e.playerName}</td>
                   <td>{e.className}</td>
                   <td>{billingLabel(e.billingType)}</td>
@@ -157,7 +166,7 @@ export default function Enrollments() {
                   </td>
                   <td className="enr-center">
                     {e.status === "ENROLLED" ? (
-                      <button className="enr-remove-btn" type="button" onClick={() => handleCancel(e.enrollmentId)}>
+                      <button className="enr-remove-btn" type="button" onClick={() => handleCancel(e.enrollmentId, e.id)}>
                         Cancel
                       </button>
                     ) : (

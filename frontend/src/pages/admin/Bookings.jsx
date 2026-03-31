@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/Bookings.css";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function formatBookedDate(isoString) {
   if (!isoString) return "-";
@@ -20,38 +22,34 @@ function formatBookedTime(isoString) {
 }
 
 export default function Bookings() {
-  const [bookings, setBookings] = useState([
-    {
-      id: "B-500001",
-      playerName: "Kavindi Silva",
-      court: "Badminton - A",
-      date: "2026-01-22",
-      time: "10:00 - 11:00",
-      createdAt: "2026-01-21T14:25:00",
-      status: "PENDING_PAYMENT",
-    },
-    {
-      id: "B-500002",
-      playerName: "Nuwan Perera",
-      court: "Cricket - A",
-      date: "2026-01-23",
-      time: "16:00 - 18:00",
-      createdAt: "2026-01-22T09:10:00",
-      status: "CONFIRMED",
-    },
-    {
-      id: "B-500003",
-      playerName: "Sahan Fernando",
-      court: "Futsal - A",
-      date: "2026-01-23",
-      time: "18:00 - 19:00",
-      createdAt: "2026-01-22T18:40:00",
-      status: "CANCELLED",
-    },
-  ]);
-
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/bookings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBookings(data.bookings || []);
+      } else {
+        console.error(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -72,15 +70,32 @@ export default function Bookings() {
 
   function statusLabel(s) {
     if (s === "PENDING_PAYMENT") return "Pending Payment";
+    if (s === "WAITING_VERIFICATION") return "Waiting Verification";
     if (s === "CONFIRMED") return "Confirmed";
     if (s === "CANCELLED") return "Cancelled";
+    if (s === "EXPIRED") return "Expired";
     return s;
   }
 
-  function handleDelete(id) {
-    const ok = window.confirm("Delete this booking? This action cannot be undone.");
+  async function handleCancel(id, rawId) {
+    const ok = window.confirm("Cancel this booking? This will safely void the reservation without deleting records.");
     if (!ok) return;
-    setBookings((prev) => prev.filter((b) => b.id !== id));
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${rawId}/cancel`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setBookings(prev => prev.map(b => b.rawId === rawId ? { ...b, status: "CANCELLED" } : b));
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to cancel booking");
+      }
+    } catch (err) {
+      alert("Error contacting the server");
+    }
   }
 
   return (
@@ -106,8 +121,10 @@ export default function Bookings() {
         >
           <option value="ALL">All Status</option>
           <option value="PENDING_PAYMENT">Pending Payment</option>
+          <option value="WAITING_VERIFICATION">Waiting Verification</option>
           <option value="CONFIRMED">Confirmed</option>
           <option value="CANCELLED">Cancelled</option>
+          <option value="EXPIRED">Expired</option>
         </select>
       </div>
 
@@ -128,38 +145,53 @@ export default function Bookings() {
           </thead>
 
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+               <tr>
+                 <td colSpan="9" className="bk-empty" style={{color: '#888'}}>
+                   Loading bookings...
+                 </td>
+               </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan="9" className="bk-empty">
                   No bookings found.
                 </td>
               </tr>
             ) : (
-              filtered.map((b) => (
-                <tr key={b.id}>
-                  <td className="bk-mono">{b.id}</td>
-                  <td>{b.playerName}</td>
-                  <td>{b.court}</td>
-                  <td>{b.date}</td>
-                  <td>{b.time}</td>
-                  <td>{formatBookedDate(b.createdAt)}</td>
-                  <td>{formatBookedTime(b.createdAt)}</td>
-                  <td>
-                    <span className={`bk-badge ${b.status.toLowerCase()}`}>
-                      {statusLabel(b.status)}
-                    </span>
-                  </td>
-                  <td className="bk-center">
-                    <button
-                      className="bk-delete-btn"
-                      type="button"
-                      onClick={() => handleDelete(b.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filtered.map((b) => {
+                const isCancellable = b.status !== 'CANCELLED' && b.status !== 'EXPIRED';
+                
+                return (
+                  <tr key={b.id}>
+                    <td className="bk-mono">{b.id}</td>
+                    <td>{b.playerName}</td>
+                    <td>{b.court}</td>
+                    <td>{b.date}</td>
+                    <td>{b.time}</td>
+                    <td>{formatBookedDate(b.createdAt)}</td>
+                    <td>{formatBookedTime(b.createdAt)}</td>
+                    <td>
+                      <span className={`bk-badge ${b.status.toLowerCase()}`}>
+                        {statusLabel(b.status)}
+                      </span>
+                    </td>
+                    <td className="bk-center">
+                      {isCancellable ? (
+                        <button
+                          className="bk-delete-btn"
+                          type="button"
+                          style={{ backgroundColor: '#ff5252' }}
+                          onClick={() => handleCancel(b.id, b.rawId)}
+                        >
+                          Cancel
+                        </button>
+                      ) : (
+                        <span style={{ color: '#aaa' }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
