@@ -1,90 +1,179 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/Attendance.css";
 
-function makeId(prefix = "AT") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export default function Attendance() {
-  const classes = useMemo(
-    () => [
-      "Beginner Cricket",
-      "Karate Basics",
-      "Futsal Training",
-      "Chess for Beginners",
-      "Badminton Intermediate",
-    ],
-    []
-  );
-
-  const [enrollments] = useState([
-    { id: "ENR-1", className: "Beginner Cricket", playerName: "Kavindi Silva" },
-    { id: "ENR-2", className: "Beginner Cricket", playerName: "Nuwan Perera" },
-    { id: "ENR-3", className: "Beginner Cricket", playerName: "Saman Silva" },
-
-    { id: "ENR-4", className: "Karate Basics", playerName: "Ishan Fernando" },
-    { id: "ENR-5", className: "Karate Basics", playerName: "Tharushi Sanjana" },
-
-    { id: "ENR-6", className: "Badminton Intermediate", playerName: "Kasun Silva" },
-    { id: "ENR-7", className: "Badminton Intermediate", playerName: "Dilani Jayasinghe" },
-
-    { id: "ENR-8", className: "Chess for Beginners", playerName: "Sahan Fernando" },
-  ]);
-
-  const [selectedClass, setSelectedClass] = useState("");
+  /* ─── state ─── */
+  const [classes, setClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [nameSearch, setNameSearch] = useState("");
 
-  const [records, setRecords] = useState({});
+  const [session, setSession] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [marks, setMarks] = useState({}); // enrollmentId → "PRESENT" | "ABSENT"
+  const [noSession, setNoSession] = useState(false);
 
-  const canShowStudents = selectedClass && selectedDate;
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
-  const studentsForSelectedClass = useMemo(() => {
+  /* ─── helpers ─── */
+  function getBasePath() {
+    const role = localStorage.getItem("role");
+    return role === "STAFF" ? "/api/staff" : "/api/admin";
+  }
+
+  function getHeaders() {
+    const token = localStorage.getItem("token");
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  /* ─── Fetch classes on mount ─── */
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingClasses(true);
+        const res = await fetch(`${API_BASE}${getBasePath()}/attendance/classes`, {
+          headers: getHeaders(),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setClasses(data.classes || []);
+        } else {
+          console.error(data.message);
+        }
+      } catch (err) {
+        console.error("Failed to fetch classes:", err);
+      } finally {
+        setLoadingClasses(false);
+      }
+    })();
+  }, []);
+
+  /* ─── Fetch session attendance when class + date change ─── */
+  useEffect(() => {
+    if (!selectedClassId || !selectedDate) {
+      setSession(null);
+      setStudents([]);
+      setMarks({});
+      setNoSession(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        setLoadingStudents(true);
+        setNoSession(false);
+        setSuccessMsg("");
+
+        const params = new URLSearchParams({ classId: selectedClassId, sessionDate: selectedDate });
+        const res = await fetch(`${API_BASE}${getBasePath()}/attendance?${params}`, {
+          headers: getHeaders(),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          if (!data.session) {
+            setSession(null);
+            setStudents([]);
+            setMarks({});
+            setNoSession(true);
+          } else {
+            setSession(data.session);
+            setStudents(data.students || []);
+            // Pre‑populate marks from existing DB values
+            const existing = {};
+            (data.students || []).forEach((s) => {
+              if (s.status === "PRESENT" || s.status === "ABSENT") {
+                existing[s.enrollmentId] = s.status;
+              }
+            });
+            setMarks(existing);
+            setNoSession(false);
+          }
+        } else {
+          console.error(data.message);
+        }
+      } catch (err) {
+        console.error("Failed to fetch attendance:", err);
+      } finally {
+        setLoadingStudents(false);
+      }
+    })();
+  }, [selectedClassId, selectedDate]);
+
+  /* ─── Derived ─── */
+  const canShowStudents = session && students.length > 0;
+
+  const filteredStudents = useMemo(() => {
     if (!canShowStudents) return [];
     const q = nameSearch.trim().toLowerCase();
+    return students.filter((s) => (q ? s.name.toLowerCase().includes(q) : true));
+  }, [students, nameSearch, canShowStudents]);
 
-    return enrollments
-      .filter((e) => e.className === selectedClass)
-      .filter((e) => (q ? e.playerName.toLowerCase().includes(q) : true))
-      .sort((a, b) => a.playerName.localeCompare(b.playerName));
-  }, [enrollments, selectedClass, nameSearch, canShowStudents]);
-
-  function keyFor(playerName) {
-    return `${selectedDate}__${selectedClass}__${playerName}`;
+  function getStatus(enrollmentId) {
+    return marks[enrollmentId] || "NOT_MARKED";
   }
 
-  function getStatus(playerName) {
-    return records[keyFor(playerName)] || "NOT_MARKED";
-  }
-
-  function mark(playerName, status) {
-    const k = keyFor(playerName);
-    setRecords((prev) => ({ ...prev, [k]: status }));
+  function mark(enrollmentId, status) {
+    setMarks((prev) => ({ ...prev, [enrollmentId]: status }));
+    setSuccessMsg("");
   }
 
   function clearMarksForThisSession() {
     if (!canShowStudents) return;
-
-    const ok = window.confirm("Clear all marks for this class and date?");
+    const ok = window.confirm("Clear all marks for this session?");
     if (!ok) return;
-
-    setRecords((prev) => {
-      const next = { ...prev };
-      enrollments
-        .filter((e) => e.className === selectedClass)
-        .forEach((e) => {
-          delete next[`${selectedDate}__${selectedClass}__${e.playerName}`];
-        });
-      return next;
-    });
+    setMarks({});
+    setSuccessMsg("");
   }
 
-  function saveAttendance() {
-    if (!canShowStudents) return;
-    alert("Attendance saved (UI only)");
+  /* ─── Save attendance ─── */
+  async function saveAttendance() {
+    if (!session) return;
+
+    // Build marks array — only include entries that have been marked
+    const marksArray = Object.entries(marks)
+      .filter(([, status]) => status === "PRESENT" || status === "ABSENT")
+      .map(([enrollmentId, status]) => ({
+        enrollmentId: Number(enrollmentId),
+        status,
+      }));
+
+    if (marksArray.length === 0) {
+      alert("No attendance marks to save. Please mark at least one student.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const res = await fetch(`${API_BASE}${getBasePath()}/attendance/mark`, {
+        method: "POST",
+        headers: {
+          ...getHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId: session.sessionId, marks: marksArray }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccessMsg(`✓ Attendance saved — ${data.count} record(s) updated.`);
+      } else {
+        alert(data.message || "Failed to save attendance");
+      }
+    } catch (err) {
+      alert("Error saving attendance. Check your connection.");
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
   }
 
+  /* ─── Render ─── */
   return (
     <div className="att-page">
       <div className="att-header">
@@ -101,13 +190,16 @@ export default function Attendance() {
           <div className="att-field">
             <label>Select Class</label>
             <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              disabled={loadingClasses}
             >
-              <option value="">-- Select --</option>
+              <option value="">
+                {loadingClasses ? "Loading classes..." : "-- Select --"}
+              </option>
               {classes.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+                <option key={c.classId} value={c.classId}>
+                  {c.title} — {c.sport} ({c.coach})
                 </option>
               ))}
             </select>
@@ -127,7 +219,7 @@ export default function Attendance() {
               className="att-secondary-btn"
               type="button"
               onClick={clearMarksForThisSession}
-              disabled={!canShowStudents}
+              disabled={!canShowStudents || saving}
             >
               Clear Marks
             </button>
@@ -136,16 +228,24 @@ export default function Attendance() {
               className="att-primary-btn"
               type="button"
               onClick={saveAttendance}
-              disabled={!canShowStudents}
+              disabled={!canShowStudents || saving}
             >
-              Save Attendance
+              {saving ? "Saving..." : "Save Attendance"}
             </button>
           </div>
         </div>
 
-        <p className="att-hint">
-          Note: UI-only. In the final system, attendance will be stored per class session date.
-        </p>
+        {successMsg && (
+          <p className="att-hint" style={{ color: "#19c37d", fontWeight: 700 }}>
+            {successMsg}
+          </p>
+        )}
+
+        {session && session.status === "CANCELLED" && (
+          <p className="att-hint" style={{ color: "#ff3b3b" }}>
+            ⚠ This session is marked as CANCELLED.
+          </p>
+        )}
       </div>
 
       <div className="att-list-card">
@@ -161,13 +261,21 @@ export default function Attendance() {
           />
         </div>
 
-        {!canShowStudents ? (
+        {loadingStudents ? (
+          <div className="att-empty">Loading students...</div>
+        ) : noSession ? (
+          <div className="att-empty">
+            No session scheduled for this class on the selected date.
+          </div>
+        ) : !selectedClassId || !selectedDate ? (
           <div className="att-empty">
             Select a class and date to view enrolled students.
           </div>
-        ) : studentsForSelectedClass.length === 0 ? (
-          <div className="att-empty">No students found for this class.</div>
-        ) : (
+        ) : session && students.length === 0 ? (
+          <div className="att-empty">No students enrolled in this class.</div>
+        ) : canShowStudents && filteredStudents.length === 0 ? (
+          <div className="att-empty">No students match your search.</div>
+        ) : canShowStudents ? (
           <div className="att-table-wrap">
             <table className="att-table">
               <thead>
@@ -178,11 +286,11 @@ export default function Attendance() {
                 </tr>
               </thead>
               <tbody>
-                {studentsForSelectedClass.map((s) => {
-                  const status = getStatus(s.playerName);
+                {filteredStudents.map((s) => {
+                  const status = getStatus(s.enrollmentId);
                   return (
-                    <tr key={`${selectedClass}-${s.playerName}`}>
-                      <td>{s.playerName}</td>
+                    <tr key={s.enrollmentId}>
+                      <td>{s.name}</td>
 
                       <td className="att-center">
                         <span className={`att-badge ${status.toLowerCase()}`}>
@@ -195,7 +303,8 @@ export default function Attendance() {
                           type="button"
                           data-status="present"
                           className={`att-mark-btn ${status === "PRESENT" ? "active" : ""}`}
-                          onClick={() => mark(s.playerName, "PRESENT")}
+                          onClick={() => mark(s.enrollmentId, "PRESENT")}
+                          disabled={saving}
                         >
                           Present
                         </button>
@@ -204,7 +313,8 @@ export default function Attendance() {
                           type="button"
                           data-status="absent"
                           className={`att-mark-btn ${status === "ABSENT" ? "active" : ""}`}
-                          onClick={() => mark(s.playerName, "ABSENT")}
+                          onClick={() => mark(s.enrollmentId, "ABSENT")}
+                          disabled={saving}
                         >
                           Absent
                         </button>
@@ -215,7 +325,7 @@ export default function Attendance() {
               </tbody>
             </table>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

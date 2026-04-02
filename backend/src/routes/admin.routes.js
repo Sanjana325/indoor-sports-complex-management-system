@@ -12,6 +12,7 @@ const classesController = require("../controllers/admin/classes.controller");
 const paymentsController = require("../controllers/admin/payments.controller");
 const bookingsController = require("../controllers/admin/bookings.controller");
 const enrollmentsController = require("../controllers/admin/enrollments.controller");
+const attendanceController = require("../controllers/admin/attendance.controller");
 
 // Test endpoint logic was in admin key "test", but not in any new controller. 
 // I will inline it or create a general admin controller if needed. 
@@ -76,5 +77,9 @@ router.patch("/admin/bookings/:id/cancel", requireAuth, requireRole("ADMIN", "SU
 
 router.get("/admin/enrollments", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), enrollmentsController.listEnrollments);
 router.patch("/admin/enrollments/:id/cancel", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), enrollmentsController.cancelEnrollment);
+
+router.get("/admin/attendance/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), attendanceController.getClassesForAttendance);
+router.get("/admin/attendance", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), attendanceController.getSessionAttendance);
+router.post("/admin/attendance/mark", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), attendanceController.markAttendance);
 
 module.exports = router;
