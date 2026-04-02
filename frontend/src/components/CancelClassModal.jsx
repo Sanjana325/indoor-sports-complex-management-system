@@ -30,8 +30,12 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
     return `${yyyy}-${mm}-${dd}`;
   });
 
+  const [sessionsForDate, setSessionsForDate] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [reason, setReason] = useState("");
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
   // close on Escape
   useEffect(() => {
@@ -42,51 +46,33 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const sessionsForDate = useMemo(() => {
-    const dayShort = dayShortFromISO(dateISO);
-
-    return (classes || [])
-      .filter((c) => c.coachName === coachName)
-      .flatMap((c) => {
-        // weekly match: if days includes dayShort
-        if (c.scheduleType === "WEEKLY") {
-          const days = Array.isArray(c.days) ? c.days : [];
-          if (!days.includes(dayShort)) return [];
-          return [
-            {
-              sessionId: `${c.id}__${dateISO}`,
-              classId: c.id,
-              dateISO,
-              label: `${c.className} (${c.sport}) • ${c.startTime}-${c.endTime}`,
-              startTime: c.startTime,
-              endTime: c.endTime,
-            },
-          ];
-        }
-
-        // one-time match: if oneTimeDate equals date
-        if (c.scheduleType === "ONETIME") {
-          if (c.oneTimeDate !== dateISO) return [];
-          return [
-            {
-              sessionId: `${c.id}__${dateISO}`,
-              classId: c.id,
-              dateISO,
-              label: `${c.className} (${c.sport}) • ${c.startTime}-${c.endTime}`,
-              startTime: c.startTime,
-              endTime: c.endTime,
-            },
-          ];
-        }
-
-        return [];
-      });
-  }, [classes, coachName, dateISO]);
-
-  // Reset selection if date changes
+  // Fetch sessions when date changes
   useEffect(() => {
-    setSelectedSessionId("");
+    if (!dateISO) return;
+    fetchSessions();
   }, [dateISO]);
+
+  const fetchSessions = async () => {
+    try {
+      setLoadingSessions(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/coach/sessions?date=${dateISO}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSessionsForDate(data.sessions || []);
+      } else {
+        setSessionsForDate([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setSessionsForDate([]);
+    } finally {
+      setLoadingSessions(false);
+      setSelectedSessionId("");
+    }
+  };
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -95,15 +81,15 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
     if (!selectedSessionId) return alert("Please select a class for that date");
     if (!reason.trim()) return alert("Please enter a reason");
 
-    const session = sessionsForDate.find((s) => s.sessionId === selectedSessionId);
+    const session = sessionsForDate.find((s) => String(s.id) === String(selectedSessionId));
     if (!session) return alert("Invalid session selection");
 
     onSubmit({
-      sessionId: session.sessionId,
+      sessionId: session.id,
       classId: session.classId,
-      dateISO: session.dateISO,
+      dateISO: dateISO,
       reason: reason.trim(),
-      duration: durationLabel(session.startTime, session.endTime),
+      label: `${session.className} (${session.sport})`
     });
   }
 
@@ -125,15 +111,21 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
 
           <div className="ccm-field">
             <label>Class (for selected date)</label>
-            <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)}>
-              <option value="">Select a class session</option>
-              {sessionsForDate.map((s) => (
-                <option key={s.sessionId} value={s.sessionId}>
-                  {s.label}
-                </option>
-              ))}
+            <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} disabled={loadingSessions}>
+              {loadingSessions ? (
+                <option>Loading sessions...</option>
+              ) : (
+                <>
+                  <option value="">Select a class session</option>
+                  {sessionsForDate.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.className} ({s.sport}) • {s.startTime}-{s.endTime} {s.status === 'CANCELLED' ? '[CANCELLED]' : ''}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
-            {sessionsForDate.length === 0 && (
+            {!loadingSessions && sessionsForDate.length === 0 && (
               <div className="ccm-hint">No classes found for this date.</div>
             )}
           </div>

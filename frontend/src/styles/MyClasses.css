@@ -47,30 +47,36 @@
 .mc-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 
 .mc-table th,
 .mc-table td {
-  padding: 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   text-align: left;
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .mc-table th {
-  font-weight: 900;
+  font-weight: 800;
+  color: #333;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.5px;
 }
 
-.mc-col-name { width: 16%; }
-.mc-col-class { width: 26%; }
-.mc-col-dates { width: 18%; }
-.mc-col-duration { width: 12%; }
-.mc-col-fee { width: 14%; }
-.mc-col-enrolled { width: 14%; }
+.mc-col-name { width: 14%; }
+.mc-col-class { width: 20%; }
+.mc-col-dates { width: 13%; }
+.mc-col-schedule { width: 15%; }
+.mc-col-court { width: 13%; }
+.mc-col-fee { 
+  width: 12%; 
+}
+.mc-col-enrolled { 
+  width: 13%;
+  text-align: center !important;
+}
 
 .mc-empty {
   text-align: center;

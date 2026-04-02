@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/CoachHome.css";
 
 import CalendarPanel from "../../components/CalendarPanel";
@@ -35,33 +35,51 @@ function sportKeyFromText(t = "") {
 }
 
 export default function CoachHome() {
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const coachName = useMemo(() => {
-    const fn = localStorage.getItem("firstName") || "Sahan";
-    const ln = localStorage.getItem("lastName") || "Fernando";
-    return `${fn} ${ln}`.trim();
+    const fn = localStorage.getItem("firstName") || "";
+    const ln = localStorage.getItem("lastName") || "";
+    return `${fn} ${ln}`.trim() || "Coach";
   }, []);
 
-  // ✅ UI-only mock classes (admin registered later via backend)
-  const [classes] = useState([
-    {
-      id: "CL-300001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachName: coachName,
-      date: "2026-09-30",
-      startTime: "16:00",
-      endTime: "17:30",
-    },
-    {
-      id: "CL-300010",
-      sport: "BADMINTON",
-      className: "Badminton Drills",
-      coachName: coachName,
-      date: "2026-10-02",
-      startTime: "18:00",
-      endTime: "19:00",
-    },
-  ]);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    fetchMyClasses();
+  }, []);
+
+  const fetchMyClasses = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/coach/my-classes`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Map backend classes to the format expected by the calendar
+        // The backend returns 'startDate' for the first session or 'oneTimeDate' for one-time classes.
+        // However, the calendar needs specific dates for each weekly session to show dots.
+        // For now, I'll just map the base class data.
+        // Actually, the frontend 'classes' mock had a 'date' field.
+        // I should probably simplify the frontend mapping or enhance the backend.
+        // Let's stick to the current frontend logic but with real data.
+        
+        const mapped = (data.classes || []).map(c => ({
+            ...c,
+            date: c.scheduleType === 'ONE_TIME' ? c.oneTimeDate?.split('T')[0] : c.startDate?.split('T')[0]
+        }));
+
+        setClasses(mapped);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ✅ UI-only mock bookings + blocked (for calendar bars + availability)
   const [bookings] = useState([

@@ -38,7 +38,10 @@ export default function Payments() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/payments`, {
+      const role = localStorage.getItem("role");
+      const basePath = role === "STAFF" ? "/api/staff" : "/api/admin";
+
+      const res = await fetch(`${API_BASE}${basePath}/payments`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -57,7 +60,10 @@ export default function Payments() {
   async function verifyPayment(id, rawPaymentId) {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/payments/${rawPaymentId}/verify`, {
+      const role = localStorage.getItem("role");
+      const basePath = role === "STAFF" ? "/api/staff" : "/api/admin";
+
+      const res = await fetch(`${API_BASE}${basePath}/payments/${rawPaymentId}/verify`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -76,7 +82,10 @@ export default function Payments() {
     if (!window.confirm("Are you sure you want to REJECT this payment? This will cancel the associated booking/cycle.")) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/payments/${rawPaymentId}/reject`, {
+      const role = localStorage.getItem("role");
+      const basePath = role === "STAFF" ? "/api/staff" : "/api/admin";
+
+      const res = await fetch(`${API_BASE}${basePath}/payments/${rawPaymentId}/reject`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${token}` }
       });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/MyClasses.css";
 import CancelClassModal from "../../components/CancelClassModal";
 
@@ -29,86 +29,56 @@ function durationLabel(startTime, endTime) {
   return `${m}m`;
 }
 
-function formatLKR(n) {
+function formatLKR(v) {
+  const n = Number(v);
   if (!Number.isFinite(n)) return "-";
   return `LKR ${n.toLocaleString("en-LK")}`;
 }
 
 export default function MyClasses() {
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const coachName = useMemo(() => {
-    const fn = localStorage.getItem("firstName") || "Sahan";
-    const ln = localStorage.getItem("lastName") || "Fernando";
-    return `${fn} ${ln}`.trim();
+    const fn = localStorage.getItem("firstName") || "";
+    const ln = localStorage.getItem("lastName") || "";
+    return `${fn} ${ln}`.trim() || "Coach";
   }, []);
 
-  // UI-only mock classes (Admin registers later via backend)
-  const [classes] = useState([
-    {
-      id: "CL-300001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachName: "Sahan Fernando",
-      scheduleType: "WEEKLY",
-      days: ["Mon", "Wed"],
-      oneTimeDate: "",
-      startTime: "18:00",
-      endTime: "19:30",
-      capacity: 20,
-      enrolledCount: 14,
-      fee: 2500,
-    },
-    {
-      id: "CL-300006",
-      sport: "CRICKET",
-      className: "Advanced Cricket Nets",
-      coachName: "Sahan Fernando",
-      scheduleType: "WEEKLY",
-      days: ["Fri"],
-      oneTimeDate: "",
-      startTime: "16:00",
-      endTime: "17:30",
-      capacity: 18,
-      enrolledCount: 11,
-      fee: 3000,
-    },
-    {
-      id: "CL-300020",
-      sport: "BADMINTON",
-      className: "Badminton Drills",
-      coachName: "Sahan Fernando",
-      scheduleType: "ONETIME",
-      days: [],
-      oneTimeDate: "2026-10-02",
-      startTime: "18:00",
-      endTime: "19:00",
-      capacity: 16,
-      enrolledCount: 9,
-      fee: 2000,
-    },
-    // other coach's classes (should not show for this coach)
-    {
-      id: "CL-300002",
-      sport: "KARATE",
-      className: "Karate Basics",
-      coachName: "Nimal Perera",
-      scheduleType: "WEEKLY",
-      days: ["Tue", "Thu"],
-      oneTimeDate: "",
-      startTime: "17:30",
-      endTime: "19:00",
-      capacity: 25,
-      enrolledCount: 20,
-      fee: 3500,
-    },
-  ]);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    fetchMyClasses();
+  }, []);
+
+  const fetchMyClasses = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/coach/my-classes`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setClasses(data.classes || []);
+      } else {
+        setError(data.message || "Failed to fetch classes");
+      }
+    } catch (err) {
+      setError("Error connecting to server");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // cancelled sessions (UI-only)
   const [cancelledSessions, setCancelledSessions] = useState([]);
   const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-  const myClasses = useMemo(() => {
-    return classes.filter((c) => c.coachName === coachName);
-  }, [classes, coachName]);
+  // The backend already filters classes by CoachID, so we don't need to filter by name here.
+  const myClasses = classes;
 
   function openCancel() {
     setIsCancelOpen(true);
@@ -118,10 +88,35 @@ export default function MyClasses() {
     setIsCancelOpen(false);
   }
 
-  function handleCancelSubmit(payload) {
-    setCancelledSessions((prev) => [{ ...payload, createdAt: new Date().toISOString() }, ...prev]);
-    setIsCancelOpen(false);
-    alert("Class session cancelled.");
+  async function handleCancelSubmit(payload) {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/coach/sessions/cancel`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sessionId: payload.sessionId,
+          reason: payload.reason,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setCancelledSessions((prev) => [{ ...payload, createdAt: new Date().toISOString() }, ...prev]);
+        setIsCancelOpen(false);
+        alert("Class session cancelled successfully.");
+        // Refresh classes to update enrollment counts if needed (though session status doesn't affect main class data here)
+        fetchMyClasses();
+      } else {
+        alert(data.message || "Failed to cancel session");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error connecting to server");
+    }
   }
 
   return (
@@ -145,17 +140,30 @@ export default function MyClasses() {
             <tr>
               <th className="mc-col-name">Name</th>
               <th className="mc-col-class">Class</th>
-              <th className="mc-col-dates">Date / Dates</th>
-              <th className="mc-col-duration">Duration</th>
+              <th className="mc-col-dates">Date/Dates</th>
+              <th className="mc-col-schedule">Schedule</th>
+              <th className="mc-col-court">Court</th>
               <th className="mc-col-fee">Fee</th>
               <th className="mc-col-enrolled">Students Enrolled</th>
             </tr>
           </thead>
 
           <tbody>
-            {myClasses.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan="6" className="mc-empty">
+                <td colSpan="7" className="mc-empty">
+                  Loading classes...
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan="7" className="mc-empty" style={{ color: "#ff4d4d" }}>
+                  {error}
+                </td>
+              </tr>
+            ) : myClasses.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="mc-empty">
                   No classes assigned to you.
                 </td>
               </tr>
@@ -170,10 +178,16 @@ export default function MyClasses() {
                   </td>
 
                   <td className="mc-col-dates">
-                    {c.scheduleType === "ONETIME" ? c.oneTimeDate || "-" : formatDays(c.days)}
+                    {c.scheduleType === "ONE_TIME" ? c.oneTimeDate || "-" : formatDays(c.days)}
                   </td>
 
-                  <td className="mc-col-duration">{durationLabel(c.startTime, c.endTime)}</td>
+                  <td className="mc-col-schedule">
+                    {c.startTime} - {c.endTime}
+                  </td>
+
+                  <td className="mc-col-court">
+                    {c.courtName || "-"}
+                  </td>
 
                   <td className="mc-col-fee">{formatLKR(c.fee)}</td>
 
