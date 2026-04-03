@@ -10,9 +10,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 export default function AdminCalendar() {
   const [events, setEvents] = useState([]);
   const [sports, setSports] = useState([]);
+  const [courtsData, setCourtsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [courtFilter, setCourtFilter] = useState("ALL");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -26,7 +28,7 @@ export default function AdminCalendar() {
     const token = localStorage.getItem("token");
 
     try {
-      const [bookRes, sessRes, sportRes] = await Promise.all([
+      const [bookRes, sessRes, sportRes, courtRes] = await Promise.all([
         fetch(`${API_BASE}/api/admin/bookings`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -36,17 +38,22 @@ export default function AdminCalendar() {
         fetch(`${API_BASE}/api/admin/sports`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`${API_BASE}/api/admin/courts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
-      if (!bookRes.ok || !sessRes.ok || !sportRes.ok) {
+      if (!bookRes.ok || !sessRes.ok || !sportRes.ok || !courtRes.ok) {
         throw new Error("Failed to fetch calendar data");
       }
 
       const bookData = await bookRes.json();
       const sessData = await sessRes.json();
       const sData = await sportRes.json();
+      const cData = await courtRes.json();
 
       setSports(sData.sports || []);
+      setCourtsData(cData.courts || []);
 
       // Transform Bookings
       // Note: Booking date/time is already formatted in the controller, 
@@ -63,8 +70,8 @@ export default function AdminCalendar() {
           title: `Booking: ${b.playerName} (${b.court})`,
           start: `${b.date}T${startT}:00`,
           end: `${b.date}T${endT}:00`,
-          backgroundColor: "#6366f1", // Default indigo for bookings
-          borderColor: "#4f46e5",
+          backgroundColor: b.sportColor || "#6366f1",
+          borderColor: b.sportColor || "#4f46e5",
           extendedProps: {
             type: "BOOKING",
             playerName: b.playerName,
@@ -100,11 +107,38 @@ export default function AdminCalendar() {
     setIsDetailModalOpen(true);
   }
 
+  const filteredEvents = useMemo(() => {
+    if (courtFilter === "ALL") return events;
+    return events.filter((e) => {
+      const courtStr = String(e.extendedProps.court || "").toLowerCase();
+      const filterStr = courtFilter.toLowerCase();
+      return courtStr.includes(filterStr);
+    });
+  }, [events, courtFilter]);
+
   return (
     <div className="calendar-page">
       <div className="calendar-header">
-        <h1 className="calendar-title">ArenaPro Scheduler</h1>
-        <p className="calendar-subtitle">Manage all court bookings and class sessions in one place.</p>
+        <div className="header-top">
+          <div>
+            <h1 className="calendar-title">ArenaPro Scheduler</h1>
+            <p className="calendar-subtitle">Manage all court bookings and class sessions in one place.</p>
+          </div>
+          
+          <div className="header-filters">
+            <label className="filter-label">Court Filter:</label>
+            <select 
+              className="court-select"
+              value={courtFilter} 
+              onChange={(e) => setCourtFilter(e.target.value)}
+            >
+              <option value="ALL">All Courts</option>
+              {courtsData.map(c => (
+                <option key={c.CourtID} value={c.CourtName}>{c.CourtName}</option>
+              ))}
+            </select>
+          </div>
+        </div>
         
         {sports.length > 0 && (
           <div className="sport-legend-top">
@@ -139,7 +173,7 @@ export default function AdminCalendar() {
             center: "title",
             right: "dayGridMonth,timeGridWeek,timeGridDay",
           }}
-          events={events}
+          events={filteredEvents}
           eventClick={handleEventClick}
           height="750px"
           eventTimeFormat={{

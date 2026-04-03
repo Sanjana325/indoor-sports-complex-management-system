@@ -5,7 +5,8 @@ exports.listBookings = async (req, res, next) => {
     try {
         const [rows] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
-                    c.CourtName, c.PricePerHour, u.FirstName, u.LastName, u.PhoneNumber, s.SportName
+                    c.CourtName, c.PricePerHour, u.FirstName, u.LastName, u.PhoneNumber, 
+                    s.SportName, s.ColorCode
              FROM booking b
              JOIN court c ON b.CourtID = c.CourtID
              JOIN useraccount u ON b.UserID = u.UserID
@@ -40,6 +41,7 @@ exports.listBookings = async (req, res, next) => {
                 status: r.Status,
                 phoneNumber: r.PhoneNumber,
                 sportName: r.SportName,
+                sportColor: r.ColorCode,
                 pricePerHour: r.PricePerHour,
                 startRaw: r.StartDateTime,
                 endRaw: r.EndDateTime
