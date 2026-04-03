@@ -535,3 +535,64 @@ exports.activateClass = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.listSessions = async (req, res, next) => {
+    try {
+        const [sessions] = await pool.query(`
+            SELECT 
+                cs.SessionID as id,
+                c.ClassID,
+                c.Title as title,
+                cs.SessionDate as date,
+                DATE_FORMAT(cs.StartTime, '%H:%i') as startTime,
+                DATE_FORMAT(cs.EndTime, '%H:%i') as endTime,
+                cs.Status as status,
+                s.SportName as sportName,
+                s.ColorCode as color,
+                u.FirstName as coachFirst,
+                u.LastName as coachLast,
+                u.PhoneNumber as coachPhone,
+                (SELECT GROUP_CONCAT(ct.CourtName SEPARATOR ', ') 
+                 FROM class_court cc 
+                 JOIN court ct ON cc.CourtID = ct.CourtID 
+                 WHERE cc.ClassID = c.ClassID) as courts
+            FROM classsession cs
+            JOIN class c ON cs.ClassID = c.ClassID
+            JOIN sport s ON c.SportID = s.SportID
+            JOIN useraccount u ON c.CoachID = u.UserID
+            ORDER BY cs.SessionDate ASC, cs.StartTime ASC
+        `);
+
+        const mapped = sessions.map(s => {
+            const startDate = new Date(s.date);
+            const yyyy = startDate.getFullYear();
+            const mm = String(startDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(startDate.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            const startStr = `${dateStr}T${s.startTime}:00`;
+            const endStr = `${dateStr}T${s.endTime}:00`;
+
+            return {
+                id: `CS-${s.id}`,
+                title: `${s.title} (${s.sportName})`,
+                start: startStr,
+                end: endStr,
+                backgroundColor: s.color || "#1976d2",
+                extendedProps: {
+                    type: 'CLASS',
+                    status: s.status,
+                    sport: s.sportName,
+                    coach: `${s.coachFirst} ${s.coachLast}`,
+                    coachPhone: s.coachPhone,
+                    court: s.courts,
+                    time: `${s.startTime} - ${s.endTime}`
+                }
+            };
+        });
+
+        res.json({ sessions: mapped });
+    } catch (err) {
+        next(err);
+    }
+};

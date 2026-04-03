@@ -36,18 +36,11 @@
 }
 
 .sh-lower {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
-  align-items: start;
+  display: block;
+  margin-top: 24px;
 }
 
-.sh-left {
-  background: #fff;
-  border: 1px solid #d9d9d9;
-  border-radius: 14px;
-  padding: 12px;
-}
+
 
 .sh-right {
   background: #fff;

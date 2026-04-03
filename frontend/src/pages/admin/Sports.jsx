@@ -190,6 +190,7 @@ export default function Sports() {
                                                 <Typography variant="body2">{s.ColorCode}</Typography>
                                             </Box>
                                         </TableCell>
+
                                         <TableCell>
                                             {s.IsBookable ? (
                                                 <Chip label="Bookable" color="success" size="small" variant="outlined" />
@@ -248,7 +249,7 @@ export default function Sports() {
                         </div>
 
                         <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Sport Color (for Calendar)</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>Sport Color</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
                                 <input
                                     type="color"
@@ -265,10 +266,12 @@ export default function Sports() {
                                     }}
                                 />
                                 <Typography variant="body2" color="textSecondary">
-                                    Choose a color to represent this sport in the calendar
+                                    Choose a color to represent this sport in the system.
                                 </Typography>
                             </Box>
                         </Box>
+
+
 
                         <FormControlLabel
                             control={<Switch checked={isBookable} onChange={(e) => setIsBookable(e.target.checked)} color="primary" />}

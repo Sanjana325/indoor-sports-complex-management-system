@@ -5,10 +5,11 @@ exports.listBookings = async (req, res, next) => {
     try {
         const [rows] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
-                    c.CourtName, u.FirstName, u.LastName
+                    c.CourtName, c.PricePerHour, u.FirstName, u.LastName, u.PhoneNumber, s.SportName
              FROM booking b
              JOIN court c ON b.CourtID = c.CourtID
              JOIN useraccount u ON b.UserID = u.UserID
+             JOIN sport s ON b.SportID = s.SportID
              ORDER BY b.CreatedAt DESC`
         );
 
@@ -36,7 +37,12 @@ exports.listBookings = async (req, res, next) => {
                 date: dateStr,
                 time: timeStr,
                 createdAt: r.CreatedAt ? new Date(r.CreatedAt).toISOString() : null,
-                status: r.Status
+                status: r.Status,
+                phoneNumber: r.PhoneNumber,
+                sportName: r.SportName,
+                pricePerHour: r.PricePerHour,
+                startRaw: r.StartDateTime,
+                endRaw: r.EndDateTime
             };
         });
 

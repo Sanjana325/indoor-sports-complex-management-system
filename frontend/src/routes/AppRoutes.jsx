@@ -11,6 +11,7 @@ import Settings from "../pages/common/Settings";
 // Admin
 import AdminLayout from "../layouts/AdminLayout";
 import AdminHome from "../pages/admin/AdminHome";
+import AdminCalendar from "../pages/admin/AdminCalendar";
 import UserManagement from "../pages/admin/UserManagement";
 import Courts from "../pages/admin/Courts";
 import Sports from "../pages/admin/Sports";
@@ -50,6 +51,7 @@ export default function AppRoutes() {
 
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminHome />} />
+        <Route path="calendar" element={<AdminCalendar />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="courts" element={<Courts />} />
         <Route path="sports" element={<Sports />} />

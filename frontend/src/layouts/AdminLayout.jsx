@@ -67,7 +67,11 @@ export default function AdminLayout() {
 
         <nav className="sidebar-nav">
           <NavLink to="/admin" end className={({ isActive }) => (isActive ? "active" : "")}>
-            Home
+            Overview
+          </NavLink>
+
+          <NavLink to="/admin/calendar" className={({ isActive }) => (isActive ? "active" : "")}>
+            Calendar
           </NavLink>
 
           <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>
