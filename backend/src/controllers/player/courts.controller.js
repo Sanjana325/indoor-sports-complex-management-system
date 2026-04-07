@@ -66,6 +66,7 @@ exports.getCourtAvailability = async (req, res, next) => {
              JOIN class_court cc ON c.ClassID = cc.ClassID
              JOIN classschedule sch ON c.ClassID = sch.ClassID
              LEFT JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+             LEFT JOIN classsession cs ON c.ClassID = cs.ClassID AND cs.SessionDate = ?
              WHERE cc.CourtID = ?
              AND c.Status = 'ACTIVE'
              AND c.StartDate <= ?
@@ -73,8 +74,9 @@ exports.getCourtAvailability = async (req, res, next) => {
                  (sch.ScheduleType = 'ONE_TIME' AND sch.OneTimeDate = ?)
                  OR
                  (sch.ScheduleType = 'WEEKLY' AND csd.Weekday = ?)
-             )`,
-            [courtId, date, date, dayOfWeek]
+             )
+             AND (cs.Status IS NULL OR cs.Status != 'CANCELLED')`,
+            [date, courtId, date, date, dayOfWeek]
         );
 
         // Map class slots to the same StartDateTime/EndDateTime format as bookings/blocked

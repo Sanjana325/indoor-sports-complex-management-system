@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import "../../styles/MyClasses.css";
+import "../../styles/CoachDetails.css";
 import CancelClassModal from "../../components/CancelClassModal";
 
 function formatDays(days) {
+// ... (rest of helper functions same as before)
   if (!days || days.length === 0) return "-";
   return days.join(", ");
 }
@@ -35,10 +37,77 @@ function formatLKR(v) {
   return `LKR ${n.toLocaleString("en-LK")}`;
 }
 
+function EnrolledStudentsModal({ classId, className, onClose }) {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    fetchStudents();
+  }, [classId]);
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/coach/classes/${classId}/students`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStudents(data.students || []);
+      } else {
+        setError(data.message || "Failed to load students");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error connecting to server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="cd-backdrop" onClick={onClose}>
+      <div className="cd-modal" onClick={e => e.stopPropagation()}>
+        <div className="cd-head">
+          <h3 className="cd-title">Enrolled: {className}</h3>
+          <button className="cd-close" onClick={onClose}>×</button>
+        </div>
+        <div className="cd-body">
+          {loading ? (
+            <div className="cd-loader-wrap">Loading students...</div>
+          ) : error ? (
+            <div className="cd-error">{error}</div>
+          ) : students.length === 0 ? (
+            <div className="cd-empty">No students currently enrolled.</div>
+          ) : (
+            <div className="cd-list">
+              {students.map(s => (
+                <div key={s.id} className="cd-item">
+                  <div className="cd-info">
+                    <span className="cd-name">{s.FirstName} {s.LastName}</span>
+                    <span className="cd-subtext">{s.Email} • {s.PhoneNumber}</span>
+                    <span className="cd-subtext">Enrolled: {new Date(s.EnrolledAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MyClasses() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // For Drill-Down
+  const [selectedClassForStudents, setSelectedClassForStudents] = useState(null);
 
   const coachName = useMemo(() => {
     const fn = localStorage.getItem("firstName") || "";
@@ -191,9 +260,27 @@ export default function MyClasses() {
                   <td className="mc-col-fee">{formatLKR(c.fee)}</td>
 
                   <td className="mc-col-enrolled">
-                    {Number.isFinite(c.enrolledCount) && Number.isFinite(c.capacity)
-                      ? `${c.enrolledCount}/${c.capacity}`
-                      : "-"}
+                    {Number.isFinite(c.enrolledCount) && Number.isFinite(c.capacity) ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span>{c.enrolledCount}/{c.capacity}</span>
+                        <button 
+                          type="button" 
+                          className="mc-view-link"
+                          onClick={() => setSelectedClassForStudents({ id: c.id, name: c.className })}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: '#6366f1', 
+                            fontWeight: '600', 
+                            textDecoration: 'underline', 
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          View Enrollments
+                        </button>
+                      </div>
+                    ) : "-"}
                   </td>
                 </tr>
               ))
@@ -221,6 +308,14 @@ export default function MyClasses() {
           classes={myClasses}
           onClose={closeCancel}
           onSubmit={handleCancelSubmit}
+        />
+      )}
+
+      {selectedClassForStudents && (
+        <EnrolledStudentsModal 
+          classId={selectedClassForStudents.id}
+          className={selectedClassForStudents.name}
+          onClose={() => setSelectedClassForStudents(null)}
         />
       )}
     </div>

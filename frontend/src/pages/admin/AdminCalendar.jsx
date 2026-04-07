@@ -86,7 +86,7 @@ export default function AdminCalendar() {
       });
 
       // Sessions are already formatted by the listSessions controller
-      const sessionEvents = (sessData.sessions || []).filter(s => s.extendedProps.status !== 'CANCELLED');
+      const sessionEvents = sessData.sessions || [];
 
       setEvents([...bookingEvents, ...sessionEvents]);
     } catch (err) {

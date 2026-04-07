@@ -573,12 +573,17 @@ exports.listSessions = async (req, res, next) => {
             const startStr = `${dateStr}T${s.startTime}:00`;
             const endStr = `${dateStr}T${s.endTime}:00`;
 
+            const isCancelled = s.status === 'CANCELLED';
+            const titlePrefix = isCancelled ? '[CANCELLED] ' : '';
+
             return {
                 id: `CS-${s.id}`,
-                title: `${s.title} (${s.sportName})`,
+                title: `${titlePrefix}${s.title} (${s.sportName})`,
                 start: startStr,
                 end: endStr,
-                backgroundColor: s.color || "#1976d2",
+                backgroundColor: isCancelled ? '#e2e8f0' : (s.color || "#1976d2"),
+                borderColor: isCancelled ? '#cbd5e1' : (s.color || "#1976d2"),
+                textColor: isCancelled ? '#64748b' : '#ffffff',
                 extendedProps: {
                     type: 'CLASS',
                     status: s.status,

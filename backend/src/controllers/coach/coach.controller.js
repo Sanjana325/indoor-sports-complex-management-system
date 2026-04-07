@@ -176,23 +176,29 @@ exports.getCalendarData = async (req, res, next) => {
         `, [coachId]);
 
         // Map sessions for FullCalendar
-        const formattedSessions = sessions.map(s => ({
-            id: String(s.id),
-            title: s.className,
-            start: `${s.date}T${s.startTime}:00`,
-            end: `${s.date}T${s.endTime}:00`,
-            backgroundColor: s.sportColor || "#1976d2",
-            borderColor: s.sportColor || "#1976d2",
-            extendedProps: {
-                type: "SESSION",
-                sport: s.sport,
-                court: s.court || "N/A",
-                time: `${s.startTime} - ${s.endTime}`,
-                status: s.status,
-                coach: `${s.coachFirst} ${s.coachLast}`,
-                coachPhone: s.coachPhone
-            }
-        }));
+        const formattedSessions = sessions.map(s => {
+            const isCancelled = s.status === 'CANCELLED';
+            const titlePrefix = isCancelled ? '[CANCELLED] ' : '';
+
+            return {
+                id: String(s.id),
+                title: `${titlePrefix}${s.className}`,
+                start: `${s.date}T${s.startTime}:00`,
+                end: `${s.date}T${s.endTime}:00`,
+                backgroundColor: isCancelled ? '#e2e8f0' : (s.sportColor || "#1976d2"),
+                borderColor: isCancelled ? '#cbd5e1' : (s.sportColor || "#1976d2"),
+                textColor: isCancelled ? '#64748b' : '#ffffff',
+                extendedProps: {
+                    type: "SESSION",
+                    sport: s.sport,
+                    court: s.court || "N/A",
+                    time: `${s.startTime} - ${s.endTime}`,
+                    status: s.status,
+                    coach: `${s.coachFirst} ${s.coachLast}`,
+                    coachPhone: s.coachPhone
+                }
+            };
+        });
 
         res.json({ 
             sessions: formattedSessions,
@@ -232,6 +238,83 @@ exports.getCancelledSessions = async (req, res, next) => {
         res.json({ sessions });
     } catch (err) {
         console.error("[getCancelledSessions] Error:", err);
+        next(err);
+    }
+};
+
+exports.getEnrolledStudents = async (req, res, next) => {
+    try {
+        const userId = req.user.UserID;
+        const { classId } = req.params;
+
+        const coachId = await coachModel.getCoachIdByUserId(userId);
+        if (!coachId) return res.status(404).json({ message: "Coach profile not found" });
+
+        // 1. Verify class belongs to this coach
+        const [classRows] = await pool.query(
+            "SELECT ClassID FROM class WHERE ClassID = ? AND CoachID = ?",
+            [classId, coachId]
+        );
+        if (classRows.length === 0) return res.status(403).json({ message: "Access denied" });
+
+        // 2. Fetch enrolled students
+        const [students] = await pool.query(`
+            SELECT 
+                u.UserID as id,
+                u.FirstName,
+                u.LastName,
+                u.Email,
+                u.PhoneNumber,
+                e.EnrolledAt
+            FROM enrollment e
+            JOIN useraccount u ON e.UserID = u.UserID
+            WHERE e.ClassID = ? AND e.Status = 'ENROLLED'
+            ORDER BY u.FirstName ASC
+        `, [classId]);
+
+        res.json({ students });
+    } catch (err) {
+        console.error("[getEnrolledStudents] Error:", err);
+        next(err);
+    }
+};
+
+exports.getSessionAttendance = async (req, res, next) => {
+    try {
+        const userId = req.user.UserID;
+        const { sessionId } = req.params;
+
+        const coachId = await coachModel.getCoachIdByUserId(userId);
+        if (!coachId) return res.status(404).json({ message: "Coach profile not found" });
+
+        // 1. Verify session belongs to this coach's class
+        const [sessRows] = await pool.query(`
+            SELECT cs.SessionID, cs.ClassID 
+            FROM classsession cs
+            JOIN class c ON cs.ClassID = c.ClassID
+            WHERE cs.SessionID = ? AND c.CoachID = ?
+        `, [sessionId, coachId]);
+        if (sessRows.length === 0) return res.status(403).json({ message: "Access denied" });
+
+        const classId = sessRows[0].ClassID;
+
+        // 2. Fetch all enrolled students and their attendance status for THIS session
+        const [attendance] = await pool.query(`
+            SELECT 
+                u.UserID as studentId,
+                u.FirstName,
+                u.LastName,
+                COALESCE(a.Status, 'NOT_MARKED') as status
+            FROM enrollment e
+            JOIN useraccount u ON e.UserID = u.UserID
+            LEFT JOIN attendance a ON e.EnrollmentID = a.EnrollmentID AND a.SessionID = ?
+            WHERE e.ClassID = ? AND e.Status = 'ENROLLED'
+            ORDER BY u.FirstName ASC
+        `, [sessionId, classId]);
+
+        res.json({ attendance });
+    } catch (err) {
+        console.error("[getSessionAttendance] Error:", err);
         next(err);
     }
 };
