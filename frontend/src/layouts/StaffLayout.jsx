@@ -67,7 +67,7 @@ export default function StaffLayout() {
 
         <nav className="sidebar-nav">
           <NavLink to="/staff" end className={({ isActive }) => (isActive ? "active" : "")}>
-            Home
+            Calendar
           </NavLink>
 
           <NavLink to="/staff/attendance" className={({ isActive }) => (isActive ? "active" : "")}>

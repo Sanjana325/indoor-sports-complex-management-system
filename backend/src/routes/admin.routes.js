@@ -48,12 +48,12 @@ router.patch("/admin/users/:userId/disable", requireAuth, requireRole("ADMIN", "
 router.patch("/admin/users/:userId/enable", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), usersController.enableUser);
 router.delete("/admin/users/:userId", requireAuth, requireRole("SUPER_ADMIN"), usersController.deleteUser);
 
-router.get("/admin/sports", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.listSports);
+router.get("/admin/sports", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), sportsController.listSports);
 router.post("/admin/sports", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.createSport);
 router.put("/admin/sports/:sportId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.updateSport);
 router.delete("/admin/sports/:sportId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), sportsController.deleteSport);
 
-router.get("/admin/courts", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), courtsController.listCourts);
+router.get("/admin/courts", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), courtsController.listCourts);
 router.post("/admin/courts", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), courtsController.createCourt);
 router.put("/admin/courts/:courtId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), courtsController.updateCourt);
 router.delete("/admin/courts/:courtId", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), courtsController.deleteCourt);
@@ -61,7 +61,7 @@ router.delete("/admin/courts/:courtId", requireAuth, requireRole("ADMIN", "SUPER
 router.get("/admin/qualifications", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), qualificationsController.listQualifications);
 router.post("/admin/qualifications", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), qualificationsController.createQualification);
 
-router.get("/admin/classes/sessions", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.listSessions);
+router.get("/admin/classes/sessions", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), classesController.listSessions);
 router.get("/admin/classes/available-courts", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getAvailableCourts);
 router.get("/admin/coaches", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getCoaches);
 router.get("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getClasses);
@@ -73,7 +73,7 @@ router.get("/admin/payments", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), 
 router.patch("/admin/payments/:id/verify", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), paymentsController.verifyPayment);
 router.patch("/admin/payments/:id/reject", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), paymentsController.rejectPayment);
 
-router.get("/admin/bookings", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), bookingsController.listBookings);
+router.get("/admin/bookings", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), bookingsController.listBookings);
 router.patch("/admin/bookings/:id/cancel", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), bookingsController.cancelBooking);
 
 router.get("/admin/enrollments", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), enrollmentsController.listEnrollments);
