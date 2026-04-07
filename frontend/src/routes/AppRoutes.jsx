@@ -31,6 +31,7 @@ import StaffHome from "../pages/staff/StaffHome";
 import CoachLayout from "../layouts/CoachLayout";
 import CoachHome from "../pages/coach/CoachHome";
 import MyClasses from "../pages/coach/MyClasses";
+import CancelledSessions from "../pages/coach/CancelledSessions";
 
 // Player
 import PlayerLayout from "../layouts/PlayerLayout";
@@ -78,6 +79,7 @@ export default function AppRoutes() {
       <Route path="/coach" element={<CoachLayout />}>
         <Route index element={<CoachHome />} />
         <Route path="my-classes" element={<MyClasses />} />
+        <Route path="cancelled-sessions" element={<CancelledSessions />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>

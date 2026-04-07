@@ -72,6 +72,10 @@ export default function CoachLayout() {
           <NavLink to="/coach/my-classes" className={({ isActive }) => (isActive ? "active" : "")}>
             My Classes
           </NavLink>
+
+          <NavLink to="/coach/cancelled-sessions" className={({ isActive }) => (isActive ? "active" : "")}>
+            Cancelled Sessions
+          </NavLink>
         </nav>
       </aside>
 

@@ -131,3 +131,107 @@ exports.cancelSession = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.getCalendarData = async (req, res, next) => {
+    try {
+        const userId = req.user.UserID;
+
+        const coachId = await coachModel.getCoachIdByUserId(userId);
+        if (!coachId) {
+            return res.status(404).json({ message: "Coach profile not found for this user." });
+        }
+
+        // 1. Get Coach's Sports
+        const [sports] = await pool.query(`
+            SELECT s.SportID, s.SportName, s.ColorCode
+            FROM sport s
+            JOIN coachsport cs ON s.SportID = cs.SportID
+            WHERE cs.CoachID = ?
+        `, [coachId]);
+
+        // 2. Get Coach's Sessions
+        const [sessions] = await pool.query(`
+            SELECT 
+                cs.SessionID as id,
+                c.Title as className,
+                s.SportName as sport,
+                s.ColorCode as sportColor,
+                DATE_FORMAT(cs.SessionDate, '%Y-%m-%d') as date,
+                DATE_FORMAT(cs.StartTime, '%H:%i') as startTime,
+                DATE_FORMAT(cs.EndTime, '%H:%i') as endTime,
+                ct.CourtName as court,
+                cs.Status as status,
+                u.FirstName as coachFirst,
+                u.LastName as coachLast,
+                u.PhoneNumber as coachPhone
+            FROM classsession cs
+            JOIN class c ON cs.ClassID = c.ClassID
+            JOIN sport s ON c.SportID = s.SportID
+            JOIN coach co ON c.CoachID = co.CoachID
+            JOIN useraccount u ON co.UserID = u.UserID
+            LEFT JOIN class_court cc ON c.ClassID = cc.ClassID
+            LEFT JOIN court ct ON cc.CourtID = ct.CourtID
+            WHERE c.CoachID = ?
+            ORDER BY cs.SessionDate ASC, cs.StartTime ASC
+        `, [coachId]);
+
+        // Map sessions for FullCalendar
+        const formattedSessions = sessions.map(s => ({
+            id: String(s.id),
+            title: s.className,
+            start: `${s.date}T${s.startTime}:00`,
+            end: `${s.date}T${s.endTime}:00`,
+            backgroundColor: s.sportColor || "#1976d2",
+            borderColor: s.sportColor || "#1976d2",
+            extendedProps: {
+                type: "SESSION",
+                sport: s.sport,
+                court: s.court || "N/A",
+                time: `${s.startTime} - ${s.endTime}`,
+                status: s.status,
+                coach: `${s.coachFirst} ${s.coachLast}`,
+                coachPhone: s.coachPhone
+            }
+        }));
+
+        res.json({ 
+            sessions: formattedSessions,
+            sports: (sports || [])
+        });
+    } catch (err) {
+        console.error("[getCalendarData] Error:", err);
+        next(err);
+    }
+};
+
+exports.getCancelledSessions = async (req, res, next) => {
+    try {
+        const userId = req.user.UserID;
+
+        const coachId = await coachModel.getCoachIdByUserId(userId);
+        if (!coachId) {
+            return res.status(404).json({ message: "Coach profile not found for this user." });
+        }
+
+        const [sessions] = await pool.query(`
+            SELECT 
+                cs.SessionID as id,
+                c.Title as className,
+                s.SportName as sport,
+                DATE_FORMAT(cs.SessionDate, '%Y-%m-%d') as date,
+                DATE_FORMAT(cs.StartTime, '%H:%i') as startTime,
+                DATE_FORMAT(cs.EndTime, '%H:%i') as endTime,
+                cs.Status as status
+            FROM classsession cs
+            JOIN class c ON cs.ClassID = c.ClassID
+            JOIN sport s ON c.SportID = s.SportID
+            WHERE c.CoachID = ? AND cs.Status = 'CANCELLED'
+            ORDER BY cs.SessionDate DESC, cs.StartTime DESC
+        `, [coachId]);
+
+        res.json({ sessions });
+    } catch (err) {
+        console.error("[getCancelledSessions] Error:", err);
+        next(err);
+    }
+};

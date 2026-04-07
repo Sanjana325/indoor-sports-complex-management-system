@@ -1,31 +1,233 @@
 .ch-page {
+  padding: 2rem;
+  background-color: #f8fafc;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+}
+
+.ch-header {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
 }
 
 .ch-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1e293b;
   margin: 0;
-  font-size: 24px;
-  font-weight: 800;
 }
 
-.ch-lower {
-  display: block;
-  margin-top: 16px;
+.ch-subtitle {
+  color: #64748b;
+  margin-top: 0.5rem;
 }
 
-
-
-.ch-right {
-  background: #fff;
-  border: 1px solid #d9d9d9;
-  border-radius: 14px;
-  padding: 12px;
+.ch-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 1.25rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-@media (max-width: 1100px) {
-  .ch-lower {
-    grid-template-columns: 1fr;
-  }
+.ch-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ch-legend-blob {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.ch-legend-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.ch-calendar-container {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+/* FullCalendar Customization */
+.fc {
+  --fc-border-color: #e2e8f0;
+  --fc-button-bg-color: #6366f1;
+  --fc-button-border-color: #6366f1;
+  --fc-button-hover-bg-color: #4f46e5;
+  --fc-button-active-bg-color: #4338ca;
+  --fc-today-bg-color: rgba(99, 102, 241, 0.05);
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.fc .fc-button {
+  font-weight: 600;
+  text-transform: capitalize;
+  border-radius: 8px;
+}
+
+.fc .fc-event {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.85rem;
+  border: none !important;
+}
+
+.ch-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  border-radius: 16px;
+}
+
+.ch-loader {
+  font-weight: 600;
+  color: #6366f1;
+}
+
+.ch-error {
+  padding: 1rem;
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+/* Modal Stlyes */
+.ch-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.ch-modal-card {
+  background: white;
+  width: 100%;
+  max-width: 450px;
+  border-radius: 20px;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.ch-modal-close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.ch-modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 1rem 0;
+}
+
+.ch-modal-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.ch-modal-row {
+  display: flex;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.ch-modal-label {
+  flex: 0 0 100px;
+  font-weight: 600;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.ch-modal-value {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.ch-status-pill {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ch-status-scheduled {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.ch-status-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ch-status-completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ch-modal-footer {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ch-modal-btn {
+  background: #6366f1;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ch-modal-btn:hover {
+  background: #4f46e5;
+  transform: translateY(-1px);
 }

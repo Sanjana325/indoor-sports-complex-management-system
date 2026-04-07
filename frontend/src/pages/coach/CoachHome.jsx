@@ -1,38 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
 import "../../styles/CoachHome.css";
 
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-function toISODate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-function fmtDuration(start, end) {
-  if (!start || !end) return "-";
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  const mins = eh * 60 + em - (sh * 60 + sm);
-  if (!Number.isFinite(mins) || mins <= 0) return "-";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
-
-function sportKeyFromText(t = "") {
-  const lower = t.toLowerCase();
-  if (lower.includes("cricket")) return "cricket";
-  if (lower.includes("badminton")) return "badminton";
-  if (lower.includes("futsal")) return "futsal";
-  if (lower.includes("karate")) return "cricket";
-  if (lower.includes("chess")) return "cricket";
-  return "cricket";
-}
-
 export default function CoachHome() {
-  const [classes, setClasses] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const coachName = useMemo(() => {
     const fn = localStorage.getItem("firstName") || "";
@@ -43,70 +23,136 @@ export default function CoachHome() {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
   useEffect(() => {
-    fetchMyClasses();
+    fetchCalendarData();
   }, []);
 
-  const fetchMyClasses = async () => {
+  const fetchCalendarData = async () => {
     try {
       setLoading(true);
+      setError("");
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/my-classes`, {
+      const res = await fetch(`${API_BASE}/api/coach/calendar`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
       if (res.ok) {
-        // Map backend classes to the format expected by the calendar
-        // The backend returns 'startDate' for the first session or 'oneTimeDate' for one-time classes.
-        // However, the calendar needs specific dates for each weekly session to show dots.
-        // For now, I'll just map the base class data.
-        // Actually, the frontend 'classes' mock had a 'date' field.
-        // I should probably simplify the frontend mapping or enhance the backend.
-        // Let's stick to the current frontend logic but with real data.
-        
-        const mapped = (data.classes || []).map(c => ({
-            ...c,
-            date: c.scheduleType === 'ONE_TIME' ? c.oneTimeDate?.split('T')[0] : c.startDate?.split('T')[0]
-        }));
-
-        setClasses(mapped);
+        setEvents(data.sessions || []);
+        setSports(data.sports || []);
+      } else {
+        setError(data.message || "Failed to fetch calendar data");
       }
     } catch (err) {
       console.error(err);
+      setError("Error connecting to server");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ UI-only mock bookings + blocked (for calendar bars + availability)
-  const [bookings] = useState([
-    {
-      id: "B-500003",
-      playerName: "Sahan Fernando",
-      court: "Futsal - A",
-      date: "2026-09-30",
-      time: "19:00-21:30",
-      status: "CONFIRMED",
-    },
-  ]);
-
-  const [blockedSlots] = useState([
-    {
-      id: "BS-400001",
-      court: "Cricket - A",
-      date: "2026-09-30",
-      startTime: "11:00",
-      endTime: "12:30",
-      reason: "Maintenance",
-    },
-  ]);
-
-
+  function handleEventClick(info) {
+    const { extendedProps, title } = info.event;
+    setSelectedEvent({
+      id: info.event.id,
+      title: info.event.title,
+      ...extendedProps
+    });
+    setIsDetailModalOpen(true);
+  }
 
   return (
     <div className="ch-page">
-      <h2 className="ch-title">ArenaPro - Coach Home</h2>
+      <div className="ch-header">
+        <div className="ch-header-left">
+          <h1 className="ch-title">Welcome back, {coachName}!</h1>
+          <p className="ch-subtitle">Here is your personal schedule for today and upcoming classes.</p>
+        </div>
+      </div>
 
+      {sports.length > 0 && (
+        <div className="ch-legend">
+          {sports.map(s => (
+            <div key={s.SportID} className="ch-legend-item">
+              <span className="ch-legend-blob" style={{ backgroundColor: s.ColorCode || "#1976d2" }}></span>
+              <span className="ch-legend-name">{s.SportName}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
+      <div className="ch-calendar-container">
+        {loading && (
+          <div className="ch-overlay">
+            <div className="ch-loader">Loading Schedule...</div>
+          </div>
+        )}
+
+        {error && <div className="ch-error">{error}</div>}
+
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay",
+          }}
+          events={events}
+          eventClick={handleEventClick}
+          height="700px"
+          eventTimeFormat={{
+            hour: "2-digit",
+            minute: "2-digit",
+            meridiem: false,
+            hour12: false,
+          }}
+          slotMinTime="06:00:00"
+          slotMaxTime="23:00:00"
+          allDaySlot={false}
+          dayMaxEvents={true}
+          nowIndicator={true}
+          themeSystem="standard"
+        />
+      </div>
+
+      {isDetailModalOpen && selectedEvent && (
+        <div className="ch-modal-backdrop" onClick={() => setIsDetailModalOpen(false)}>
+          <div className="ch-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="ch-modal-close" onClick={() => setIsDetailModalOpen(false)}>×</button>
+
+            <h2 className="ch-modal-title">Session Details</h2>
+            <div className="ch-modal-divider"></div>
+
+            <div className="ch-modal-body">
+              <div className="ch-modal-row">
+                <span className="ch-modal-label">Class:</span>
+                <span className="ch-modal-value">{selectedEvent.title}</span>
+              </div>
+              <div className="ch-modal-row">
+                <span className="ch-modal-label">Sport:</span>
+                <span className="ch-modal-value">{selectedEvent.sport}</span>
+              </div>
+              <div className="ch-modal-row">
+                <span className="ch-modal-label">Court:</span>
+                <span className="ch-modal-value">{selectedEvent.court}</span>
+              </div>
+              <div className="ch-modal-row">
+                <span className="ch-modal-label">Time:</span>
+                <span className="ch-modal-value">{selectedEvent.time}</span>
+              </div>
+              <div className="ch-modal-row">
+                <span className="ch-modal-label">Status:</span>
+                <span className={`ch-status-pill ch-status-${selectedEvent.status.toLowerCase()}`}>
+                  {selectedEvent.status}
+                </span>
+              </div>
+            </div>
+
+            <div className="ch-modal-footer">
+              <button className="ch-modal-btn" onClick={() => window.location.href = '/coach/my-classes'}>View Class In List</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

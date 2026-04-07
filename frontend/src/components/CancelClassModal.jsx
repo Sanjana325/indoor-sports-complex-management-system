@@ -33,7 +33,6 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
   const [sessionsForDate, setSessionsForDate] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState("");
-  const [reason, setReason] = useState("");
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -79,7 +78,6 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
 
     if (!dateISO) return alert("Please select a date");
     if (!selectedSessionId) return alert("Please select a class for that date");
-    if (!reason.trim()) return alert("Please enter a reason");
 
     const session = sessionsForDate.find((s) => String(s.id) === String(selectedSessionId));
     if (!session) return alert("Invalid session selection");
@@ -88,7 +86,6 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
       sessionId: session.id,
       classId: session.classId,
       dateISO: dateISO,
-      reason: reason.trim(),
       label: `${session.className} (${session.sport})`
     });
   }
@@ -128,16 +125,6 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
             {!loadingSessions && sessionsForDate.length === 0 && (
               <div className="ccm-hint">No classes found for this date.</div>
             )}
-          </div>
-
-          <div className="ccm-field">
-            <label>Reason</label>
-            <textarea
-              rows="3"
-              placeholder="e.g. Coach unavailable / tournament / emergency..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
           </div>
 
           <div className="ccm-actions">

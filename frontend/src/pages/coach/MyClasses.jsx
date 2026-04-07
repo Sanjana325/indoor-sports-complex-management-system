@@ -99,7 +99,6 @@ export default function MyClasses() {
         },
         body: JSON.stringify({
           sessionId: payload.sessionId,
-          reason: payload.reason,
         }),
       });
 
@@ -209,7 +208,7 @@ export default function MyClasses() {
           <ul className="mc-cancel-log-list">
             {cancelledSessions.slice(0, 4).map((x) => (
               <li key={x.sessionId}>
-                <strong>{x.dateISO}</strong> — {x.classId} — <span className="mc-reason">{x.reason}</span>
+                <strong>{x.dateISO}</strong> — {x.classId}
               </li>
             ))}
           </ul>
