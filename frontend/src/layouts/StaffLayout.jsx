@@ -74,6 +74,10 @@ export default function StaffLayout() {
             Attendance
           </NavLink>
 
+          <NavLink to="/staff/bookings" className={({ isActive }) => (isActive ? "active" : "")}>
+            Bookings
+          </NavLink>
+
           <NavLink to="/staff/payments" className={({ isActive }) => (isActive ? "active" : "")}>
             Payments
           </NavLink>

@@ -70,6 +70,7 @@ export default function AppRoutes() {
         <Route index element={<StaffHome />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="payments" element={<Payments />} />
+        <Route path="bookings" element={<Bookings />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>

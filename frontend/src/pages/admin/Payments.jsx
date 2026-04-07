@@ -205,6 +205,8 @@ export default function Payments() {
 }
 
 function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel, showBookingId }) {
+  const hasPending = rows.some((p) => p.status === "PENDING");
+
   return (
     <div className="pay-table-wrap">
       <table className="pay-table">
@@ -218,7 +220,7 @@ function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel, show
             <th>Paid At</th>
             <th>Payment Slip</th>
             <th>Status</th>
-            <th className="pay-center">Actions</th>
+            {hasPending && <th className="pay-center">Actions</th>}
           </tr>
         </thead>
 
@@ -258,20 +260,22 @@ function PaymentsTable({ rows, onVerify, onReject, onViewSlip, statusLabel, show
                     <span className={`pay-badge ${p.status.toLowerCase()}`}>{statusLabel(p.status)}</span>
                   </td>
 
-                  <td className="pay-center">
-                    {p.status === "PENDING" ? (
-                      <div className="pay-actions">
-                        <button className="pay-verify-btn" type="button" onClick={() => onVerify(p.id, p.paymentIdStr)}>
-                          Verify
-                        </button>
-                        <button className="pay-reject-btn" type="button" onClick={() => onReject(p.id, p.paymentIdStr)}>
-                          Reject
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="pay-dash">—</span>
-                    )}
-                  </td>
+                  {hasPending && (
+                    <td className="pay-center">
+                      {p.status === "PENDING" ? (
+                        <div className="pay-actions">
+                          <button className="pay-verify-btn" type="button" onClick={() => onVerify(p.id, p.paymentIdStr)}>
+                            Verify
+                          </button>
+                          <button className="pay-reject-btn" type="button" onClick={() => onReject(p.id, p.paymentIdStr)}>
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="pay-dash">—</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })

@@ -35,7 +35,10 @@ export default function Bookings() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/bookings`, {
+      const role = localStorage.getItem("role");
+      const basePath = role === "STAFF" ? "/api/staff" : "/api/admin";
+
+      const res = await fetch(`${API_BASE}${basePath}/bookings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -78,6 +81,9 @@ export default function Bookings() {
   }
 
   async function handleCancel(id, rawId) {
+    const role = localStorage.getItem("role");
+    if (role === "STAFF") return; // Safety check
+
     const ok = window.confirm("Cancel this booking? This will safely void the reservation without deleting records.");
     if (!ok) return;
 
@@ -97,6 +103,9 @@ export default function Bookings() {
       alert("Error contacting the server");
     }
   }
+
+  const role = localStorage.getItem("role");
+  const isStaff = role === "STAFF";
 
   return (
     <div className="bk-page">
@@ -140,7 +149,7 @@ export default function Bookings() {
               <th>Booked Date</th>
               <th>Booked Time</th>
               <th>Status</th>
-              <th className="bk-center">Actions</th>
+              {!isStaff && <th className="bk-center">Actions</th>}
             </tr>
           </thead>
 
@@ -175,20 +184,22 @@ export default function Bookings() {
                         {statusLabel(b.status)}
                       </span>
                     </td>
-                    <td className="bk-center">
-                      {isCancellable ? (
-                        <button
-                          className="bk-delete-btn"
-                          type="button"
-                          style={{ backgroundColor: '#ff5252' }}
-                          onClick={() => handleCancel(b.id, b.rawId)}
-                        >
-                          Cancel
-                        </button>
-                      ) : (
-                        <span style={{ color: '#aaa' }}>—</span>
-                      )}
-                    </td>
+                    {!isStaff && (
+                      <td className="bk-center">
+                        {isCancellable ? (
+                          <button
+                            className="bk-delete-btn"
+                            type="button"
+                            style={{ backgroundColor: '#ff5252' }}
+                            onClick={() => handleCancel(b.id, b.rawId)}
+                          >
+                            Cancel
+                          </button>
+                        ) : (
+                          <span style={{ color: '#aaa' }}>—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })

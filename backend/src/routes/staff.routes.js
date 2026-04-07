@@ -6,6 +6,7 @@ const requireRole = require("../middleware/requireRole");
 
 const paymentsController = require("../controllers/admin/payments.controller");
 const attendanceController = require("../controllers/admin/attendance.controller");
+const bookingsController = require("../controllers/admin/bookings.controller");
 
 // Staff Payments Routes - Maps to the exact same controller logic as Admin
 router.get("/staff/payments", requireAuth, requireRole("STAFF"), paymentsController.listPayments);
@@ -16,5 +17,8 @@ router.patch("/staff/payments/:id/reject", requireAuth, requireRole("STAFF"), pa
 router.get("/staff/attendance/classes", requireAuth, requireRole("STAFF"), attendanceController.getClassesForAttendance);
 router.get("/staff/attendance", requireAuth, requireRole("STAFF"), attendanceController.getSessionAttendance);
 router.post("/staff/attendance/mark", requireAuth, requireRole("STAFF"), attendanceController.markAttendance);
+
+// Staff Bookings Routes
+router.get("/staff/bookings", requireAuth, requireRole("STAFF"), bookingsController.listBookings);
 
 module.exports = router;
