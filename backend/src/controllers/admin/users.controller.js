@@ -3,6 +3,7 @@ const coachModel = require("../../models/coach.model");
 const { hashPassword } = require("../../utils/password");
 const { generateTempPassword } = require("../../utils/randomPassword");
 const { pool } = require("../../config/db");
+const { sendAccountCreatedEmail } = require("../../services/email.service");
 
 function isValidEmail(email) {
     return typeof email === "string" && email.includes("@") && email.includes(".");
@@ -129,6 +130,17 @@ exports.createUser = async (req, res, next) => {
         }
 
         await conn.commit();
+
+        try {
+            await sendAccountCreatedEmail({
+                toEmail: email,
+                toName: `${firstName} ${lastName}`.trim(),
+                role,
+                tempPassword
+            });
+        } catch (mailErr) {
+            console.error("Account created email failed:", mailErr && mailErr.message ? mailErr.message : mailErr);
+        }
 
         res.status(201).json({
             message: "User created",

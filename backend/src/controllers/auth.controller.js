@@ -3,7 +3,7 @@ const userModel = require("../models/user.model");
 const { hashPassword, verifyPassword } = require("../utils/password");
 const { signToken } = require("../utils/jwt");
 const { pool } = require("../config/db");
-const { sendPasswordResetEmail } = require("../services/email.service");
+const { sendPasswordResetEmail, sendWelcomeEmail } = require("../services/email.service");
 
 const RESET_EXP_MINUTES = 30;
 
@@ -147,6 +147,15 @@ exports.register = async (req, res, next) => {
             role: "PLAYER",
             mustChangePassword: false
         });
+
+        try {
+            await sendWelcomeEmail({
+                toEmail: email,
+                toName: `${firstName} ${lastName}`.trim()
+            });
+        } catch (mailErr) {
+            console.error("Welcome email failed:", mailErr && mailErr.message ? mailErr.message : mailErr);
+        }
 
         const token = signToken({ userId, role: "PLAYER" });
 
