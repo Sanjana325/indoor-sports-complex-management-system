@@ -13,6 +13,7 @@ const paymentsController = require("../controllers/admin/payments.controller");
 const bookingsController = require("../controllers/admin/bookings.controller");
 const enrollmentsController = require("../controllers/admin/enrollments.controller");
 const attendanceController = require("../controllers/admin/attendance.controller");
+const blockedSlotsController = require("../controllers/admin/blockedSlots.controller");
 
 // Test endpoint logic was in admin key "test", but not in any new controller. 
 // I will inline it or create a general admin controller if needed. 
@@ -82,5 +83,10 @@ router.patch("/admin/enrollments/:id/cancel", requireAuth, requireRole("ADMIN", 
 router.get("/admin/attendance/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), attendanceController.getClassesForAttendance);
 router.get("/admin/attendance", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), attendanceController.getSessionAttendance);
 router.post("/admin/attendance/mark", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), attendanceController.markAttendance);
+
+router.get("/admin/blocked-slots", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), blockedSlotsController.listBlockedSlots);
+router.post("/admin/blocked-slots", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), blockedSlotsController.createBlockedSlot);
+router.put("/admin/blocked-slots/:id", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), blockedSlotsController.updateBlockedSlot);
+router.delete("/admin/blocked-slots/:id", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), blockedSlotsController.deleteBlockedSlot);
 
 module.exports = router;

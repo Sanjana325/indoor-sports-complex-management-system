@@ -1,10 +1,10 @@
 const { pool } = require("../config/db");
 
-async function createCourt({ name, capacity, pricePerHour, status = "AVAILABLE" }, conn = pool) {
+async function createCourt({ name, capacity, pricePerHour }, conn = pool) {
     const [result] = await conn.query(
-        `INSERT INTO court (CourtName, Capacity, PricePerHour, Status)
-     VALUES (?, ?, ?, ?)`,
-        [name, capacity, pricePerHour, status]
+        `INSERT INTO court (CourtName, Capacity, PricePerHour)
+     VALUES (?, ?, ?)`,
+        [name, capacity, pricePerHour]
     );
     return result.insertId;
 }
@@ -23,7 +23,7 @@ async function listCourts(search = "", conn = pool) {
     const q = `%${String(search || "").trim()}%`;
     const [rows] = await conn.query(
         `
-    SELECT c.CourtID, c.CourtName, c.Capacity, c.PricePerHour, c.Status,
+    SELECT c.CourtID, c.CourtName, c.Capacity, c.PricePerHour,
            GROUP_CONCAT(s.SportName ORDER BY s.SportName SEPARATOR ', ') AS Sports
     FROM court c
     LEFT JOIN court_sport cs ON c.CourtID = cs.CourtID
@@ -52,10 +52,6 @@ async function updateCourt(courtId, fields, conn = pool) {
     if (fields.pricePerHour !== undefined) {
         sets.push("PricePerHour = ?");
         params.push(fields.pricePerHour);
-    }
-    if (fields.status !== undefined) {
-        sets.push("Status = ?");
-        params.push(fields.status);
     }
 
     if (sets.length === 0) {

@@ -20,19 +20,15 @@ exports.listCourts = async (req, res, next) => {
 exports.createCourt = async (req, res, next) => {
     const conn = await pool.getConnection();
     try {
-        const { name, capacity, pricePerHour, sportIds, status } = req.body || {};
+        const { name, capacity, pricePerHour, sportIds } = req.body || {};
 
         const nm = String(name || "").trim();
         const capNum = Number(capacity);
         const priceNum = Number(pricePerHour);
-        const st = status ? String(status) : "AVAILABLE";
 
         if (!nm) return res.status(400).json({ message: "Court name is required" });
         if (!Number.isFinite(capNum) || capNum <= 0) return res.status(400).json({ message: "Capacity must be a positive number" });
         if (!Number.isFinite(priceNum) || priceNum <= 0) return res.status(400).json({ message: "Price per hour must be a positive number" });
-        if (!["AVAILABLE", "BOOKED", "MAINTENANCE"].includes(st)) {
-            return res.status(400).json({ message: "Invalid status" });
-        }
 
         const sportIdList = uniquePositiveInts(sportIds);
         if (sportIdList.length === 0) {
@@ -42,7 +38,7 @@ exports.createCourt = async (req, res, next) => {
         await conn.beginTransaction();
 
         const courtId = await courtModel.createCourt(
-            { name: nm, capacity: capNum, pricePerHour: priceNum, status: st },
+            { name: nm, capacity: capNum, pricePerHour: priceNum },
             conn
         );
 
@@ -67,19 +63,15 @@ exports.updateCourt = async (req, res, next) => {
         const courtId = Number(req.params.courtId);
         if (!Number.isFinite(courtId)) return res.status(400).json({ message: "Invalid court ID" });
 
-        const { name, capacity, pricePerHour, status, sportIds } = req.body || {};
+        const { name, capacity, pricePerHour, sportIds } = req.body || {};
 
         const nm = typeof name === "string" ? name.trim() : undefined;
         const capNum = capacity !== undefined ? Number(capacity) : undefined;
         const priceNum = pricePerHour !== undefined ? Number(pricePerHour) : undefined;
-        const st = typeof status === "string" ? status : undefined;
 
         if (nm !== undefined && !nm) return res.status(400).json({ message: "Court name is required" });
         if (capNum !== undefined && (!Number.isFinite(capNum) || capNum <= 0)) return res.status(400).json({ message: "Capacity must be a positive number" });
         if (priceNum !== undefined && (!Number.isFinite(priceNum) || priceNum <= 0)) return res.status(400).json({ message: "Price per hour must be a positive number" });
-        if (st !== undefined && !["AVAILABLE", "BOOKED", "MAINTENANCE"].includes(st)) {
-            return res.status(400).json({ message: "Invalid status" });
-        }
 
         const sportIdList = sportIds !== undefined ? uniquePositiveInts(sportIds) : null;
         if (sportIdList && sportIdList.length === 0) {
@@ -90,7 +82,7 @@ exports.updateCourt = async (req, res, next) => {
 
         const updated = await courtModel.updateCourt(
             courtId,
-            { name: nm, capacity: capNum, pricePerHour: priceNum, status: st },
+            { name: nm, capacity: capNum, pricePerHour: priceNum },
             conn
         );
 

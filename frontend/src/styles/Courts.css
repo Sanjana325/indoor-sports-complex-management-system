@@ -361,37 +361,6 @@
   color: var(--courts-primary);
 }
 
-/* Status Badges */
-.courts-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.courts-badge-available {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--courts-success);
-  border: 1.5px solid var(--courts-success);
-}
-
-.courts-badge-booked {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--courts-warning);
-  border: 1.5px solid var(--courts-warning);
-}
-
-.courts-badge-maintenance {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--courts-danger);
-  border: 1.5px solid var(--courts-danger);
-}
 
 /* Table Actions */
 .courts-actions-header {

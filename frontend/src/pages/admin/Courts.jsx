@@ -4,12 +4,6 @@ import "../../styles/Courts.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-function statusLabel(s) {
-  if (s === "AVAILABLE") return "Available";
-  if (s === "BOOKED") return "Booked";
-  if (s === "MAINTENANCE") return "Maintenance";
-  return s;
-}
 
 function formatLKR(amount) {
   const n = Number(amount);
@@ -69,7 +63,6 @@ export default function Courts() {
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
   const [pricePerHour, setPricePerHour] = useState("");
-  const [status, setStatus] = useState("AVAILABLE");
 
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
@@ -128,8 +121,7 @@ export default function Courts() {
           sportsText,
           name: r.CourtName,
           capacity: r.Capacity,
-          pricePerHour: r.PricePerHour,
-          status: r.Status
+          pricePerHour: r.PricePerHour
         };
       });
 
@@ -144,7 +136,7 @@ export default function Courts() {
   const filteredCourts = useMemo(() => {
     if (!normalizedSearch) return courts;
     return courts.filter((c) => {
-      const hay = `${c.id} ${c.sportsText} ${c.name} ${c.capacity} ${c.pricePerHour ?? ""} ${c.status}`.toLowerCase();
+      const hay = `${c.id} ${c.sportsText} ${c.name} ${c.capacity} ${c.pricePerHour ?? ""}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [courts, normalizedSearch]);
@@ -154,7 +146,6 @@ export default function Courts() {
     setName("");
     setCapacity("");
     setPricePerHour("");
-    setStatus("AVAILABLE");
     setEditingId(null);
   }
 
@@ -171,7 +162,6 @@ export default function Courts() {
     setName(court.name || "");
     setCapacity(String(court.capacity ?? ""));
     setPricePerHour(String(court.pricePerHour ?? ""));
-    setStatus(court.status || "AVAILABLE");
     setIsModalOpen(true);
   }
 
@@ -285,7 +275,6 @@ export default function Courts() {
             name: name.trim(),
             capacity: capNum,
             pricePerHour: priceNum,
-            status,
             sportIds
           })
         });
@@ -337,7 +326,7 @@ export default function Courts() {
             </svg>
             <input
               className="courts-search"
-              placeholder="Search by ID, name, sport, status..."
+              placeholder="Search by ID, name, sport..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -399,14 +388,6 @@ export default function Courts() {
                   </div>
                 </div>
 
-                <div className="courts-field">
-                  <label>Status</label>
-                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="AVAILABLE">Available</option>
-                    <option value="BOOKED">Booked</option>
-                    <option value="MAINTENANCE">Maintenance</option>
-                  </select>
-                </div>
 
                 <div className="courts-field courts-full">
                   <label>Court Name</label>
@@ -486,7 +467,6 @@ function CourtTable({ rows, onEdit, onRemove }) {
             <TableCell sx={{ fontWeight: 'bold' }}>SPORTS</TableCell>
             <TableCell sx={{ fontWeight: 'bold' }}>CAPACITY</TableCell>
             <TableCell sx={{ fontWeight: 'bold' }}>PRICE / HOUR</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>STATUS</TableCell>
             <TableCell sx={{ fontWeight: 'bold' }}>ACTIONS</TableCell>
           </TableRow>
         </TableHead>
@@ -523,11 +503,6 @@ function CourtTable({ rows, onEdit, onRemove }) {
               </TableCell>
               <TableCell>
                 <span className="courts-price">{formatLKR(c.pricePerHour)}</span>
-              </TableCell>
-              <TableCell>
-                <span className={`courts-badge courts-badge-${String(c.status || "").toLowerCase()}`}>
-                  {statusLabel(c.status)}
-                </span>
               </TableCell>
               <TableCell>
                 <div className="courts-actions" style={{ display: 'flex', gap: '8px' }}>

@@ -1,42 +1,25 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/BlockedSlots.css";
 
-function makeId(prefix = "BS") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-function nowIso() {
-  return new Date().toISOString();
+function displayId(id) {
+  const n = Number(id);
+  if (!Number.isFinite(n)) return String(id || "-");
+  return `BS-${String(n).padStart(6, "0")}`;
 }
 
 export default function BlockedSlots() {
-  const [blockedSlots, setBlockedSlots] = useState([
-    {
-      id: "BS-400001",
-      court: "Cricket - A",
-      date: "2026-01-21",
-      startTime: "10:00",
-      endTime: "12:00",
-      reason: "Maintenance",
-      createdAt: "2026-01-19T10:00:00.000Z",
-    },
-    {
-      id: "BS-400002",
-      court: "Badminton - A",
-      date: "2026-01-22",
-      startTime: "15:00",
-      endTime: "17:00",
-      reason: "Private event",
-      createdAt: "2026-01-19T11:00:00.000Z",
-    },
-  ]);
+  const [blockedSlots, setBlockedSlots] = useState([]);
+  const [courts, setCourts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  const [court, setCourt] = useState("Cricket - A");
+  const [courtId, setCourtId] = useState("");
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -44,28 +27,70 @@ export default function BlockedSlots() {
 
   const [search, setSearch] = useState("");
 
-  const COURT_OPTIONS = useMemo(
-    () => ["Cricket - A", "Cricket - B", "Badminton - A", "Futsal - A"],
-    []
-  );
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchBlockedSlots();
+    fetchCourts();
+  }, []);
+
+  async function fetchBlockedSlots() {
+    setLoading(true);
+    setError("");
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/blocked-slots`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to load blocked slots");
+      setBlockedSlots(data.slots || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchCourts() {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/courts`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCourts(data.courts || []);
+        if (data.courts?.length > 0) {
+          setCourtId(data.courts[0].CourtID);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch courts", err);
+    }
+  }
 
   const normalizedSearch = search.trim().toLowerCase();
 
   const filtered = useMemo(() => {
     if (!normalizedSearch) return blockedSlots;
     return blockedSlots.filter((b) => {
-      const hay = `${b.court} ${b.date} ${b.startTime} ${b.endTime} ${b.reason} ${b.id}`.toLowerCase();
+      const hay = `${b.CourtName} ${b.StartDateTime} ${b.EndDateTime} ${b.Reason} ${displayId(b.BlockedSlotID)}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [blockedSlots, normalizedSearch]);
 
   const sorted = useMemo(
-    () => [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+    () => [...filtered].sort((a, b) => new Date(b.CreatedAt) - new Date(a.CreatedAt)),
     [filtered]
   );
 
   function resetForm() {
-    setCourt("Cricket - A");
+    if (courts.length > 0) {
+      setCourtId(courts[0].CourtID);
+    } else {
+      setCourtId("");
+    }
     setDate("");
     setStartTime("");
     setEndTime("");
@@ -81,27 +106,47 @@ export default function BlockedSlots() {
 
   function openEditModal(item) {
     setMode("EDIT");
-    setEditingId(item.id);
-    setCourt(item.court);
-    setDate(item.date);
-    setStartTime(item.startTime);
-    setEndTime(item.endTime);
-    setReason(item.reason);
+    setEditingId(item.BlockedSlotID);
+    setCourtId(item.CourtID);
+    
+    // Split ISO strings into date and time
+    const start = new Date(item.StartDateTime);
+    const end = new Date(item.EndDateTime);
+    
+    setDate(start.toISOString().split('T')[0]);
+    setStartTime(start.toTimeString().slice(0, 5));
+    setEndTime(end.toTimeString().slice(0, 5));
+    setReason(item.Reason);
     setIsModalOpen(true);
   }
 
   function closeModal() {
+    if (submitting) return;
     setIsModalOpen(false);
   }
 
-  function handleRemove(id) {
+  async function handleRemove(id) {
     const ok = window.confirm("Are you sure you want to remove this blocked slot?");
     if (!ok) return;
-    setBlockedSlots((prev) => prev.filter((b) => b.id !== id));
+    
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/blocked-slots/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to remove blocked slot");
+      }
+      fetchBlockedSlots();
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   function validateForm() {
-    if (!court.trim()) return "Court is required";
+    if (!courtId) return "Court is required";
     if (!date) return "Date is required";
     if (!startTime) return "Start time is required";
     if (!endTime) return "End time is required";
@@ -110,7 +155,7 @@ export default function BlockedSlots() {
     return null;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const err = validateForm();
@@ -119,38 +164,60 @@ export default function BlockedSlots() {
       return;
     }
 
-    if (mode === "ADD") {
-      const newItem = {
-        id: makeId("BS"),
-        court: court.trim(),
-        date,
-        startTime,
-        endTime,
-        reason: reason.trim(),
-        createdAt: nowIso(),
-      };
-      setBlockedSlots((prev) => [newItem, ...prev]);
-      closeModal();
-      resetForm();
-      return;
-    }
+    const startDateTime = `${date}T${startTime}:00`;
+    const endDateTime = `${date}T${endTime}:00`;
 
-    setBlockedSlots((prev) =>
-      prev.map((b) =>
-        b.id === editingId
-          ? {
-              ...b,
-              court: court.trim(),
-              date,
-              startTime,
-              endTime,
-              reason: reason.trim(),
-            }
-          : b
-      )
-    );
-    closeModal();
-    resetForm();
+    const payload = {
+      courtId: Number(courtId),
+      startDateTime,
+      endDateTime,
+      reason: reason.trim()
+    };
+
+    setSubmitting(true);
+    try {
+      const token = localStorage.getItem("token");
+      let res;
+      if (mode === "ADD") {
+        res = await fetch(`${API_BASE}/api/admin/blocked-slots`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = await fetch(`${API_BASE}/api/admin/blocked-slots/${editingId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to save blocked slot");
+
+      closeModal();
+      fetchBlockedSlots();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Helper for displaying time
+  function formatTime(dt) {
+    return new Date(dt).toTimeString().slice(0, 5);
+  }
+
+  // Helper for displaying date
+  function formatDate(dt) {
+    return new Date(dt).toISOString().split('T')[0];
   }
 
   return (
@@ -165,6 +232,8 @@ export default function BlockedSlots() {
           + Block Slot
         </button>
       </div>
+
+      {error && <div className="bs-alert bs-alert--error">{error}</div>}
 
       <div className="bs-toolbar">
         <input
@@ -184,24 +253,34 @@ export default function BlockedSlots() {
               <th className="bs-col-start">Start Time</th>
               <th className="bs-col-end">End Time</th>
               <th className="bs-col-reason">Reason</th>
+              <th className="bs-col-created-by">Created By</th>
+              <th className="bs-col-created-at">Created At</th>
               <th className="bs-col-actions bs-center">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {sorted.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan="6" className="bs-empty">
+                <td colSpan="8" className="bs-empty">
+                  Loading...
+                </td>
+              </tr>
+            ) : sorted.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="bs-empty">
                   No blocked slots to show.
                 </td>
               </tr>
             ) : (
               sorted.map((b) => (
-                <tr key={b.id}>
-                  <td className="bs-col-court">{b.court}</td>
-                  <td className="bs-col-date">{b.date}</td>
-                  <td className="bs-col-start">{b.startTime}</td>
-                  <td className="bs-col-end">{b.endTime}</td>
-                  <td className="bs-col-reason">{b.reason}</td>
+                <tr key={b.BlockedSlotID}>
+                  <td className="bs-col-court">{b.CourtName}</td>
+                  <td className="bs-col-date">{formatDate(b.StartDateTime)}</td>
+                  <td className="bs-col-start">{formatTime(b.StartDateTime)}</td>
+                  <td className="bs-col-end">{formatTime(b.EndDateTime)}</td>
+                  <td className="bs-col-reason">{b.Reason}</td>
+                  <td className="bs-col-created-by">{`${b.CreatedByFirstName} ${b.CreatedByLastName}`}</td>
+                  <td className="bs-col-created-at">{new Date(b.CreatedAt).toLocaleString()}</td>
 
                   <td className="bs-col-actions bs-center">
                     <div className="bs-actions">
@@ -211,7 +290,7 @@ export default function BlockedSlots() {
                       <button
                         className="bs-action-btn danger"
                         type="button"
-                        onClick={() => handleRemove(b.id)}
+                        onClick={() => handleRemove(b.BlockedSlotID)}
                       >
                         Remove
                       </button>
@@ -238,10 +317,10 @@ export default function BlockedSlots() {
               <div className="bs-grid">
                 <div className="bs-field bs-full">
                   <label>Court</label>
-                  <select value={court} onChange={(e) => setCourt(e.target.value)}>
-                    {COURT_OPTIONS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                  <select value={courtId} onChange={(e) => setCourtId(e.target.value)} disabled={submitting}>
+                    {courts.map((c) => (
+                      <option key={c.CourtID} value={c.CourtID}>
+                        {c.CourtName}
                       </option>
                     ))}
                   </select>
@@ -249,17 +328,17 @@ export default function BlockedSlots() {
 
                 <div className="bs-field">
                   <label>Date</label>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={submitting} />
                 </div>
 
                 <div className="bs-field">
                   <label>Start Time</label>
-                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} disabled={submitting} />
                 </div>
 
                 <div className="bs-field">
                   <label>End Time</label>
-                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} disabled={submitting} />
                 </div>
 
                 <div className="bs-field bs-full">
@@ -269,16 +348,17 @@ export default function BlockedSlots() {
                     placeholder="e.g. Maintenance / Event"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
+                    disabled={submitting}
                   />
                 </div>
               </div>
 
               <div className="bs-form-actions">
-                <button className="bs-modal-btn secondary" type="button" onClick={closeModal}>
+                <button className="bs-modal-btn secondary" type="button" onClick={closeModal} disabled={submitting}>
                   Cancel
                 </button>
-                <button className="bs-modal-btn primary" type="submit">
-                  {mode === "ADD" ? "Block Slot" : "Save Changes"}
+                <button className="bs-modal-btn primary" type="submit" disabled={submitting}>
+                  {submitting ? "Saving..." : mode === "ADD" ? "Block Slot" : "Save Changes"}
                 </button>
               </div>
             </form>

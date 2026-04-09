@@ -115,6 +115,35 @@ async function getConflictingCourtIds(conn, { scheduleType, weekdays, oneTimeDat
         rows2.forEach(r => conflicting.add(r.CourtID));
     }
 
+    // 3. New class (WEEKLY or ONE_TIME) vs EXISTING BLOCKED SLOTS
+    //    For WEEKLY, we must check if *any* of the future sessions would overlap a blocked slot.
+    //    Actually, blocked slots are usually one-off. 
+    //    If it's a ONE_TIME class, we just check that date/time.
+    //    If it's a WEEKLY class, we should check if any of the sessions (at least for next few weeks) are blocked.
+    //    Or simply, if the blocked slot is active during the class's time on *any* matching weekday.
+
+    if (scheduleType === 'ONE_TIME') {
+        const startDT = `${oneTimeDate} ${startTime}`;
+        const endDT = `${oneTimeDate} ${endTime}`;
+        const [blockedRows] = await conn.query(`
+            SELECT DISTINCT CourtID FROM blockedslot
+            WHERE (StartDateTime < ? AND EndDateTime > ?)
+        `, [endDT, startDT]);
+        blockedRows.forEach(r => conflicting.add(r.CourtID));
+
+    } else if (scheduleType === 'WEEKLY') {
+        // Find blocked slots that overlap with the weekly pattern (matching weekday + time)
+        // AND whose StartDateTime is on or after the class's StartDate.
+        const [blockedRows] = await conn.query(`
+            SELECT DISTINCT CourtID FROM blockedslot
+            WHERE (DAYOFWEEK(StartDateTime) - 1) IN (?)
+              AND DATE(StartDateTime) >= ?
+              AND TIME(StartDateTime) < TIME(?)
+              AND TIME(EndDateTime) > TIME(?)
+        `, [weekdays, startDate || (new Date()).toISOString().split('T')[0], endTime, startTime]);
+        blockedRows.forEach(r => conflicting.add(r.CourtID));
+    }
+
     return conflicting;
 }
 
@@ -252,7 +281,7 @@ exports.getAvailableCourts = async (req, res, next) => {
             `SELECT c.CourtID, c.CourtName, c.Capacity, c.PricePerHour
              FROM court c
              JOIN court_sport cs ON c.CourtID = cs.CourtID
-             WHERE cs.SportID = ? AND c.Status = 'AVAILABLE'`,
+             WHERE cs.SportID = ?`,
             [sportId]
         );
 

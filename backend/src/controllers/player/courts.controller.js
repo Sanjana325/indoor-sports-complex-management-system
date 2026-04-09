@@ -8,10 +8,10 @@ exports.getCourtsBySport = async (req, res, next) => {
         }
 
         const [rows] = await pool.query(
-            `SELECT c.CourtID, c.CourtName, c.Capacity, c.PricePerHour, c.Status 
+            `SELECT c.CourtID, c.CourtName, c.Capacity, c.PricePerHour 
              FROM court c
              JOIN court_sport cs ON c.CourtID = cs.CourtID
-             WHERE cs.SportID = ? AND c.Status != 'MAINTENANCE'
+             WHERE cs.SportID = ?
              ORDER BY c.CourtName ASC`,
             [sportId]
         );
