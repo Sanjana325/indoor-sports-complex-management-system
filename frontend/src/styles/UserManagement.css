@@ -449,6 +449,9 @@
   border: 1px solid var(--um-border);
   box-shadow: var(--um-shadow-xl);
   animation: um-modal-slide-up 0.4s ease-out;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .um-modal--small {
@@ -517,6 +520,7 @@
   flex-direction: column;
   gap: 1.5rem;
   background: white;
+  overflow-y: auto;
 }
 
 .um-grid {

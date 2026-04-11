@@ -8,6 +8,7 @@ const courtsController = require("../controllers/player/courts.controller");
 const bookingsController = require("../controllers/player/bookings.controller");
 const classesController = require("../controllers/player/classes.controller");
 const paymentsController = require("../controllers/player/payments.controller");
+const otpController = require("../controllers/player/otp.controller");
 const storageService = require("../services/storage.service");
 
 // Apply middleware to all routes in this router
@@ -38,5 +39,9 @@ router.get("/player/payments", paymentsController.getMyPayments);
 router.post("/player/payments/initiate-booking", paymentsController.initiateBookingPayment);
 router.post("/player/payments/initiate-enrollment", paymentsController.initiateEnrollmentPayment);
 router.post("/player/payments/slip", storageService.single("slip"), paymentsController.uploadBankSlip);
+
+// OTP Verification
+router.post("/player/otp/generate", otpController.requestBookingOtp);
+router.post("/player/otp/verify", otpController.verifyBookingOtp);
 
 module.exports = router;

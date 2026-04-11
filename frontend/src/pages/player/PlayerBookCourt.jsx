@@ -84,6 +84,13 @@ export default function PlayerBookCourt() {
   const [slipFile, setSlipFile] = useState(null);
   const [uploadingSlip, setUploadingSlip] = useState(false);
 
+  // OTP Modal State
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
 
   // Fetch Sports on Mount
   useEffect(() => {
@@ -247,6 +254,70 @@ export default function PlayerBookCourt() {
     });
   };
 
+
+  const handleConfirmBookingClick = async () => {
+    if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0) {
+      alert("Please complete all selections before confirming.");
+      return;
+    }
+
+    try {
+      setOtpSending(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/player/otp/generate`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || "Failed to send OTP.");
+        setOtpSending(false);
+        return;
+      }
+      
+      setOtpError("");
+      setOtpCode("");
+      setOtpModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert("Error generating OTP");
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+       setOtpError("Please enter a valid 6-digit OTP.");
+       return;
+    }
+    try {
+      setOtpVerifying(true);
+      setOtpError("");
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/player/otp/verify`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ otpCode })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOtpError(data.message || "Invalid OTP");
+        setOtpVerifying(false);
+        return;
+      }
+      
+      // OTP Validated! Proceed to standard payment modal
+      setOtpModalOpen(false);
+      handleOpenPayment();
+
+    } catch (err) {
+      console.error(err);
+      setOtpError("Error verifying OTP");
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
 
   const handleOpenPayment = () => {
     if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0) {
@@ -597,10 +668,10 @@ export default function PlayerBookCourt() {
 
             <button
               className="pbc-confirm-btn"
-              disabled={!selectedSportId || !selectedCourtId || selectedTimeSlots.length === 0}
-              onClick={handleOpenPayment}
+              disabled={!selectedSportId || !selectedCourtId || selectedTimeSlots.length === 0 || otpSending}
+              onClick={handleConfirmBookingClick}
             >
-              CONFIRM BOOKING
+              {otpSending ? "SENDING VERIFICATION..." : "CONFIRM BOOKING"}
             </button>
           </div>
         </div>
@@ -701,6 +772,91 @@ export default function PlayerBookCourt() {
             Cancel
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* OTP VERIFICATION MODAL */}
+      <Dialog
+        open={otpModalOpen}
+        onClose={() => !otpVerifying && setOtpModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          className: "pbc-payment-dialog"
+        }}
+      >
+        <DialogTitle className="pbc-dialog-title">
+          Identity Verification
+          <IconButton
+            aria-label="close"
+            onClick={() => setOtpModalOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}
+            disabled={otpVerifying}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent className="pbc-dialog-content">
+          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 2, textAlign: 'center' }}>
+            We've sent a 6-digit Secure Booking OTP to your registered email address.
+            It is valid for 10 minutes.
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+             <input
+                type="text"
+                placeholder="------"
+                maxLength={6}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                disabled={otpVerifying}
+                style={{
+                  width: '100%',
+                  maxWidth: '200px',
+                  margin: '16px 0',
+                  padding: '12px',
+                  fontSize: '24px',
+                  letterSpacing: '8px',
+                  textAlign: 'center',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  outline: 'none'
+                }}
+             />
+             {otpError && (
+                 <Typography variant="body2" sx={{ color: '#ff4d4d', mb: 2 }}>
+                     {otpError}
+                 </Typography>
+             )}
+             <Button
+                variant="contained"
+                fullWidth
+                disabled={otpCode.length !== 6 || otpVerifying}
+                onClick={handleVerifyOtp}
+                sx={{
+                  background: 'linear-gradient(90deg, #ff8a00, #e52e71)',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  py: 1.5,
+                  '&:hover': {
+                      background: 'linear-gradient(90deg, #e52e71, #ff8a00)',
+                  }
+                }}
+             >
+                {otpVerifying ? "Verifying..." : "Verify & Proceed"}
+             </Button>
+
+             <Button
+                variant="text"
+                disabled={otpSending || otpVerifying}
+                onClick={handleConfirmBookingClick}
+                sx={{ color: 'rgba(255,255,255,0.6)', mt: 2, fontSize: '0.8rem' }}
+             >
+                Resend Code
+             </Button>
+          </Box>
+        </DialogContent>
       </Dialog>
     </div>
   );

@@ -45,7 +45,7 @@ async function sendPasswordResetEmail({ toEmail, toName, resetLink }) {
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
-  const fromName = process.env.BREVO_FROM_NAME || "Indoor Sports Complex";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
   const subject = "Reset your password";
   const text =
@@ -88,22 +88,22 @@ async function sendWelcomeEmail({ toEmail, toName }) {
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
-  const fromName = process.env.BREVO_FROM_NAME || "Indoor Sports Complex";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
-  const subject = "Welcome to Indoor Sports Complex!";
+  const subject = "Welcome to ArenaPro - Indoor Sports Complex";
   const safeName = typeof toName === "string" ? toName.trim() : "";
   const greetingName = safeName ? safeName : "Player";
 
   const text =
-    `Welcome to Indoor Sports Complex, ${greetingName}!\n\n` +
+    `Welcome to ArenaPro, ${greetingName}!\n\n` +
     `Your account has been successfully created. You can now log in and start booking courts or join coaching classes.\n\n` +
     `We are excited to see you!\n\n` +
     `Best regards,\n` +
-    `The Indoor Sports Complex Team`;
+    `The ArenaPro Team`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-      <h2 style="margin: 0 0 16px; color: #000;">Welcome to Indoor Sports Complex!</h2>
+      <h2 style="margin: 0 0 16px; color: #000;">Welcome to ArenaPro!</h2>
       <p>Hi <strong>${greetingName}</strong>,</p>
       <p>Your account has been successfully created. We are thrilled to have you onboard.</p>
       <p>You can now log in to your account and start booking courts or enrolling in your favorite coaching classes.</p>
@@ -115,7 +115,7 @@ async function sendWelcomeEmail({ toEmail, toName }) {
       <p style="color:#555;">We are excited to see you at the complex!</p>
       <p style="margin-top: 32px; color:#888; font-size: 14px;">
         Best regards,<br>
-        <strong>The Indoor Sports Complex Team</strong>
+        <strong>The ArenaPro Team</strong>
       </p>
     </div>
   `;
@@ -139,7 +139,7 @@ async function sendAccountCreatedEmail({ toEmail, toName, role, tempPassword }) 
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
-  const fromName = process.env.BREVO_FROM_NAME || "Indoor Sports Complex";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
   const subject = "Your new account has been created";
   const safeName = typeof toName === "string" ? toName.trim() : "";
@@ -152,7 +152,7 @@ async function sendAccountCreatedEmail({ toEmail, toName, role, tempPassword }) 
     `Temporary Password: ${tempPassword}\n\n` +
     `Please log in and change your password immediately.\n\n` +
     `Best regards,\n` +
-    `The Indoor Sports Complex Team`;
+    `The ArenaPro Team`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -171,7 +171,60 @@ async function sendAccountCreatedEmail({ toEmail, toName, role, tempPassword }) 
       </p>
       <p style="margin-top: 32px; color:#888; font-size: 14px;">
         Best regards,<br>
-        <strong>The Indoor Sports Complex Team</strong>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  const info = await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: safeName ? `"${safeName}" <${toEmail}>` : toEmail,
+    subject,
+    text,
+    html
+  });
+
+  return info;
+}
+
+async function sendBookingOtpEmail({ toEmail, toName, otpCode }) {
+  if (!toEmail || typeof toEmail !== "string") {
+    throw new Error("Missing toEmail");
+  }
+
+  const transporter = getTransporter();
+
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const subject = "Your Secure Booking OTP";
+  const safeName = typeof toName === "string" ? toName.trim() : "";
+  const greetingName = safeName ? safeName : "Player";
+
+  const text =
+    `Hello ${greetingName},\n\n` +
+    `Your One-Time Password (OTP) for confirming your court booking is: ${otpCode}\n\n` +
+    `This code will expire in 10 minutes.\n` +
+    `If you did not request this, please ignore this email.\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #000;">Secure Booking Verification</h2>
+      <p>Hi <strong>${greetingName}</strong>,</p>
+      <p>Please use the following One-Time Password (OTP) to securely confirm your court booking. This adds an extra layer of security to your account.</p>
+      
+      <div style="background-color: #f4f4f5; padding: 20px; border-radius: 8px; margin: 24px 0; text-align: center;">
+        <h1 style="font-family: monospace; letter-spacing: 4px; color: #000; margin: 0; font-size: 32px;">${otpCode}</h1>
+      </div>
+      
+      <p style="color: #d32f2f; font-weight: bold;">This code is valid for 10 minutes.</p>
+      <p style="color:#666; font-size: 14px;">If you did not initiate this booking, please ignore this email.</p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
       </p>
     </div>
   `;
@@ -190,5 +243,6 @@ async function sendAccountCreatedEmail({ toEmail, toName, role, tempPassword }) 
 module.exports = {
   sendPasswordResetEmail,
   sendWelcomeEmail,
-  sendAccountCreatedEmail
+  sendAccountCreatedEmail,
+  sendBookingOtpEmail
 };
