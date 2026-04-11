@@ -1,30 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import "../../styles/UserManagement.css";
 import MultiSelectWithAdd from "../../components/MultiSelectWithAdd";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function splitQualificationsToList(q) {
   if (!q) return [""];
-  const parts = String(q)
-    .split(/[,;|]/g)
-    .map((x) => x.trim())
-    .filter(Boolean);
+  const parts = String(q).split(/[,;|]/g).map(x => x.trim()).filter(Boolean);
   return parts.length ? parts : [""];
-}
-
-function joinQualifications(list) {
-  const cleaned = (list || [])
-    .map((x) => String(x || "").trim())
-    .filter(Boolean);
-  return cleaned.join(", ");
-}
-
-function normalizeQualifications(list) {
-  const cleaned = (list || [])
-    .map((x) => String(x || "").trim())
-    .filter(Boolean);
-  return Array.from(new Set(cleaned));
 }
 
 function displayUserId(userId) {
@@ -45,667 +27,265 @@ function mapDbUserToUi(u) {
     createdAt: u.CreatedAt,
     specialization: u.Specialization || "",
     qualifications: Array.isArray(u.Qualifications) ? u.Qualifications : splitQualificationsToList(u.Qualifications),
-    specializations: Array.isArray(u.Specializations)
-      ? u.Specializations
-      : splitQualificationsToList(u.Specializations),
+    specializations: Array.isArray(u.Specializations) ? u.Specializations : splitQualificationsToList(u.Specializations),
     isActive: Boolean(u.IsActive)
   };
 }
 
-function s(v) {
-  return String(v ?? "").trim();
-}
-
 function buildHaystack(u) {
+  const s = (v) => String(v ?? "").trim().toLowerCase();
   const id = s(u.idDisplay);
   const role = s(u.role);
   const first = s(u.firstName);
   const last = s(u.lastName);
   const phone = s(u.phone);
   const email = s(u.email);
-
   const qual = Array.isArray(u.qualifications) ? u.qualifications.join(" ") : s(u.qualifications);
   const spec = Array.isArray(u.specializations) ? u.specializations.join(" ") : s(u.specialization);
   const status = u.isActive ? "active" : "inactive";
-
-  const fullName = `${first} ${last}`.trim();
-  const swappedName = `${last} ${first}`.trim();
-
-  return `${id} ${role} ${first} ${last} ${fullName} ${swappedName} ${phone} ${email} ${qual} ${spec} ${status}`.toLowerCase();
+  return `${id} ${role} ${first} ${last} ${phone} ${email} ${qual} ${spec} ${status}`.toLowerCase();
 }
 
 export default function UserManagement() {
   const currentRole = localStorage.getItem("role") || "";
   const isSuperAdmin = currentRole === "SUPER_ADMIN";
   const canManageUsers = currentRole === "ADMIN" || currentRole === "SUPER_ADMIN";
-
   const ROLES = isSuperAdmin ? ["ADMIN", "PLAYER", "STAFF", "COACH"] : ["PLAYER", "STAFF", "COACH"];
 
   const [users, setUsers] = useState([]);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mode, setMode] = useState("ADD");
   const [editingUserId, setEditingUserId] = useState(null);
-
-  const [roles, setRoles] = useState(ROLES); // Use state if we want to dynamic, but constant is fine. 
-
   const [role, setRole] = useState(ROLES[0] || "PLAYER");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-
-  // Coach specific
   const [qualifications, setQualifications] = useState([]);
   const [specializations, setSpecializations] = useState([]);
-
-  // Reference data
   const [allSports, setAllSports] = useState([]);
   const [allQualifications, setAllQualifications] = useState([]);
-
   const [search, setSearch] = useState("");
-  const normalizedSearch = search.trim().toLowerCase();
-
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [listError, setListError] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
-
   const [tempModalOpen, setTempModalOpen] = useState(false);
   const [createdTempPassword, setCreatedTempPassword] = useState("");
   const [createdEmail, setCreatedEmail] = useState("");
 
-  async function fetchUsersFromDb() {
+  const fetchUsersFromDb = async () => {
     setLoadingUsers(true);
-    setListError("");
-
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        setListError("Not logged in. Please login again.");
-        return;
-      }
+      const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) setUsers((data.users || []).map(mapDbUserToUi));
+    } catch (err) { console.error(err); }
+    finally { setLoadingUsers(false); }
+  };
 
-      const res = await fetch(`${API_BASE}/api/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setListError(data.message || "Failed to load users");
-        return;
-      }
-
-      const rows = Array.isArray(data.users) ? data.users : [];
-      setUsers(rows.map(mapDbUserToUi));
-    } catch (err) {
-      setListError("Cannot connect to backend. Make sure the server is running.");
-    } finally {
-      setLoadingUsers(false);
-    }
-  }
-
-  async function fetchReferenceData() {
+  const fetchReferenceData = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) return;
-
-      // Fetch Sports
-      const resSports = await fetch(`${API_BASE}/api/admin/sports`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (resSports.ok) {
-        const data = await resSports.json();
-        const list = Array.isArray(data.sports) ? data.sports : (Array.isArray(data) ? data : []);
-        setAllSports(list.map(s => s.SportName || s.sportName || s.name || s));
+      const [resS, resQ] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/sports`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/admin/qualifications`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      if (resS.ok) {
+        const d = await resS.json();
+        setAllSports((d.sports || d).map(s => s.SportName || s));
       }
-
-      // Fetch Qualifications
-      const resQuals = await fetch(`${API_BASE}/api/admin/qualifications`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (resQuals.ok) {
-        const data = await resQuals.json();
-        const list = Array.isArray(data.qualifications) ? data.qualifications : (Array.isArray(data) ? data : []);
-        setAllQualifications(list.map(q => q.QualificationName || q.qualificationName || q.name || q));
+      if (resQ.ok) {
+        const d = await resQ.json();
+        setAllQualifications((d.qualifications || d).map(q => q.QualificationName || q));
       }
-    } catch (e) {
-      console.error("Failed to fetch reference data", e);
-    }
-  }
+    } catch (e) { console.error(e); }
+  };
 
-  useEffect(() => {
-    fetchUsersFromDb();
-    fetchReferenceData();
-  }, []);
+  useEffect(() => { fetchUsersFromDb(); fetchReferenceData(); }, []);
 
   const filteredUsers = useMemo(() => {
-    if (!normalizedSearch) return users;
-    return users.filter((u) => buildHaystack(u).includes(normalizedSearch));
-  }, [users, normalizedSearch]);
+    const term = search.trim().toLowerCase();
+    if (!term) return users;
+    return users.filter(u => buildHaystack(u).includes(term));
+  }, [users, search]);
 
-  const latestSuperAdmins = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "SUPER_ADMIN")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 50);
-  }, [filteredUsers]);
+  const sections = [
+    { title: "Super Admins", rows: filteredUsers.filter(u => u.role === "SUPER_ADMIN"), visible: isSuperAdmin },
+    { title: "Admins", rows: filteredUsers.filter(u => u.role === "ADMIN"), visible: isSuperAdmin },
+    { title: "Staff", rows: filteredUsers.filter(u => u.role === "STAFF"), visible: true },
+    { title: "Coaches", rows: filteredUsers.filter(u => u.role === "COACH"), visible: true, coach: true },
+    { title: "Players", rows: filteredUsers.filter(u => u.role === "PLAYER"), visible: true }
+  ];
 
-  const latestAdmins = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "ADMIN")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 50);
-  }, [filteredUsers]);
+  const resetForm = () => {
+    setRole(ROLES[0] || "PLAYER"); setFirstName(""); setLastName(""); setPhone("");
+    setEmail(""); setQualifications([]); setSpecializations([]); setEditingUserId(null); setFormError("");
+  };
 
-  const latestPlayers = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "PLAYER")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 50);
-  }, [filteredUsers]);
-
-  const latestStaff = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "STAFF")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 50);
-  }, [filteredUsers]);
-
-  const latestCoaches = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "COACH")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 50);
-  }, [filteredUsers]);
-
-  function resetForm() {
-    setRole(ROLES[0] || "PLAYER");
-    setFirstName("");
-    setLastName("");
-    setPhone("");
-    setEmail("");
-    setQualifications([]);
-    setSpecializations([]);
-    setEditingUserId(null);
-    setFormError("");
-  }
-
-  function openAddModal() {
-    setMode("ADD");
-    resetForm();
+  const openAddModal = () => { setMode("ADD"); resetForm(); setIsModalOpen(true); };
+  const closeModal = () => setIsModalOpen(false);
+  const openEditModal = (u) => {
+    setMode("EDIT"); setEditingUserId(u.userId); setRole(u.role); setFirstName(u.firstName);
+    setLastName(u.lastName); setPhone(u.phone); setEmail(u.email);
+    setQualifications(u.qualifications || []); setSpecializations(u.specializations || []);
     setIsModalOpen(true);
-    fetchReferenceData(); // Refresh ref data
-  }
+  };
 
-  function openEditModal(user) {
-    setMode("EDIT");
-    setEditingUserId(user.userId);
-
-    setRole(user.role);
-    setFirstName(user.firstName || "");
-    setLastName(user.lastName || "");
-    setPhone(user.phone || "");
-    setEmail(user.email || "");
-
-    setQualifications(user.qualifications || []);
-    setSpecializations(user.specializations || []);
-
-    setFormError("");
-    setIsModalOpen(true);
-    fetchReferenceData(); // Refresh ref data
-  }
-
-  function closeModal() {
-    if (submitting) return;
-    setIsModalOpen(false);
-  }
-
-  function closeTempModal() {
-    setTempModalOpen(false);
-    setCreatedTempPassword("");
-    setCreatedEmail("");
-  }
-
-  function validateForm() {
-    if (!firstName.trim()) return "First name is required";
-    if (!lastName.trim()) return "Last name is required";
-    if (!phone.trim()) return "Phone number is required";
-    if (!email.trim()) return "Email is required";
-    if (!email.includes("@")) return "Enter a valid email";
-    if (!ROLES.includes(role)) return "Role must be valid";
-
-    if (role === "COACH") {
-      if (qualifications.length === 0) return "At least one qualification is required for Coach";
-      if (specializations.length === 0) return "At least one specialization is required for Coach";
-    }
-
-    return null;
-  }
-
-  function handleRoleChange(newRole) {
-    setRole(newRole);
-    if (newRole !== "COACH") {
-      setQualifications([]);
-      setSpecializations([]);
-    }
-  }
-
-  async function handleAddNewSport(newSportName) {
+  const handleDisableToggle = async (u) => {
+    if (!window.confirm(`${u.isActive ? "Disable" : "Enable"} user ${u.email}?`)) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/sports`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ sportName: newSportName })
-      });
-      if (res.ok) {
-        setAllSports(prev => [...prev, newSportName]);
-        setSpecializations(prev => [...prev, newSportName]);
-      }
-    } catch (e) {
-      console.error("Failed to add sport", e);
-    }
-  }
+      const url = `${API_BASE}/api/admin/users/${u.userId}/${u.isActive ? "disable" : "enable"}`;
+      const res = await fetch(url, { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) fetchUsersFromDb();
+    } catch (e) { console.error(e); }
+  };
 
-  async function handleAddNewQualification(newQualName) {
+  const handleRemoveUser = async (u) => {
+    if (!window.confirm(`PERMANENTLY remove user ${u.email}?`)) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/qualifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ qualificationName: newQualName })
-      });
-      if (res.ok) {
-        setAllQualifications(prev => [...prev, newQualName]);
-        setQualifications(prev => [...prev, newQualName]);
-      }
-    } catch (e) {
-      console.error("Failed to add qualification", e);
-    }
-  }
+      const res = await fetch(`${API_BASE}/api/admin/users/${u.userId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) fetchUsersFromDb();
+    } catch (e) { console.error(e); }
+  };
 
-  async function createUserOnBackend(payload) {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Not logged in. Please login again.");
-
-    const res = await fetch(`${API_BASE}/api/admin/users`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const msg = data.message || "Failed to create user";
-      throw new Error(msg);
-    }
-
-    return data;
-  }
-
-  async function updateUserOnBackend(userId, payload) {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Not logged in. Please login again.");
-
-    const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const msg = data.message || "Failed to update user";
-      throw new Error(msg);
-    }
-
-    return data;
-  }
-
-  async function setUserActive(userId, makeActive) {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Not logged in. Please login again.");
-
-    const url = makeActive
-      ? `${API_BASE}/api/admin/users/${userId}/enable`
-      : `${API_BASE}/api/admin/users/${userId}/disable`;
-
-    const res = await fetch(url, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || "Action failed");
-    return data;
-  }
-
-  async function removeUserHard(userId) {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Not logged in. Please login again.");
-
-    const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || "Remove failed");
-    return data;
-  }
-
-  async function handleDisableToggle(user) {
-    if (!canManageUsers) return;
-
-    const actionLabel = user.isActive ? "Disable User" : "Enable User";
-    const ok = window.confirm(`${actionLabel} for ${user.firstName} ${user.lastName} (${user.email})?`);
-    if (!ok) return;
-
-    try {
-      await setUserActive(user.userId, !user.isActive);
-      await fetchUsersFromDb();
-    } catch (ex) {
-      setListError(ex.message || "Action failed");
-    }
-  }
-
-  async function handleRemoveUser(user) {
-    if (!isSuperAdmin) return;
-
-    const ok = window.confirm(
-      `Remove user permanently?\n\nThis will delete the account and related coach records.\nUser: ${user.firstName} ${user.lastName} (${user.email})`
-    );
-    if (!ok) return;
-
-    try {
-      await removeUserHard(user.userId);
-      await fetchUsersFromDb();
-    } catch (ex) {
-      setListError(ex.message || "Remove failed");
-    }
-  }
-
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError("");
-
-    const err = validateForm();
-    if (err) {
-      setFormError(err);
-      return;
-    }
-
-    const payload =
-      role === "COACH"
-        ? {
-          role,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-          phoneNumber: phone.trim(),
-          specializations: specializations,
-          qualifications: qualifications
-        }
-        : {
-          role,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-          phoneNumber: phone.trim()
-        };
-
     setSubmitting(true);
+    const payload = { role, firstName, lastName, email, phoneNumber: phone, specializations, qualifications };
+    const token = localStorage.getItem("token");
+    const method = mode === "ADD" ? "POST" : "PUT";
+    const url = mode === "ADD" ? `${API_BASE}/api/admin/users` : `${API_BASE}/api/admin/users/${editingUserId}`;
     try {
-      if (mode === "ADD") {
-        const result = await createUserOnBackend(payload);
-
-        setCreatedEmail(payload.email);
-        setCreatedTempPassword(result.tempPassword || "");
-        setTempModalOpen(true);
-
-        setIsModalOpen(false);
-        resetForm();
-
-        await fetchUsersFromDb();
-        return;
-      }
-
-      if (!editingUserId) {
-        setFormError("No user selected to update");
-        return;
-      }
-
-      await updateUserOnBackend(editingUserId, payload);
-
-      setIsModalOpen(false);
-      resetForm();
-      await fetchUsersFromDb();
-    } catch (ex) {
-      setFormError(ex.message || (mode === "ADD" ? "Failed to create user" : "Failed to update user"));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function copyTempPassword() {
-    if (!createdTempPassword) return;
-    try {
-      await navigator.clipboard.writeText(createdTempPassword);
-    } catch (e) { }
-  }
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (res.ok) {
+        if (mode === "ADD") {
+          setCreatedEmail(email); setCreatedTempPassword(data.tempPassword || ""); setTempModalOpen(true);
+        }
+        setIsModalOpen(false); fetchUsersFromDb();
+      } else setFormError(data.message || "Action failed");
+    } catch (e) { setFormError("Server error"); }
+    finally { setSubmitting(false); }
+  };
 
   return (
-    <div className="um-page">
-      <div className="um-header">
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
         <div>
-          <h2 className="um-title">User Management</h2>
+          <h2 className="page-title">User Management</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Control system access and user profiles</p>
         </div>
-
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className="um-secondary-btn" type="button" onClick={fetchUsersFromDb} disabled={loadingUsers}>
-            {loadingUsers ? "Refreshing..." : "Refresh"}
-          </button>
-          <button className="um-primary-btn" type="button" onClick={openAddModal}>
-            + Add User
-          </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button className="btn btn-secondary" onClick={fetchUsersFromDb}>Refresh</button>
+          <button className="btn btn-primary" onClick={openAddModal}>+ Add User</button>
         </div>
       </div>
 
-      {listError ? <div className="um-alert um-alert--error">{listError}</div> : null}
-
-      <div className="um-toolbar">
-        <input
-          className="um-search"
-          placeholder="Search by name, email, phone, user id..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="arena-card mb-3" style={{ padding: "var(--space-1)" }}>
+        <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {isSuperAdmin ? (
-        <>
-          {latestSuperAdmins.length > 0 ? (
-            <section className="um-section">
-              <h3 className="um-section-title">Super Admins</h3>
-              <UserTable
-                rows={latestSuperAdmins}
-                onEdit={openEditModal}
-                onDisableToggle={handleDisableToggle}
-                onRemove={handleRemoveUser}
-                currentRole={currentRole}
-              />
-            </section>
-          ) : null}
-
-          <section className="um-section">
-            <h3 className="um-section-title">Admins</h3>
-            <UserTable
-              rows={latestAdmins}
-              onEdit={openEditModal}
-              onDisableToggle={handleDisableToggle}
-              onRemove={handleRemoveUser}
-              currentRole={currentRole}
-            />
-          </section>
-        </>
-      ) : null}
-
-      <section className="um-section">
-        <h3 className="um-section-title">Players</h3>
-        <UserTable
-          rows={latestPlayers}
-          onEdit={openEditModal}
-          onDisableToggle={handleDisableToggle}
-          onRemove={handleRemoveUser}
-          currentRole={currentRole}
-        />
-      </section>
-
-      <section className="um-section">
-        <h3 className="um-section-title">Staff</h3>
-        <UserTable
-          rows={latestStaff}
-          onEdit={openEditModal}
-          onDisableToggle={handleDisableToggle}
-          onRemove={handleRemoveUser}
-          currentRole={currentRole}
-        />
-      </section>
-
-      <section className="um-section">
-        <h3 className="um-section-title">Coaches</h3>
-        <UserTable
-          rows={latestCoaches}
-          onEdit={openEditModal}
-          onDisableToggle={handleDisableToggle}
-          onRemove={handleRemoveUser}
-          showCoachCols
-          currentRole={currentRole}
-        />
-      </section>
+      {sections.map(sec => sec.visible && sec.rows.length > 0 && (
+        <div key={sec.title} className="mb-4">
+          <h3 className="mb-2" style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)" }}>{sec.title} ({sec.rows.length})</h3>
+          <div className="arena-table-container">
+            <table className="arena-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Contact</th>
+                  {sec.coach && <th>Qualifications & Specs</th>}
+                  <th>Status</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sec.rows.map(u => (
+                  <tr key={u.userId}>
+                    <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{u.idDisplay}</td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{u.firstName} {u.lastName}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: "0.875rem" }}>{u.phone}</div>
+                    </td>
+                    {sec.coach && (
+                      <td style={{ maxWidth: "250px" }}>
+                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                          {u.specializations.map(s => <span key={s} className="status-pill success" style={{ fontSize: "0.65rem" }}>{s}</span>)}
+                          {u.qualifications.map(q => <span key={q} className="status-pill warning" style={{ fontSize: "0.65rem" }}>{q}</span>)}
+                        </div>
+                      </td>
+                    )}
+                    <td>
+                      <span className={`status-pill ${u.isActive ? "success" : "danger"}`}>
+                        {u.isActive ? "Active" : "Disabled"}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                        <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
+                        <button className={`btn ${u.isActive ? "btn-secondary" : "btn-primary"}`} style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDisableToggle(u)}>
+                          {u.isActive ? "Disable" : "Enable"}
+                        </button>
+                        {isSuperAdmin && <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemoveUser(u)}>Del</button>}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
 
       {isModalOpen && (
-        <div className="um-modal-backdrop" onMouseDown={closeModal}>
-          <div className="um-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="um-modal-header">
-              <h3 className="um-modal-title">{mode === "ADD" ? "Add User" : "Edit User"}</h3>
-              <button className="um-icon-btn" type="button" onClick={closeModal} aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            {formError ? <div className="um-alert um-alert--error">{formError}</div> : null}
-
-            <form className="um-form" onSubmit={handleSubmit}>
-              <div className="um-grid">
-                <div className="um-field">
-                  <label>Role</label>
-                  <select value={role} onChange={(e) => handleRoleChange(e.target.value)} disabled={submitting}>
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r === "SUPER_ADMIN" ? "Super Admin" : r.charAt(0) + r.slice(1).toLowerCase()}
-                      </option>
-                    ))}
-                  </select>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
+          <div className="arena-card" style={{ width: "100%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
+            <h3 className="mb-2">{mode === "ADD" ? "Create New User" : "Update User Profile"}</h3>
+            {formError && <div className="status-pill danger mb-2" style={{ width: "100%", borderRadius: "8px" }}>{formError}</div>}
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Role</label>
+                <select className="form-input" value={role} onChange={e => setRole(e.target.value)} required>
+                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-group">
+                  <label className="form-label">First Name</label>
+                  <input className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} required />
                 </div>
-
-                <div className="um-field">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    placeholder="name@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={submitting}
-                  />
+                <div className="form-group">
+                  <label className="form-label">Last Name</label>
+                  <input className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
                 </div>
-
-                <div className="um-field">
-                  <label>First Name</label>
-                  <input
-                    type="text"
-                    placeholder="First name"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="um-field">
-                  <label>Last Name</label>
-                  <input
-                    type="text"
-                    placeholder="Last name"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-
-                <div className="um-field um-full">
-                  <label>Phone Number</label>
-                  <input
-                    type="tel"
-                    placeholder="07XXXXXXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-
-                {mode === "ADD" ? (
-                  <div className="um-alert um-alert--info um-full">
-                    Temporary password will be generated by the system after creating the user.
-                  </div>
-                ) : null}
-
-                {role === "COACH" && (
-                  <>
-                    <MultiSelectWithAdd
-                      label="Qualifications"
-                      placeholder="Select or type to add..."
-                      value={qualifications}
-                      options={allQualifications}
-                      onChange={setQualifications}
-                      onAdd={handleAddNewQualification}
-                    />
-
-                    <MultiSelectWithAdd
-                      label="Specialization"
-                      placeholder="Select or type to add..."
-                      value={specializations}
-                      options={allSports}
-                      onChange={setSpecializations}
-                      onAdd={handleAddNewSport}
-                    />
-                  </>
-                )}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Phone Number</label>
+                <input className="form-input" value={phone} onChange={e => setPhone(e.target.value)} required />
               </div>
 
-              <div className="um-form-actions">
-                <button className="um-modal-btn" type="button" onClick={closeModal} disabled={submitting}>
-                  Cancel
-                </button>
-                <button className="um-modal-btn" type="submit" disabled={submitting}>
-                  {submitting ? "Saving..." : mode === "ADD" ? "Add User" : "Update User"}
-                </button>
+              {role === "COACH" && (
+                <div className="mt-2" style={{ background: "#f8fafc", padding: "var(--space-2)", borderRadius: "var(--radius-md)" }}>
+                  <h4 className="mb-1" style={{ fontSize: "0.9rem" }}>Coach Professional Details</h4>
+                  <MultiSelectWithAdd label="Qualifications" options={allQualifications} value={qualifications} onChange={setQualifications} />
+                  <MultiSelectWithAdd label="Specializations" options={allSports} value={specializations} onChange={setSpecializations} />
+                </div>
+              )}
+
+              <div className="flex-between mt-3" style={{ justifyContent: "flex-end" }}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving..." : "Save User"}</button>
               </div>
             </form>
           </div>
@@ -713,127 +293,18 @@ export default function UserManagement() {
       )}
 
       {tempModalOpen && (
-        <div className="um-modal-backdrop" onMouseDown={closeTempModal}>
-          <div className="um-modal um-modal--small" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="um-modal-header">
-              <h3 className="um-modal-title">Temporary Password</h3>
-              <button className="um-icon-btn" type="button" onClick={closeTempModal} aria-label="Close">
-                ✕
-              </button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div className="arena-card" style={{ width: "100%", maxWidth: "400px", textAlign: "center" }}>
+            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔑</div>
+            <h3 className="mb-1">Temporary Password</h3>
+            <p className="mb-2" style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>A new account has been created for <strong>{createdEmail}</strong>.</p>
+            <div style={{ background: "var(--primary-light)", padding: "1rem", borderRadius: "12px", border: "2px dashed var(--primary)", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--primary-dark)", letterSpacing: "2px" }}>{createdTempPassword}</div>
             </div>
-
-            <div className="um-alert um-alert--info">
-              Copy this password now and share it with the user. The system will not show it again.
-            </div>
-
-            <div className="um-temp-box">
-              <div className="um-temp-row">
-                <div className="um-temp-label">User Email</div>
-                <div className="um-temp-value">{createdEmail || "-"}</div>
-              </div>
-
-              <div className="um-temp-row">
-                <div className="um-temp-label">Temporary Password</div>
-                <div className="um-temp-value um-temp-password">{createdTempPassword || "-"}</div>
-              </div>
-
-              <div className="um-temp-actions">
-                <button className="um-action-btn" type="button" onClick={copyTempPassword}>
-                  Copy Password
-                </button>
-                <button className="um-action-btn danger" type="button" onClick={closeTempModal}>
-                  Close
-                </button>
-              </div>
-            </div>
+            <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setTempModalOpen(false)}>Done, I've Saved It</button>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function UserTable({ rows, onEdit, onDisableToggle, onRemove, showCoachCols = false, currentRole }) {
-  const isSuperAdmin = currentRole === "SUPER_ADMIN";
-
-  return (
-    <div className="um-table-wrap">
-      <table className={`um-table ${showCoachCols ? "um-table--coach" : ""}`}>
-        <thead>
-          <tr>
-            <th className="um-col-id">User ID</th>
-            <th className="um-col-name">Name</th>
-
-            {showCoachCols ? (
-              <>
-                <th className="um-col-phone">Phone</th>
-                <th className="um-col-email">Email</th>
-                <th className="um-col-qual">Qualifications</th>
-                <th className="um-col-spec">Specialization</th>
-              </>
-            ) : (
-              <>
-                <th className="um-col-phone">Phone</th>
-                <th className="um-col-email">Email</th>
-              </>
-            )}
-
-            <th className="um-col-actions um-center">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={showCoachCols ? 7 : 5} className="um-empty">
-                No users found.
-              </td>
-            </tr>
-          ) : (
-            rows.map((u) => (
-              <tr key={u.userId}>
-                <td className="um-col-id">{u.idDisplay}</td>
-                <td className="um-col-name">
-                  {u.firstName} {u.lastName}
-                  {!u.isActive ? <span style={{ marginLeft: 8, fontSize: 12, color: "#a00" }}>(Disabled)</span> : null}
-                </td>
-
-                {showCoachCols ? (
-                  <>
-                    <td className="um-col-phone">{u.phone}</td>
-                    <td className="um-col-email">{u.email}</td>
-                    <td className="um-col-qual">{Array.isArray(u.qualifications) ? u.qualifications.join(", ") : u.qualifications}</td>
-                    <td className="um-col-spec">{Array.isArray(u.specializations) ? u.specializations.join(", ") : u.specializations || u.specialization || "-"}</td>
-                  </>
-                ) : (
-                  <>
-                    <td className="um-col-phone">{u.phone}</td>
-                    <td className="um-col-email">{u.email}</td>
-                  </>
-                )}
-
-                <td className="um-col-actions um-center">
-                  <div className="um-actions">
-                    <button className="um-action-btn" type="button" onClick={() => onEdit(u)}>
-                      Edit
-                    </button>
-
-                    <button className="um-action-btn" type="button" onClick={() => onDisableToggle(u)}>
-                      {u.isActive ? "Disable User" : "Enable User"}
-                    </button>
-
-                    {isSuperAdmin ? (
-                      <button className="um-action-btn danger" type="button" onClick={() => onRemove(u)}>
-                        Remove User
-                      </button>
-                    ) : null}
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
     </div>
   );
 }

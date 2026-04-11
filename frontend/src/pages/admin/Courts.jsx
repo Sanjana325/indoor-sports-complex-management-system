@@ -1,51 +1,11 @@
 import { useMemo, useState, useEffect } from "react";
-import { TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Paper, Chip, Box, Typography } from "@mui/material";
-import "../../styles/Courts.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
 
 function formatLKR(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return "-";
   return `LKR ${n.toLocaleString()}`;
-}
-
-function getSportIcon(sportName) {
-  const s = String(sportName || "").toUpperCase();
-  switch (s) {
-    case "CRICKET":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-        </svg>
-      );
-    case "BADMINTON":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="5" r="3" />
-          <line x1="12" y1="8" x2="12" y2="14" />
-          <line x1="8" y1="14" x2="16" y2="14" />
-        </svg>
-      );
-    case "FUTSAL":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-          <path d="M2 12h20" />
-        </svg>
-      );
-    default:
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a10 10 0 0 1 0 20" />
-          <path d="M2 12h20" />
-        </svg>
-      );
-  }
 }
 
 export default function Courts() {
@@ -70,7 +30,6 @@ export default function Courts() {
   useEffect(() => {
     fetchSports();
     fetchCourts();
-
   }, []);
 
   async function fetchSports() {
@@ -81,17 +40,10 @@ export default function Courts() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) return;
-
       const data = await res.json();
       const list = data.sports || [];
       setRawSports(list);
-
-      const names = list
-        .map((s) => String(s.SportName || "").toUpperCase())
-        .filter(Boolean);
-
-      setSports(names);
-      // Don't auto-select a sport by default for multi-select, or just leave empty
+      setSports(list.map(s => String(s.SportName || "").toUpperCase()).filter(Boolean));
       setSelectedSports([]);
     } catch (err) {
       console.error("Failed to fetch sports", err);
@@ -108,24 +60,16 @@ export default function Courts() {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) return;
-
       const data = await res.json();
       const rows = data.courts || [];
-
-      const mapped = rows.map((r) => {
-        const sportsText = String(r.Sports || "");
-        const sportList = sportsText.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-        return {
-          id: r.CourtID,
-          sportsList: sportList,
-          sportsText,
-          name: r.CourtName,
-          capacity: r.Capacity,
-          pricePerHour: r.PricePerHour
-        };
-      });
-
-      setCourts(mapped);
+      setCourts(rows.map(r => ({
+        id: r.CourtID,
+        sportsList: String(r.Sports || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean),
+        sportsText: String(r.Sports || ""),
+        name: r.CourtName,
+        capacity: r.Capacity,
+        pricePerHour: r.PricePerHour
+      })));
     } catch (err) {
       console.error("Failed to fetch courts", err);
     } finally {
@@ -135,397 +79,152 @@ export default function Courts() {
 
   const filteredCourts = useMemo(() => {
     if (!normalizedSearch) return courts;
-    return courts.filter((c) => {
+    return courts.filter(c => {
       const hay = `${c.id} ${c.sportsText} ${c.name} ${c.capacity} ${c.pricePerHour ?? ""}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [courts, normalizedSearch]);
 
-  function resetForm() {
-    setSelectedSports([]);
-    setName("");
-    setCapacity("");
-    setPricePerHour("");
-    setEditingId(null);
-  }
+  const resetForm = () => {
+    setSelectedSports([]); setName(""); setCapacity(""); setPricePerHour(""); setEditingId(null);
+  };
 
-  function openAddModal() {
-    setMode("ADD");
-    resetForm();
-    setIsModalOpen(true);
-  }
-
-  function openEditModal(court) {
-    setMode("EDIT");
-    setEditingId(court.id);
-    setSelectedSports(court.sportsList || []);
-    setName(court.name || "");
-    setCapacity(String(court.capacity ?? ""));
-    setPricePerHour(String(court.pricePerHour ?? ""));
-    setIsModalOpen(true);
-  }
-
-  function closeModal() {
-    setIsModalOpen(false);
-  }
+  const openAddModal = () => { setMode("ADD"); resetForm(); setIsModalOpen(true); };
+  const openEditModal = (court) => {
+    setMode("EDIT"); setEditingId(court.id); setSelectedSports(court.sportsList || []);
+    setName(court.name || ""); setCapacity(String(court.capacity ?? ""));
+    setPricePerHour(String(court.pricePerHour ?? "")); setIsModalOpen(true);
+  };
+  const closeModal = () => setIsModalOpen(false);
 
   async function handleRemove(id) {
-    const ok = window.confirm("Are you sure you want to remove this court?");
-    if (!ok) return;
-
+    if (!window.confirm("Are you sure you want to remove this court?")) return;
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/api/admin/courts/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
-
-      if (res.ok) {
-        setCourts((prev) => prev.filter((c) => c.id !== id));
-        return;
-      }
-
-      const data = await res.json().catch(() => ({}));
-      alert(data.message || "Failed to delete court");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to connect to server");
-    }
-  }
-
-  function validateForm() {
-    if (selectedSports.length === 0) return "Select at least one sport";
-    if (!name.trim()) return "Court name is required";
-
-    const capNum = Number(capacity);
-    if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
-
-    const priceNum = Number(pricePerHour);
-    if (!Number.isFinite(priceNum) || priceNum <= 0) return "Price per hour must be a positive number";
-
-    return null;
+      if (res.ok) fetchCourts();
+      else alert("Failed to delete court");
+    } catch (err) { console.error(err); }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-
-    const err = validateForm();
-    if (err) {
-      alert(err);
-      return;
-    }
-
-    const capNum = Number(capacity);
-    const priceNum = Number(pricePerHour);
-
+    if (selectedSports.length === 0) return alert("Select at least one sport");
+    const sportIds = selectedSports.map(s => rawSports.find(r => String(r.SportName).toUpperCase() === s)?.SportID).filter(Boolean);
+    const body = { name: name.trim(), capacity: Number(capacity), pricePerHour: Number(pricePerHour), sportIds };
     const token = localStorage.getItem("token");
-
-    // Map selected sport names back to IDs
-    const sportIds = selectedSports.map(sName => {
-      const found = rawSports.find(r => String(r.SportName || "").toUpperCase() === sName);
-      return found ? found.SportID : null;
-    }).filter(Boolean);
-
-    if (sportIds.length === 0) {
-      alert("Selected sports are not configured in the database yet.");
-      return;
-    }
-
-    if (mode === "ADD") {
-      try {
-        const res = await fetch(`${API_BASE}/api/admin/courts`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: name.trim(),
-            capacity: capNum,
-            pricePerHour: priceNum,
-            sportIds
-          })
-        });
-
-        if (res.ok) {
-          closeModal();
-          resetForm();
-          await fetchCourts();
-          return;
-        }
-
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.message || "Failed to create court");
-      } catch (error) {
-        console.error("Court creation failed", error);
-        alert("Failed to create court");
-      }
-      return;
-    }
-
-    if (mode === "EDIT") {
-      try {
-        const res = await fetch(`${API_BASE}/api/admin/courts/${editingId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: name.trim(),
-            capacity: capNum,
-            pricePerHour: priceNum,
-            sportIds
-          })
-        });
-
-        if (res.ok) {
-          closeModal();
-          resetForm();
-          await fetchCourts();
-          return;
-        }
-
-        const errorData = await res.json().catch(() => ({}));
-        alert(errorData.message || "Failed to update court");
-      } catch (error) {
-        console.error("Court update failed", error);
-        alert("Failed to update court");
-      }
-    }
+    const url = mode === "ADD" ? `${API_BASE}/api/admin/courts` : `${API_BASE}/api/admin/courts/${editingId}`;
+    const method = mode === "ADD" ? "POST" : "PUT";
+    try {
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+      if (res.ok) { closeModal(); fetchCourts(); }
+      else alert("Failed to save court");
+    } catch (err) { console.error(err); }
   }
 
   return (
-    <Box sx={{ width: '100%', minHeight: '100vh', bgcolor: '#f8fafc', m: 0, p: 4 }}>
-      <Box sx={{ bgcolor: 'transparent', borderRadius: 0, boxShadow: 'none' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', mb: 1 }}>Courts Management</Typography>
-            <Typography variant="body2" color="textSecondary">
-              Manage all courts, pricing, and availability
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <button className="courts-btn-add" type="button" onClick={openAddModal}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="16" />
-                <line x1="8" y1="12" x2="16" y2="12" />
-              </svg>
-              Add Court
-            </button>
-          </Box>
-        </Box>
-
-        <div className="courts-toolbar">
-          <div className="courts-search-wrapper">
-            <svg className="courts-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              className="courts-search"
-              placeholder="Search by ID, name, sport..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
+    <div className="admin-content-inner">
+      <div className="flex-between mb-2">
+        <div>
+          <h2 className="page-title">Courts Management</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Detailed inventory of all available playing fields</p>
         </div>
+        <button className="btn btn-primary" onClick={openAddModal}>
+          <span>+ Add Court</span>
+        </button>
+      </div>
 
-        {loadingCourts ? (
-          <div className="courts-empty-state">
-            <p className="courts-empty-text">Loading courts...</p>
-          </div>
-        ) : (
-          <div style={{ marginTop: '20px' }}>
-            <CourtTable rows={filteredCourts} onEdit={openEditModal} onRemove={handleRemove} />
-          </div>
-        )}
-      </Box>
+      <div className="arena-card mb-2" style={{ padding: "var(--space-1)" }}>
+        <input 
+          className="form-input" 
+          placeholder="Search by name, sport, or ID..." 
+          value={search} 
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: "400px" }}
+        />
+      </div>
+
+      {loadingCourts ? (
+        <div className="arena-card" style={{ textAlign: "center", padding: "var(--space-4)" }}>Loading...</div>
+      ) : (
+        <div className="arena-table-container">
+          <table className="arena-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Court Name</th>
+                <th>Sports</th>
+                <th>Capacity</th>
+                <th>Price / Hr</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCourts.map(c => (
+                <tr key={c.id}>
+                  <td style={{ fontWeight: 600, color: "var(--text-muted)" }}>{c.id}</td>
+                  <td style={{ fontWeight: 700 }}>{c.name}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {c.sportsList.map(s => <span key={s} className="status-pill success" style={{ fontSize: "0.7rem" }}>{s}</span>)}
+                    </div>
+                  </td>
+                  <td>{c.capacity} Players</td>
+                  <td style={{ fontWeight: 600, color: "var(--primary-dark)" }}>{formatLKR(c.pricePerHour)}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                      <button className="btn btn-secondary" style={{ padding: "6px 12px" }} onClick={() => openEditModal(c)}>Edit</button>
+                      <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => handleRemove(c.id)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {isModalOpen && (
-        <div className="courts-modal-backdrop" onMouseDown={closeModal}>
-          <div className="courts-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="courts-modal-header">
-              <h3 className="courts-modal-title">{mode === "ADD" ? "Add New Court" : "Edit Court"}</h3>
-              <button className="courts-modal-close" type="button" onClick={closeModal}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <form className="courts-form" onSubmit={handleSubmit}>
-              <div className="courts-grid">
-
-                <div className="courts-field courts-full">
-                  <label>Sports</label>
-                  <div className="courts-checkbox-group">
-                    {sports.length === 0 ? (
-                      <div className="courts-error-text">No sports available</div>
-                    ) : (
-                      sports.map((s) => (
-                        <label key={s} className="courts-checkbox-label">
-                          <input
-                            type="checkbox"
-                            value={s}
-                            checked={selectedSports.includes(s)}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setSelectedSports(prev => {
-                                if (checked) return [...prev, s];
-                                return prev.filter(x => x !== s);
-                              });
-                            }}
-                            disabled={loadingSports}
-                          />
-                          {s}
-                        </label>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-
-                <div className="courts-field courts-full">
-                  <label>Court Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Cricket - A"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-
-                <div className="courts-field">
-                  <label>Capacity</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 22"
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value)}
-                  />
-                </div>
-
-                <div className="courts-field">
-                  <label>Price per Hour (LKR)</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 2500"
-                    value={pricePerHour}
-                    onChange={(e) => setPricePerHour(e.target.value)}
-                  />
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
+          <div className="arena-card" style={{ width: "100%", maxWidth: "500px", boxShadow: "var(--shadow-lg)" }}>
+            <h3 className="mb-2">{mode === "ADD" ? "Create New Court" : "Update Court Details"}</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Court Name</label>
+                <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Cricket Arena A" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Select Sports</label>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", padding: "var(--space-1)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)" }}>
+                  {sports.map(s => (
+                    <label key={s} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", cursor: "pointer", padding: "4px 8px", background: selectedSports.includes(s) ? "var(--primary-light)" : "transparent", borderRadius: "10px", border: "1px solid", borderColor: selectedSports.includes(s) ? "var(--primary)" : "transparent" }}>
+                      <input type="checkbox" checked={selectedSports.includes(s)} onChange={e => e.target.checked ? setSelectedSports([...selectedSports, s]) : setSelectedSports(selectedSports.filter(x => x !== s))} />
+                      {s}
+                    </label>
+                  ))}
                 </div>
               </div>
-
-              <div className="courts-form-actions">
-                <button className="courts-btn-secondary" type="button" onClick={closeModal}>
-                  Cancel
-                </button>
-
-                <button className="courts-btn-primary" type="submit" disabled={sports.length === 0}>
-                  {mode === "ADD" ? "Add Court" : "Save Changes"}
-                </button>
-              </div>
-
-              {sports.length === 0 && (
-                <div style={{ marginTop: 10, fontWeight: 700, opacity: 0.75 }}>
-                  No sports in database. Add sports from Admin Home → View All Sports.
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-group">
+                  <label className="form-label">Capacity</label>
+                  <input type="number" className="form-input" value={capacity} onChange={e => setCapacity(e.target.value)} required />
                 </div>
-              )}
+                <div className="form-group">
+                  <label className="form-label">Price / Hr</label>
+                  <input type="number" className="form-input" value={pricePerHour} onChange={e => setPricePerHour(e.target.value)} required />
+                </div>
+              </div>
+              <div className="flex-between mt-2" style={{ justifyContent: "flex-end" }}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
+              </div>
             </form>
           </div>
         </div>
       )}
-    </Box>
-  );
-}
-
-function CourtTable({ rows, onEdit, onRemove }) {
-  if (rows.length === 0) {
-    return (
-      <div className="courts-empty-state">
-        <svg className="courts-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <p className="courts-empty-text">No courts to show</p>
-      </div>
-    );
-  }
-
-  return (
-    <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2 }}>
-      <Table sx={{ minWidth: 650 }}>
-        <TableHead sx={{ backgroundColor: '#f8f9fa' }}>
-          <TableRow>
-            <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>NAME</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>SPORTS</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>CAPACITY</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>PRICE / HOUR</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>ACTIONS</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows.map((c) => (
-            <TableRow key={c.id} hover>
-              <TableCell>
-                <span className="courts-id">{c.id}</span>
-              </TableCell>
-              <TableCell>
-                <span className="courts-name">{c.name}</span>
-              </TableCell>
-              <TableCell>
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {c.sportsList && c.sportsList.length > 0 ? (
-                    c.sportsList.map(sport => (
-                      <Chip key={sport} size="small" label={sport} sx={{ backgroundColor: '#e0e0e0', color: '#424242', fontWeight: 600, fontSize: '0.75rem' }} />
-                    ))
-                  ) : (
-                    <span style={{ color: '#999', fontStyle: 'italic', fontSize: '0.85rem' }}>None</span>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="courts-capacity">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '16px', height: '16px', marginRight: '4px', verticalAlign: 'middle' }}>
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                  {c.capacity}
-                </div>
-              </TableCell>
-              <TableCell>
-                <span className="courts-price">{formatLKR(c.pricePerHour)}</span>
-              </TableCell>
-              <TableCell>
-                <div className="courts-actions" style={{ display: 'flex', gap: '8px' }}>
-                  <button className="courts-btn-edit" type="button" onClick={() => onEdit(c)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                    Edit
-                  </button>
-                  <button className="courts-btn-remove" type="button" onClick={() => onRemove(c.id)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    Remove
-                  </button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+    </div>
   );
 }

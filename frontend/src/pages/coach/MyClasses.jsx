@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import "../../styles/MyClasses.css";
-import "../../styles/CoachDetails.css";
 import CancelClassModal from "../../components/CancelClassModal";
 
 function formatDays(days) {
@@ -69,32 +67,43 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
   };
 
   return (
-    <div className="cd-backdrop" onClick={onClose}>
-      <div className="cd-modal" onClick={e => e.stopPropagation()}>
-        <div className="cd-head">
-          <h3 className="cd-title">Enrolled: {className}</h3>
-          <button className="cd-close" onClick={onClose}>×</button>
-        </div>
-        <div className="cd-body">
+    <div className="detail-modal-backdrop" onClick={onClose} style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+    }}>
+      <div className="arena-card" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '500px', position: 'relative' }}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)'
+        }}>×</button>
+
+        <h3 className="mb-1" style={{ fontSize: '1.25rem' }}>Enrolled: {className}</h3>
+        <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
+
+        <div className="arena-list">
           {loading ? (
-            <div className="cd-loader-wrap">Loading students...</div>
+            <div style={{ textAlign: 'center', padding: '20px' }}>Loading students...</div>
           ) : error ? (
-            <div className="cd-error">{error}</div>
+            <div style={{ color: 'var(--primary)', padding: '20px', textAlign: 'center' }}>{error}</div>
           ) : students.length === 0 ? (
-            <div className="cd-empty">No students currently enrolled.</div>
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No students currently enrolled.</div>
           ) : (
-            <div className="cd-list">
-              {students.map(s => (
-                <div key={s.id} className="cd-item">
-                  <div className="cd-info">
-                    <span className="cd-name">{s.FirstName} {s.LastName}</span>
-                    <span className="cd-subtext">{s.Email} • {s.PhoneNumber}</span>
-                    <span className="cd-subtext">Enrolled: {new Date(s.EnrolledAt).toLocaleDateString()}</span>
+            <div className="arena-scroll-area">
+              <div className="arena-list">
+                {students.map(s => (
+                  <div key={s.id} className="arena-list-item">
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 600 }}>{s.FirstName} {s.LastName}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.Email} • {s.PhoneNumber}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Enrolled: {new Date(s.EnrolledAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
+        </div>
+
+        <div className="mt-2" style={{ textAlign: 'right' }}>
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
@@ -188,22 +197,20 @@ export default function MyClasses() {
   }
 
   return (
-    <div className="mc-page">
-      <div className="mc-header">
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
         <div>
-          <h2 className="mc-title">My Classes</h2>
-          <p className="mc-sub">
-             Cancelled sessions will reflect in the UI.
-          </p>
+          <h1 className="page-title">My Classes</h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Monitor student participation and manage your teaching schedule.</p>
         </div>
 
-        <button type="button" className="mc-cancel-btn" onClick={openCancel}>
+        <button type="button" className="btn btn-danger" onClick={openCancel}>
           Cancel Class Session
         </button>
       </div>
 
-      <div className="mc-table-wrap">
-        <table className="mc-table">
+      <div className="arena-table-container">
+        <table className="arena-table">
           <thead>
             <tr>
               <th className="mc-col-name">Name</th>
@@ -219,65 +226,57 @@ export default function MyClasses() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="7" className="mc-empty">
+                <td colSpan="7" style={{ textAlign: 'center', padding: '3rem' }}>
                   Loading classes...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan="7" className="mc-empty" style={{ color: "#ff4d4d" }}>
+                <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: "var(--primary)" }}>
                   {error}
                 </td>
               </tr>
             ) : myClasses.length === 0 ? (
               <tr>
-                <td colSpan="7" className="mc-empty">
+                <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: "var(--text-muted)" }}>
                   No classes assigned to you.
                 </td>
               </tr>
             ) : (
               myClasses.map((c) => (
                 <tr key={c.id}>
-                  <td className="mc-col-name">{coachName}</td>
+                  <td>{coachName}</td>
 
-                  <td className="mc-col-class">
-                    <div className="mc-class-main">{c.className}</div>
-                    <div className="mc-class-sub">{c.sport}</div>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{c.className}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.sport}</div>
                   </td>
 
-                  <td className="mc-col-dates">
+                  <td>
                     {c.scheduleType === "ONE_TIME" ? c.oneTimeDate || "-" : formatDays(c.days)}
                   </td>
 
-                  <td className="mc-col-schedule">
+                  <td>
                     {c.startTime} - {c.endTime}
                   </td>
 
-                  <td className="mc-col-court">
+                  <td>
                     {c.courtName || "-"}
                   </td>
 
-                  <td className="mc-col-fee">{formatLKR(c.fee)}</td>
+                  <td>{formatLKR(c.fee)}</td>
 
-                  <td className="mc-col-enrolled">
+                  <td>
                     {Number.isFinite(c.enrolledCount) && Number.isFinite(c.capacity) ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span>{c.enrolledCount}/{c.capacity}</span>
+                      <div className="flex-start" style={{ gap: '12px' }}>
+                        <span style={{ fontWeight: 600 }}>{c.enrolledCount}/{c.capacity}</span>
                         <button 
                           type="button" 
-                          className="mc-view-link"
+                          className="btn btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem' }}
                           onClick={() => setSelectedClassForStudents({ id: c.id, name: c.className })}
-                          style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            color: '#6366f1', 
-                            fontWeight: '600', 
-                            textDecoration: 'underline', 
-                            cursor: 'pointer',
-                            fontSize: '0.85rem'
-                          }}
                         >
-                          View Enrollments
+                          View List
                         </button>
                       </div>
                     ) : "-"}

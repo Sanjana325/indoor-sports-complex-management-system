@@ -3,7 +3,6 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import "../../styles/AdminCalendar.css"; // Reuse the same styles
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -113,53 +112,48 @@ export default function StaffHome() {
   }, [events, courtFilter]);
 
   return (
-    <div className="calendar-page">
-      <div className="calendar-header">
-        <div className="header-top">
-          <div>
-            <h1 className="calendar-title">ArenaPro Schedule</h1>
-            <p className="calendar-subtitle">View and monitor all complex activities in real-time.</p>
-          </div>
-          
-          <div className="header-filters">
-            <label className="filter-label">Court Filter:</label>
-            <select 
-              className="court-select"
-              value={courtFilter} 
-              onChange={(e) => setCourtFilter(e.target.value)}
-            >
-              <option value="ALL">All Courts</option>
-              {courtsData.map(c => (
-                <option key={c.CourtID} value={c.CourtName}>{c.CourtName}</option>
-              ))}
-            </select>
-          </div>
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
+        <div>
+          <h1 className="page-title">Arena Schedule</h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>View and monitor all complex activities in real-time.</p>
         </div>
         
-        {sports.length > 0 && (
-          <div className="sport-legend-top">
-            {sports.map(s => (
-              <div key={s.SportID} className="legend-item-top">
-                <span className="legend-blob-top" style={{ backgroundColor: s.ColorCode || "#1976d2" }}></span>
-                <span className="legend-name-top">{s.SportName}</span>
-              </div>
+        <div className="flex-start" style={{ gap: '12px' }}>
+          <label className="form-label" style={{ marginBottom: 0 }}>Court:</label>
+          <select 
+            className="form-input"
+            style={{ width: '180px' }}
+            value={courtFilter} 
+            onChange={(e) => setCourtFilter(e.target.value)}
+          >
+            <option value="ALL">All Courts</option>
+            {courtsData.map(c => (
+              <option key={c.CourtID} value={c.CourtName}>{c.CourtName}</option>
             ))}
-            <div className="legend-item-top">
-              <span className="legend-blob-top" style={{ backgroundColor: "#6366f1" }}></span>
-              <span className="legend-name-top">Bookings</span>
-            </div>
-          </div>
-        )}
+          </select>
+        </div>
       </div>
+        
+            <div className="arena-legend">
+              {sports.map(s => (
+                <div key={s.SportID} className="arena-legend-item">
+                  <span className="arena-legend-dot" style={{ backgroundColor: s.ColorCode || "#1976d2" }}></span>
+                  <span className="arena-legend-name">{s.SportName}</span>
+                </div>
+              ))}
+              <div className="arena-legend-item">
+                <span className="arena-legend-dot" style={{ backgroundColor: "#6366f1" }}></span>
+                <span className="arena-legend-name">Bookings</span>
+              </div>
+            </div>
 
-      <div className="calendar-container">
+      <div className="arena-card" style={{ padding: '20px' }}>
         {loading && (
-          <div className="calendar-overlay">
-            <div className="loader">Loading...</div>
-          </div>
+          <div style={{ textAlign: 'center', padding: '20px' }}>Loading...</div>
         )}
 
-        {error && <div className="calendar-error">{error}</div>}
+        {error && <div style={{ color: 'var(--primary)', marginBottom: '10px' }}>{error}</div>}
 
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -188,95 +182,95 @@ export default function StaffHome() {
       </div>
 
       {isDetailModalOpen && selectedEvent && (
-        <div className="detail-modal-backdrop" onClick={() => setIsDetailModalOpen(false)}>
-            <div className="detail-modal-card" onClick={e => e.stopPropagation()}>
-                <button className="detail-modal-close" onClick={() => setIsDetailModalOpen(false)}>×</button>
-                
-                <h2 className="detail-modal-title">
-                    {selectedEvent.type === 'BOOKING' ? 'Booking Details' : 'Session Details'}
-                </h2>
-                
-                <div className="detail-modal-divider"></div>
-                
-                <div className="detail-modal-body">
-                    {selectedEvent.type === 'BOOKING' ? (
-                        <>
-                            <div className="detail-row">
-                                <span className="detail-label">Customer:</span>
-                                <span className="detail-value">
-                                    <span className="detail-icon">👤</span> 
-                                    [{selectedEvent.court}] {selectedEvent.playerName}
-                                </span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Phone:</span>
-                                <span className="detail-value">{selectedEvent.phoneNumber || 'N/A'}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Sport:</span>
-                                <span className="detail-value">{selectedEvent.sportName}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Court:</span>
-                                <span className="detail-value">{selectedEvent.court}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Time:</span>
-                                <span className="detail-value">{selectedEvent.time}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Price:</span>
-                                <span className="detail-value">LKR {selectedEvent.price.toFixed(2)}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Status:</span>
-                                <span className={`status-pill status-${selectedEvent.status.toLowerCase()}`}>
-                                    {selectedEvent.status}
-                                </span>
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="detail-row">
-                                <span className="detail-label">Class:</span>
-                                <span className="detail-value">{selectedEvent.title}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Coach:</span>
-                                <span className="detail-value">{selectedEvent.coach}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Phone:</span>
-                                <span className="detail-value">{selectedEvent.coachPhone}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Sport:</span>
-                                <span className="detail-value">{selectedEvent.sport}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Court:</span>
-                                <span className="detail-value">{selectedEvent.court}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Time:</span>
-                                <span className="detail-value">{selectedEvent.time}</span>
-                            </div>
-                            <div className="detail-row">
-                                <span className="detail-label">Status:</span>
-                                <span className={`status-pill status-${selectedEvent.status.toLowerCase()}`}>
-                                    {selectedEvent.status}
-                                </span>
-                            </div>
-                        </>
-                    )}
-                </div>
-                
-                <div className="detail-modal-footer">
-                    {/* For Staff, we only provide a link to Payments for verification if needed */}
-                    <button className="detail-btn-primary" onClick={() => window.location.href = '/staff/payments'}>View Payments</button>
-                    <button className="detail-btn-secondary" onClick={() => setIsDetailModalOpen(false)}>Close</button>
-                </div>
+        <div className="detail-modal-backdrop" onClick={() => setIsDetailModalOpen(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="arena-card" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '500px', position: 'relative' }}>
+            <button onClick={() => setIsDetailModalOpen(false)} style={{
+              position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)'
+            }}>×</button>
+
+            <h2 className="mb-1" style={{ fontSize: '1.25rem' }}>
+              {selectedEvent.type === 'BOOKING' ? 'Booking Details' : 'Session Details'}
+            </h2>
+
+            <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
+
+            <div className="arena-list">
+              {selectedEvent.type === 'BOOKING' ? (
+                <>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Customer:</span>
+                    <span style={{ fontWeight: 600 }}>[{selectedEvent.court}] {selectedEvent.playerName}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Phone:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.phoneNumber || 'N/A'}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Sport:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.sportName}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Court:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.court}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Time:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.time}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Price:</span>
+                    <span style={{ fontWeight: 600 }}>LKR {selectedEvent.price.toFixed(2)}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Status:</span>
+                    <span className={`status-pill ${selectedEvent.status === 'PAID' || selectedEvent.status === 'CONFIRMED' ? 'success' : 'warning'}`}>
+                      {selectedEvent.status}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Class:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.title}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Coach:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.coach}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Phone:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.coachPhone}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Sport:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.sport}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Court:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.court}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Time:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.time}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Status:</span>
+                    <span className={`status-pill ${selectedEvent.status === 'CANCELLED' ? 'danger' : 'success'}`}>
+                      {selectedEvent.status}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
+
+            <div className="flex-between mt-2">
+              <button className="btn btn-primary" onClick={() => window.location.href = '/staff/payments'}>View Payments</button>
+              <button className="btn btn-secondary" onClick={() => setIsDetailModalOpen(false)}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

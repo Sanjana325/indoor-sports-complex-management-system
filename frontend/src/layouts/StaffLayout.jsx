@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import "../styles/AdminLayout.css"; // ✅ reuse same layout styles
 
 function getInitials(firstName = "", lastName = "") {
   const a = (firstName || "").trim().charAt(0).toUpperCase();
@@ -8,23 +7,37 @@ function getInitials(firstName = "", lastName = "") {
   return (a + b) || "U";
 }
 
+const STAFF_NAV_ITEMS = [
+  { path: "/staff", label: "Calendar", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+  )},
+  { path: "/staff/attendance", label: "Attendance", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+  )},
+  { path: "/staff/bookings", label: "Bookings", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l4-4-4-4h12a2 2 0 0 1 2 2z"></path><path d="M3 19V5"></path></svg>
+  )},
+  { path: "/staff/payments", label: "Payments", badge: true, icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+  )},
+  { path: "/staff/classes", label: "Classes", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+  )},
+  { path: "/staff/enrollments", label: "Enrollments", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+  )},
+];
+
 export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ User from localStorage (same pattern)
-  const user = useMemo(() => {
-    const firstName = localStorage.getItem("firstName") || "Staff";
-    const lastName = localStorage.getItem("lastName") || "";
-    const role = localStorage.getItem("role") || "STAFF";
-    const email = localStorage.getItem("email") || "staff@sports.com";
-    const phone = localStorage.getItem("phone") || "07XXXXXXXX";
-
-    const qualifications = localStorage.getItem("qualifications") || "";
-    const specialization = localStorage.getItem("specialization") || "";
-
-    return { firstName, lastName, role, email, phone, qualifications, specialization };
-  }, []);
+  const user = useMemo(() => ({
+    firstName: localStorage.getItem("firstName") || "Staff",
+    lastName: localStorage.getItem("lastName") || "",
+    role: localStorage.getItem("role") || "STAFF",
+    email: localStorage.getItem("email") || "staff@sports.com",
+  }), []);
 
   const displayName = `${user.firstName} ${user.lastName}`.trim();
   const initials = getInitials(user.firstName, user.lastName);
@@ -33,6 +46,9 @@ export default function StaffLayout() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const profileRef = useRef(null);
   const notifRef = useRef(null);
+
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  const [recentCancellations, setRecentCancellations] = useState([]);
 
   useEffect(() => {
     function handleOutsideClick(e) {
@@ -44,188 +60,94 @@ export default function StaffLayout() {
   }, []);
 
   useEffect(() => {
-    // Close dropdowns on route change
-    setIsProfileOpen(false);
-    setIsNotifOpen(false);
-  }, [location.pathname]);
-
-  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
-  const [recentCancellations, setRecentCancellations] = useState([]);
-
-  useEffect(() => {
-    const fetchCountsAndFeeds = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const fetchNotifs = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-
-        // Fetch Payments
-        fetch("http://localhost:5000/api/admin/payments/pending-count", {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => { if(data) setPendingPaymentsCount(data.count); })
-        .catch(e => console.error("Failed to fetch pending count", e));
-
-        // Fetch Recent Cancellations
-        fetch("http://localhost:5000/api/staff/classes/recent-cancellations", {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => { if(data) setRecentCancellations(data.cancellations); })
-        .catch(e => console.error("Failed to fetch cancellations", e));
-
+        const pRes = await fetch("http://localhost:5000/api/admin/payments/pending-count", { headers: { Authorization: `Bearer ${token}` } });
+        if (pRes.ok) { const d = await pRes.json(); setPendingPaymentsCount(d.count); }
+        const cRes = await fetch("http://localhost:5000/api/staff/classes/recent-cancellations", { headers: { Authorization: `Bearer ${token}` } });
+        if (cRes.ok) { const d = await cRes.json(); setRecentCancellations(d.cancellations || []); }
       } catch (e) { console.error(e); }
     };
-    fetchCountsAndFeeds();
-    const interval = setInterval(fetchCountsAndFeeds, 30000); // 30 sec poll
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const handleAcknowledge = async (sessionId) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/staff/classes/cancel-alert/${sessionId}/acknowledge`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setRecentCancellations(prev => prev.filter(c => c.id !== sessionId));
-      }
-    } catch (e) { console.error("Error acknowledging notification", e); }
+      const res = await fetch(`http://localhost:5000/api/staff/classes/cancel-alert/${sessionId}/acknowledge`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setRecentCancellations(prev => prev.filter(c => c.id !== sessionId));
+    } catch (e) { console.error(e); }
   };
 
-  function handleLogout() {
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
-    localStorage.removeItem("firstName");
-    localStorage.removeItem("lastName");
-    localStorage.removeItem("phone");
-    localStorage.removeItem("qualifications");
-    localStorage.removeItem("specialization");
-
-    navigate("/");
-  }
+  const logout = () => { localStorage.clear(); navigate("/"); };
 
   return (
     <div className="admin-layout">
-      {/* SIDEBAR */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">ArenaPro</h2>
-
+        <h2 className="sidebar-title">Arena<span>Pro</span></h2>
         <nav className="sidebar-nav">
-          <NavLink to="/staff" end className={({ isActive }) => (isActive ? "active" : "")}>
-            Calendar
-          </NavLink>
-
-          <NavLink to="/staff/attendance" className={({ isActive }) => (isActive ? "active" : "")}>
-            Attendance
-          </NavLink>
-
-          <NavLink to="/staff/bookings" className={({ isActive }) => (isActive ? "active" : "")}>
-            Bookings
-          </NavLink>
-
-          <NavLink to="/staff/payments" className={({ isActive }) => (isActive ? "active" : "")}>
-            <span>Payments</span>
-            {pendingPaymentsCount > 0 && <span className="sidebar-badge">{pendingPaymentsCount}</span>}
-          </NavLink>
+          {STAFF_NAV_ITEMS.map(item => (
+            <NavLink key={item.path} to={item.path} end={item.path === "/staff"}>
+              {item.icon}
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.badge && pendingPaymentsCount > 0 && (
+                <span style={{ background: "var(--primary)", color: "white", fontSize: "0.7rem", padding: "2px 6px", borderRadius: "10px", fontWeight: 700 }}>{pendingPaymentsCount}</span>
+              )}
+            </NavLink>
+          ))}
         </nav>
       </aside>
 
-      {/* MAIN */}
       <main className="admin-main">
-        {/* TOP BAR */}
-        <div className="admin-topbar">
-          <strong>ArenaPro - Staff Dashboard</strong>
-
-          <div style={{display: 'flex', alignItems: 'center'}}>
-            <div className="notification-bell-container" ref={notifRef}>
-              <button 
-                className="bell-trigger" 
-                onClick={() => setIsNotifOpen(p => !p)}
-                title="Recent Cancellations"
-              >
-                🔔
-                {recentCancellations.length > 0 && <span className="bell-badge">{recentCancellations.length}</span>}
+        <header className="admin-topbar">
+          <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>Staff Portal</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+            <div ref={notifRef} style={{ position: "relative" }}>
+              <button onClick={() => setIsNotifOpen(!isNotifOpen)} style={{ background: "var(--bg-body)", border: "none", padding: "8px", borderRadius: "10px", cursor: "pointer", position: "relative" }}>
+                🔔 {recentCancellations.length > 0 && <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", fontSize: "0.65rem", padding: "2px 5px", borderRadius: "50%" }}>{recentCancellations.length}</span>}
               </button>
-
               {isNotifOpen && (
-                <div className="notification-menu">
-                  <div className="notification-menu-head">Recent Cancellations</div>
-                  <div className="notification-list">
-                    {recentCancellations.length === 0 ? (
-                      <div className="notification-item empty">No recent cancellations.</div>
-                    ) : (
-                      recentCancellations.map(c => (
-                        <div key={c.id} className="notification-item">
-                          <button className="notification-dismiss-btn" onClick={() => handleAcknowledge(c.id)} title="Mark as Read">&times;</button>
-                          <span className="notification-title">[CANCELLED] {c.className}</span>
-                          <span className="notification-desc">Coach: {c.coachFirst} {c.coachLast} • {c.startTime}-{c.endTime}</span>
-                          <span className="notification-date">{c.date}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div style={{ padding: '8px 0', textAlign: 'center', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                    <Link to="/staff" onClick={() => setIsNotifOpen(false)} style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                      Go to Calendar &rarr;
-                    </Link>
-                  </div>
+                <div style={{ position: "absolute", top: "100%", right: 0, width: "300px", background: "white", boxShadow: "var(--shadow-lg)", borderRadius: "12px", marginTop: "10px", padding: "12px", border: "1px solid var(--border-light)" }}>
+                  <div style={{ fontWeight: 700, marginBottom: "8px", fontSize: "0.9rem" }}>Recent Alerts</div>
+                  {recentCancellations.length === 0 ? <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>No new alerts</p> : (
+                    recentCancellations.map(c => (
+                      <div key={c.id} style={{ fontSize: "0.75rem", padding: "8px", background: "#fef2f2", borderRadius: "8px", marginBottom: "6px", position: "relative" }}>
+                        <button onClick={() => handleAcknowledge(c.id)} style={{ position: "absolute", right: 4, top: 4, border: "none", background: "none", cursor: "pointer", fontSize: "1rem" }}>×</button>
+                        <div style={{ fontWeight: 700, color: "#991b1b" }}>CANCELLED: {c.className}</div>
+                        <div>{c.date} • {c.startTime}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="topbar-right" ref={profileRef}>
-              <button
-              type="button"
-              className="profile-trigger"
-              onClick={() => setIsProfileOpen((p) => !p)}
-              aria-haspopup="menu"
-              aria-expanded={isProfileOpen}
-            >
-              <span className="profile-avatar">{initials}</span>
-              <span className="profile-name-mini">{displayName || "User"}</span>
-              <span className="profile-caret">▾</span>
-            </button>
-
-            {isProfileOpen && (
-              <div className="profile-menu" role="menu">
-                <div className="profile-menu-head">
-                  <div className="profile-menu-left">
-                    <div className="profile-menu-avatar">{initials}</div>
-                    <div className="profile-menu-meta">
-                      <div className="profile-menu-name">{displayName || "User"}</div>
-                      <div className="profile-menu-email">{user.email}</div>
-                    </div>
-                  </div>
-                  <div className="profile-role-pill">{user.role}</div>
+            <div ref={profileRef} style={{ position: "relative" }}>
+              <button onClick={() => setIsProfileOpen(!isProfileOpen)} style={{ display: "flex", alignItems: "center", gap: "10px", background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "var(--primary-glow)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{initials}</div>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{displayName}</div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{user.role}</div>
                 </div>
-
-                <div className="profile-menu-list">
-                  <Link className="profile-menu-item" to="/staff/profile" role="menuitem">
-                    My Profile
-                  </Link>
-
-                  <Link className="profile-menu-item" to="/staff/settings" role="menuitem">
-                    Settings
-                  </Link>
+              </button>
+              {isProfileOpen && (
+                <div style={{ position: "absolute", top: "100%", right: 0, width: "200px", background: "white", boxShadow: "var(--shadow-lg)", borderRadius: "12px", marginTop: "10px", padding: "8px", border: "1px solid var(--border-light)" }}>
+                  <button onClick={logout} style={{ width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "0.85rem", color: "#ef4444", fontWeight: 600 }}>Logout</button>
                 </div>
-
-                <div className="profile-menu-footer">
-                  <button type="button" className="profile-logout-btn" onClick={handleLogout}>
-                    Logout
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* PAGE CONTENT */}
-        <div className="admin-content">
-          <Outlet />
-        </div>
+        <section className="admin-content">
+          <div className="admin-content-inner">
+            <Outlet />
+          </div>
+        </section>
       </main>
     </div>
   );

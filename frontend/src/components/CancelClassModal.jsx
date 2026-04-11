@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import "../styles/CancelClassModal.css";
 
 function dayShortFromISO(iso) {
   const d = new Date(iso + "T00:00:00");
@@ -91,24 +90,26 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
   }
 
   return (
-    <div className="ccm-backdrop" onMouseDown={onClose}>
-      <div className="ccm-modal" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="ccm-head">
-          <h3 className="ccm-title">Cancel Class Session</h3>
-          <button type="button" className="ccm-x" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
+    <div className="detail-modal-backdrop" onMouseDown={onClose} style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+    }}>
+      <div className="arena-card" onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
+        <button type="button" onClick={onClose} style={{
+          position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)'
+        }}>×</button>
 
-        <form className="ccm-form" onSubmit={handleSubmit}>
-          <div className="ccm-field">
-            <label>Date</label>
-            <input type="date" value={dateISO} onChange={(e) => setDateISO(e.target.value)} />
+        <h3 className="mb-2" style={{ fontSize: '1.25rem' }}>Cancel Session</h3>
+        <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Date</label>
+            <input className="form-input" type="date" value={dateISO} onChange={(e) => setDateISO(e.target.value)} />
           </div>
 
-          <div className="ccm-field">
-            <label>Class (for selected date)</label>
-            <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} disabled={loadingSessions}>
+          <div className="form-group">
+            <label className="form-label">Select Class Session</label>
+            <select className="form-input" value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} disabled={loadingSessions}>
               {loadingSessions ? (
                 <option>Loading sessions...</option>
               ) : (
@@ -123,16 +124,16 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
               )}
             </select>
             {!loadingSessions && sessionsForDate.length === 0 && (
-              <div className="ccm-hint">No classes found for this date.</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px' }}>No classes found for this date.</div>
             )}
           </div>
 
-          <div className="ccm-actions">
-            <button type="button" className="ccm-btn" onClick={onClose}>
-              Cancel
+          <div className="flex-between mt-2">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Back
             </button>
-            <button type="submit" className="ccm-btn">
-              Submit
+            <button type="submit" className="btn btn-primary">
+              Confirm Cancellation
             </button>
           </div>
         </form>

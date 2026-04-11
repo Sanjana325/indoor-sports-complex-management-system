@@ -1,6 +1,4 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import '../styles/UserManagement.css'; // We'll add styles here
 
 export default function MultiSelectWithAdd({
     label,

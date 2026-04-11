@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import "../../styles/CancelledSessions.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -41,28 +40,26 @@ export default function CancelledSessions() {
   };
 
   return (
-    <div className="cs-page">
-      <div className="cs-header">
-        <h1 className="cs-title">Cancelled Sessions</h1>
-        <p className="cs-subtitle">View and track all class sessions that have been cancelled.</p>
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
+        <div>
+          <h1 className="page-title">Cancelled Sessions</h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>View and track all class sessions that have been cancelled.</p>
+        </div>
       </div>
 
-      <div className="cs-card">
+      <div className="arena-table-container">
         {loading ? (
-          <div className="cs-loader-container">
-            <div className="cs-loader">Loading...</div>
-          </div>
+          <div style={{ textAlign: "center", padding: "3rem" }}>Loading...</div>
         ) : error ? (
-          <div className="cs-error-msg">{error}</div>
+          <div style={{ color: "var(--primary)", textAlign: "center", padding: "3rem" }}>{error}</div>
         ) : sessions.length === 0 ? (
-          <div className="cs-empty">
-            <div className="cs-empty-icon">📂</div>
-            <p>No cancelled sessions found.</p>
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+            No cancelled sessions found.
           </div>
         ) : (
-          <div className="cs-table-wrapper">
-            <table className="cs-table">
-              <thead>
+          <table className="arena-table">
+            <thead>
                 <tr>
                   <th>Session ID</th>
                   <th>Class Title</th>
@@ -76,20 +73,19 @@ export default function CancelledSessions() {
                 {sessions.map((s) => (
                   <tr key={s.id}>
                     <td>
-                      <span className="cs-id-badge">#{String(s.id).padStart(5, '0')}</span>
+                      <span className="status-pill info">CS-{String(s.id).padStart(5, '0')}</span>
                     </td>
-                    <td className="cs-bold">{s.className}</td>
+                    <td style={{ fontWeight: 600 }}>{s.className}</td>
                     <td>{s.sport}</td>
                     <td>{formatDate(s.date)}</td>
                     <td>{s.startTime} - {s.endTime}</td>
-                    <td className="cs-center">
-                      <span className="cs-status-pill">CANCELLED</span>
+                    <td>
+                      <span className="status-pill danger">CANCELLED</span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
         )}
       </div>
     </div>

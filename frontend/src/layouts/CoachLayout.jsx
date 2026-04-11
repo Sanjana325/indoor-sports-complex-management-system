@@ -1,6 +1,5 @@
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import "../styles/AdminLayout.css";
 
 function getInitials(firstName = "", lastName = "") {
   const a = (firstName || "").trim().charAt(0).toUpperCase();
@@ -8,131 +7,85 @@ function getInitials(firstName = "", lastName = "") {
   return (a + b) || "U";
 }
 
+const COACH_NAV_ITEMS = [
+  { path: "/coach", label: "Dashboard Home", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+  )},
+  { path: "/coach/my-classes", label: "Assigned Classes", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+  )},
+  { path: "/coach/cancelled-sessions", label: "Cancellation History", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+  )},
+];
+
 export default function CoachLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ User from localStorage
-  const user = useMemo(() => {
-    const firstName = localStorage.getItem("firstName") || "Coach";
-    const lastName = localStorage.getItem("lastName") || "";
-    const role = localStorage.getItem("role") || "COACH";
-    const email = localStorage.getItem("email") || "coach@sports.com";
-    const phone = localStorage.getItem("phone") || "07XXXXXXXX";
-
-    const qualifications = localStorage.getItem("qualifications") || "";
-    const specialization = localStorage.getItem("specialization") || "";
-
-    return { firstName, lastName, role, email, phone, qualifications, specialization };
-  }, []);
+  const user = useMemo(() => ({
+    firstName: localStorage.getItem("firstName") || "Coach",
+    lastName: localStorage.getItem("lastName") || "",
+    role: localStorage.getItem("role") || "COACH",
+    email: localStorage.getItem("email") || "coach@sports.com",
+  }), []);
 
   const displayName = `${user.firstName} ${user.lastName}`.trim();
   const initials = getInitials(user.firstName, user.lastName);
 
-  // Dropdown
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef(null);
 
   useEffect(() => {
     function handleOutsideClick(e) {
-      if (!profileRef.current) return;
-      if (!profileRef.current.contains(e.target)) setIsProfileOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  useEffect(() => {
-    setIsProfileOpen(false);
-  }, [location.pathname]);
-
-  function handleLogout() {
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
-    localStorage.removeItem("firstName");
-    localStorage.removeItem("lastName");
-    localStorage.removeItem("phone");
-    localStorage.removeItem("qualifications");
-    localStorage.removeItem("specialization");
-
-    navigate("/");
-  }
+  const logout = () => { localStorage.clear(); navigate("/"); };
 
   return (
     <div className="admin-layout">
-      {/* SIDEBAR */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">ArenaPro</h2>
-
+        <h2 className="sidebar-title">Arena<span>Pro</span></h2>
         <nav className="sidebar-nav">
-          <NavLink to="/coach" end className={({ isActive }) => (isActive ? "active" : "")}>
-            Home
-          </NavLink>
-
-          <NavLink to="/coach/my-classes" className={({ isActive }) => (isActive ? "active" : "")}>
-            My Classes
-          </NavLink>
-
-          <NavLink to="/coach/cancelled-sessions" className={({ isActive }) => (isActive ? "active" : "")}>
-            Cancelled Sessions
-          </NavLink>
+          {COACH_NAV_ITEMS.map(item => (
+            <NavLink key={item.path} to={item.path} end={item.path === "/coach"}>
+              {item.icon}
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
         </nav>
       </aside>
 
-      {/* MAIN */}
       <main className="admin-main">
-        <div className="admin-topbar">
-          <strong>ArenaPro - Coach Dashboard</strong>
-
-          <div className="topbar-right" ref={profileRef}>
-            <button
-              type="button"
-              className="profile-trigger"
-              onClick={() => setIsProfileOpen((p) => !p)}
-              aria-haspopup="menu"
-              aria-expanded={isProfileOpen}
-            >
-              <span className="profile-avatar">{initials}</span>
-              <span className="profile-name-mini">{displayName || "User"}</span>
-              <span className="profile-caret">▾</span>
-            </button>
-
-            {isProfileOpen && (
-              <div className="profile-menu" role="menu">
-                <div className="profile-menu-head">
-                  <div className="profile-menu-left">
-                    <div className="profile-menu-avatar">{initials}</div>
-                    <div className="profile-menu-meta">
-                      <div className="profile-menu-name">{displayName || "User"}</div>
-                      <div className="profile-menu-email">{user.email}</div>
-                    </div>
-                  </div>
-                  <div className="profile-role-pill">{user.role}</div>
+        <header className="admin-topbar">
+          <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>Coach Portal</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+            <div ref={profileRef} style={{ position: "relative" }}>
+              <button onClick={() => setIsProfileOpen(!isProfileOpen)} style={{ display: "flex", alignItems: "center", gap: "10px", background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "var(--primary-glow)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{initials}</div>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{displayName}</div>
+                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Faculty Coach</div>
                 </div>
-
-                <div className="profile-menu-list">
-                  <Link className="profile-menu-item" to="/coach/profile" role="menuitem">
-                    My Profile
-                  </Link>
-
-                  <Link className="profile-menu-item" to="/coach/settings" role="menuitem">
-                    Settings
-                  </Link>
+              </button>
+              {isProfileOpen && (
+                <div style={{ position: "absolute", top: "100%", right: 0, width: "200px", background: "white", boxShadow: "var(--shadow-lg)", borderRadius: "12px", marginTop: "10px", padding: "8px", border: "1px solid var(--border-light)" }}>
+                  <button onClick={logout} style={{ width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "0.85rem", color: "#ef4444", fontWeight: 600 }}>Logout</button>
                 </div>
-
-                <div className="profile-menu-footer">
-                  <button type="button" className="profile-logout-btn" onClick={handleLogout}>
-                    Logout
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        </header>
 
-        <div className="admin-content">
-          <Outlet />
-        </div>
+        <section className="admin-content">
+          <div className="admin-content-inner">
+            <Outlet />
+          </div>
+        </section>
       </main>
     </div>
   );

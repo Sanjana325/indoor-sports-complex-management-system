@@ -1,331 +1,198 @@
 import { useEffect, useMemo, useState } from "react";
-import "../../styles/Attendance.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 export default function Attendance() {
-  /* ─── state ─── */
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [nameSearch, setNameSearch] = useState("");
-
   const [session, setSession] = useState(null);
   const [students, setStudents] = useState([]);
-  const [marks, setMarks] = useState({}); // enrollmentId → "PRESENT" | "ABSENT"
+  const [marks, setMarks] = useState({});
   const [noSession, setNoSession] = useState(false);
-
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  /* ─── helpers ─── */
-  function getBasePath() {
-    const role = localStorage.getItem("role");
-    return role === "STAFF" ? "/api/staff" : "/api/admin";
-  }
+  const getBasePath = () => localStorage.getItem("role") === "STAFF" ? "/api/staff" : "/api/admin";
+  const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
-  function getHeaders() {
-    const token = localStorage.getItem("token");
-    return { Authorization: `Bearer ${token}` };
-  }
-
-  /* ─── Fetch classes on mount ─── */
   useEffect(() => {
     (async () => {
       try {
         setLoadingClasses(true);
-        const res = await fetch(`${API_BASE}${getBasePath()}/attendance/classes`, {
-          headers: getHeaders(),
-        });
+        const res = await fetch(`${API_BASE}${getBasePath()}/attendance/classes`, { headers: getHeaders() });
         const data = await res.json();
-        if (res.ok) {
-          setClasses(data.classes || []);
-        } else {
-          console.error(data.message);
-        }
-      } catch (err) {
-        console.error("Failed to fetch classes:", err);
-      } finally {
-        setLoadingClasses(false);
-      }
+        if (res.ok) setClasses(data.classes || []);
+      } catch (err) { console.error(err); }
+      finally { setLoadingClasses(false); }
     })();
   }, []);
 
-  /* ─── Fetch session attendance when class + date change ─── */
   useEffect(() => {
     if (!selectedClassId || !selectedDate) {
-      setSession(null);
-      setStudents([]);
-      setMarks({});
-      setNoSession(false);
-      return;
+      setSession(null); setStudents([]); setMarks({}); setNoSession(false); return;
     }
-
     (async () => {
       try {
-        setLoadingStudents(true);
-        setNoSession(false);
-        setSuccessMsg("");
-
+        setLoadingStudents(true); setNoSession(false); setSuccessMsg("");
         const params = new URLSearchParams({ classId: selectedClassId, sessionDate: selectedDate });
-        const res = await fetch(`${API_BASE}${getBasePath()}/attendance?${params}`, {
-          headers: getHeaders(),
-        });
+        const res = await fetch(`${API_BASE}${getBasePath()}/attendance?${params}`, { headers: getHeaders() });
         const data = await res.json();
-
         if (res.ok) {
           if (!data.session) {
-            setSession(null);
-            setStudents([]);
-            setMarks({});
-            setNoSession(true);
+            setSession(null); setStudents([]); setMarks({}); setNoSession(true);
           } else {
-            setSession(data.session);
-            setStudents(data.students || []);
-            // Pre‑populate marks from existing DB values
+            setSession(data.session); setStudents(data.students || []);
             const existing = {};
             (data.students || []).forEach((s) => {
-              if (s.status === "PRESENT" || s.status === "ABSENT") {
-                existing[s.enrollmentId] = s.status;
-              }
+              if (s.status === "PRESENT" || s.status === "ABSENT") existing[s.enrollmentId] = s.status;
             });
-            setMarks(existing);
-            setNoSession(false);
+            setMarks(existing); setNoSession(false);
           }
-        } else {
-          console.error(data.message);
         }
-      } catch (err) {
-        console.error("Failed to fetch attendance:", err);
-      } finally {
-        setLoadingStudents(false);
-      }
+      } catch (err) { console.error(err); }
+      finally { setLoadingStudents(false); }
     })();
   }, [selectedClassId, selectedDate]);
 
-  /* ─── Derived ─── */
   const canShowStudents = session && students.length > 0;
-
   const filteredStudents = useMemo(() => {
     if (!canShowStudents) return [];
     const q = nameSearch.trim().toLowerCase();
     return students.filter((s) => (q ? s.name.toLowerCase().includes(q) : true));
   }, [students, nameSearch, canShowStudents]);
 
-  function getStatus(enrollmentId) {
-    return marks[enrollmentId] || "NOT_MARKED";
-  }
-
-  function mark(enrollmentId, status) {
+  const mark = (enrollmentId, status) => {
     setMarks((prev) => ({ ...prev, [enrollmentId]: status }));
     setSuccessMsg("");
-  }
+  };
 
-  function clearMarksForThisSession() {
-    if (!canShowStudents) return;
-    const ok = window.confirm("Clear all marks for this session?");
-    if (!ok) return;
-    setMarks({});
-    setSuccessMsg("");
-  }
+  const clearMarksForThisSession = () => {
+    if (!canShowStudents || !window.confirm("Clear all marks for this session?")) return;
+    setMarks({}); setSuccessMsg("");
+  };
 
-  /* ─── Save attendance ─── */
-  async function saveAttendance() {
+  const saveAttendance = async () => {
     if (!session) return;
-
-    // Build marks array — only include entries that have been marked
     const marksArray = Object.entries(marks)
       .filter(([, status]) => status === "PRESENT" || status === "ABSENT")
-      .map(([enrollmentId, status]) => ({
-        enrollmentId: Number(enrollmentId),
-        status,
-      }));
+      .map(([enrollmentId, status]) => ({ enrollmentId: Number(enrollmentId), status }));
 
     if (marksArray.length === 0) {
-      alert("No attendance marks to save. Please mark at least one student.");
-      return;
+      alert("Please mark at least one student."); return;
     }
 
     try {
       setSaving(true);
       const res = await fetch(`${API_BASE}${getBasePath()}/attendance/mark`, {
         method: "POST",
-        headers: {
-          ...getHeaders(),
-          "Content-Type": "application/json",
-        },
+        headers: { ...getHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId: session.sessionId, marks: marksArray }),
       });
-      const data = await res.json();
-
       if (res.ok) {
+        const data = await res.json();
         setSuccessMsg(`✓ Attendance saved — ${data.count} record(s) updated.`);
       } else {
-        alert(data.message || "Failed to save attendance");
+        const data = await res.json(); alert(data.message || "Failed to save");
       }
-    } catch (err) {
-      alert("Error saving attendance. Check your connection.");
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
-  }
+    } catch (err) { alert("Error saving attendance"); }
+    finally { setSaving(false); }
+  };
 
-  /* ─── Render ─── */
   return (
-    <div className="att-page">
-      <div className="att-header">
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
         <div>
-          <h2 className="att-title">Attendance</h2>
-          <p className="att-subtitle">
-            Select class and date, then mark students as present or absent.
-          </p>
+          <h2 className="page-title">Attendance</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Select a class session to record participation</p>
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button className="btn btn-secondary" onClick={clearMarksForThisSession} disabled={!canShowStudents || saving}>Clear All</button>
+          <button className="btn btn-primary" onClick={saveAttendance} disabled={!canShowStudents || saving}>{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       </div>
 
-      <div className="att-form-card">
-        <div className="att-form-row">
-          <div className="att-field">
-            <label>Select Class</label>
-            <select
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              disabled={loadingClasses}
-            >
-              <option value="">
-                {loadingClasses ? "Loading classes..." : "-- Select --"}
-              </option>
+      <div className="arena-card mb-3">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+          <div className="form-group">
+            <label className="form-label">Active Classes</label>
+            <select className="form-input" value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} disabled={loadingClasses}>
+              <option value="">{loadingClasses ? "Loading classes..." : "-- Select Class --"}</option>
               {classes.map((c) => (
-                <option key={c.classId} value={c.classId}>
-                  {c.title} — {c.sport} ({c.coach})
-                </option>
+                <option key={c.classId} value={c.classId}>{c.title} — {c.sport} ({c.coach})</option>
               ))}
             </select>
           </div>
-
-          <div className="att-field">
-            <label>Select Date</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-          </div>
-
-          <div className="att-actions">
-            <button
-              className="att-secondary-btn"
-              type="button"
-              onClick={clearMarksForThisSession}
-              disabled={!canShowStudents || saving}
-            >
-              Clear Marks
-            </button>
-
-            <button
-              className="att-primary-btn"
-              type="button"
-              onClick={saveAttendance}
-              disabled={!canShowStudents || saving}
-            >
-              {saving ? "Saving..." : "Save Attendance"}
-            </button>
+          <div className="form-group">
+            <label className="form-label">Session Date</label>
+            <input className="form-input" type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
           </div>
         </div>
-
-        {successMsg && (
-          <p className="att-hint" style={{ color: "#19c37d", fontWeight: 700 }}>
-            {successMsg}
-          </p>
-        )}
-
-        {session && session.status === "CANCELLED" && (
-          <p className="att-hint" style={{ color: "#ff3b3b" }}>
-            ⚠ This session is marked as CANCELLED.
-          </p>
-        )}
+        {successMsg && <div className="status-pill success mt-2" style={{ width: "100%", textAlign: "center" }}>{successMsg}</div>}
+        {session && session.status === "CANCELLED" && <div className="status-pill danger mt-2" style={{ width: "100%", textAlign: "center" }}>⚠ This session is cancelled.</div>}
       </div>
 
-      <div className="att-list-card">
-        <div className="att-list-header">
-          <h3 className="att-list-title">Students</h3>
-
-          <input
-            className="att-search"
-            placeholder="Search student name..."
-            value={nameSearch}
-            onChange={(e) => setNameSearch(e.target.value)}
-            disabled={!canShowStudents}
-          />
+      <div className="arena-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="flex-between" style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--bg-main)" }}>
+          <h3 style={{ fontSize: "1rem", fontWeight: 700 }}>Roll Call</h3>
+          <input className="form-input" style={{ maxWidth: "300px" }} placeholder="Filter by student name..." value={nameSearch} onChange={(e) => setNameSearch(e.target.value)} disabled={!canShowStudents} />
         </div>
 
-        {loadingStudents ? (
-          <div className="att-empty">Loading students...</div>
-        ) : noSession ? (
-          <div className="att-empty">
-            No session scheduled for this class on the selected date.
-          </div>
-        ) : !selectedClassId || !selectedDate ? (
-          <div className="att-empty">
-            Select a class and date to view enrolled students.
-          </div>
-        ) : session && students.length === 0 ? (
-          <div className="att-empty">No students enrolled in this class.</div>
-        ) : canShowStudents && filteredStudents.length === 0 ? (
-          <div className="att-empty">No students match your search.</div>
-        ) : canShowStudents ? (
-          <div className="att-table-wrap">
-            <table className="att-table">
-              <thead>
-                <tr>
-                  <th>Student Name</th>
-                  <th className="att-center">Status</th>
-                  <th className="att-center">Mark</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStudents.map((s) => {
-                  const status = getStatus(s.enrollmentId);
+        <div className="arena-table-container">
+          <table className="arena-table">
+            <thead>
+              <tr>
+                <th>Student Profile</th>
+                <th style={{ textAlign: "center" }}>Current Status</th>
+                <th style={{ textAlign: "right" }}>Mark Attendance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingStudents ? (
+                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing enrollment data...</td></tr>
+              ) : noSession ? (
+                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No session scheduled for this date.</td></tr>
+              ) : !selectedClassId || !selectedDate ? (
+                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>Select parameters to view students.</td></tr>
+              ) : session && students.length === 0 ? (
+                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No participants enrolled in this class.</td></tr>
+              ) : (
+                filteredStudents.map((s) => {
+                  const status = marks[s.enrollmentId] || "NOT_MARKED";
                   return (
                     <tr key={s.enrollmentId}>
-                      <td>{s.name}</td>
-
-                      <td className="att-center">
-                        <span className={`att-badge ${status.toLowerCase()}`}>
-                          {status === "NOT_MARKED" ? "Not Marked" : status}
+                      <td style={{ fontWeight: 700 }}>{s.name}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className={`status-pill ${status === "PRESENT" ? "success" : status === "ABSENT" ? "danger" : ""}`}>
+                          {status === "NOT_MARKED" ? "Not Recorded" : status}
                         </span>
                       </td>
-
-                      <td className="att-center">
-                        <button
-                          type="button"
-                          data-status="present"
-                          className={`att-mark-btn ${status === "PRESENT" ? "active" : ""}`}
-                          onClick={() => mark(s.enrollmentId, "PRESENT")}
-                          disabled={saving}
-                        >
-                          Present
-                        </button>
-
-                        <button
-                          type="button"
-                          data-status="absent"
-                          className={`att-mark-btn ${status === "ABSENT" ? "active" : ""}`}
-                          onClick={() => mark(s.enrollmentId, "ABSENT")}
-                          disabled={saving}
-                        >
-                          Absent
-                        </button>
+                      <td>
+                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                          <button 
+                            className={`btn ${status === "PRESENT" ? "btn-primary" : "btn-secondary"}`} 
+                            style={{ padding: "4px 12px", fontSize: "0.8rem" }} 
+                            onClick={() => mark(s.enrollmentId, "PRESENT")}
+                            disabled={saving}
+                          >Present</button>
+                          <button 
+                            className={`btn ${status === "ABSENT" ? "btn-danger" : "btn-secondary"}`} 
+                            style={{ padding: "4px 12px", fontSize: "0.8rem" }} 
+                            onClick={() => mark(s.enrollmentId, "ABSENT")}
+                            disabled={saving}
+                          >Absent</button>
+                        </div>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

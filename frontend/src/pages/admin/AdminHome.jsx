@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect } from "react";
-import "../../styles/AdminHome.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -111,35 +110,32 @@ export default function AdminHome() {
 
 
   return (
-    <div className="ah-page">
-      <div className="ah-headrow">
-        <h2 className="ah-title">Overview</h2>
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
+        <h2 className="page-title">Dashboard Overview</h2>
       </div>
 
-      <div className="ah-tiles">
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Users</div>
-          <div className="ah-tile-num">{totals.users}</div>
+      <div className="ah-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
+        <div className="arena-card">
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Users</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.users}</div>
         </div>
 
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Bookings</div>
-          <div className="ah-tile-num">{totals.bookings}</div>
+        <div className="arena-card">
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Bookings</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.bookings}</div>
         </div>
 
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Payments</div>
-          <div className="ah-tile-num">{totals.payments}</div>
+        <div className="arena-card">
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Payments</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.payments}</div>
         </div>
 
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Classes</div>
-          <div className="ah-tile-num">{totals.classes}</div>
+        <div className="arena-card">
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Classes</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.classes}</div>
         </div>
       </div>
-
-
-
     </div>
   );
 }

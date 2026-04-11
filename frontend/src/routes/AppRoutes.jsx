@@ -72,6 +72,8 @@ export default function AppRoutes() {
         <Route path="attendance" element={<Attendance />} />
         <Route path="payments" element={<Payments />} />
         <Route path="bookings" element={<Bookings />} />
+        <Route path="classes" element={<ClassManagement />} />
+        <Route path="enrollments" element={<Enrollments />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
       </Route>

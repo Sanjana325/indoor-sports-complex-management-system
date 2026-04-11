@@ -64,10 +64,10 @@ router.post("/admin/qualifications", requireAuth, requireRole("ADMIN", "SUPER_AD
 
 router.get("/admin/classes/sessions", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), classesController.listSessions);
 router.get("/admin/classes/recent-cancellations", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), classesController.getRecentCancellations);
-router.get("/admin/classes/cancellations/history", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getCancelledSessionsHistory);
+router.get("/admin/classes/cancellations/history", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), classesController.getCancelledSessionsHistory);
 router.patch("/admin/classes/cancel-alert/:sessionId/acknowledge", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), classesController.acknowledgeCancellation);
 router.get("/admin/classes/available-courts", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getAvailableCourts);
-router.get("/admin/coaches", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getCoaches);
+router.get("/admin/coaches", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), classesController.getCoaches);
 router.get("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.getClasses);
 router.post("/admin/classes", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.createClass);
 router.patch("/admin/classes/:classId/deactivate", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), classesController.deactivateClass);
