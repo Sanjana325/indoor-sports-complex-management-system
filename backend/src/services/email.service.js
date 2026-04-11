@@ -240,9 +240,332 @@ async function sendBookingOtpEmail({ toEmail, toName, otpCode }) {
   return info;
 }
 
+async function sendPaymentConfirmationEmail({ toEmail, toName, targetName, amount, isClass }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const typeStr = isClass ? "Coaching Class Enrollment" : "Court Booking";
+  const subject = `Confirmed: Your ${typeStr}`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Player";
+
+  const formattedAmount = Number(amount).toLocaleString("en-LK", { minimumFractionDigits: 2 });
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `Great news! We have successfully received your payment of LKR ${formattedAmount} for your ${typeStr}.\n` +
+    `Details:\n` +
+    `- Type: ${typeStr}\n` +
+    `- Item: ${targetName}\n` +
+    `- Status: CONFIRMED\n\n` +
+    `Your booking/enrollment is completely verified, and you are good to go! We look forward to seeing you at ArenaPro.\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #000;">Payment & Booking Confirmed!</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>Great news! We have successfully received your payment for your <strong>${typeStr}</strong>.</p>
+      
+      <div style="background-color: #f4f4f5; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #10b981;">
+        <h3 style="margin-top: 0;">Receipt Summary</h3>
+        <p style="margin: 0 0 8px;"><strong>Item:</strong> ${targetName}</p>
+        <p style="margin: 0 0 8px;"><strong>Amount Paid:</strong> LKR ${formattedAmount}</p>
+        <p style="margin: 0; color: #10b981; font-weight: bold;">Status: CONFIRMED</p>
+      </div>
+      
+      <p>Your spot is now officially reserved and verified. We look forward to seeing you soon!</p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
+async function sendSlipPendingEmail({ toEmail, toName, targetName, amount, isClass }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const typeStr = isClass ? "Coaching Class Enrollment" : "Court Booking";
+  const subject = `Pending Verification: Your ${typeStr}`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Player";
+
+  const formattedAmount = Number(amount).toLocaleString("en-LK", { minimumFractionDigits: 2 });
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `We have successfully received your bank slip upload for your ${typeStr} (LKR ${formattedAmount}).\n\n` +
+    `Your spot has been temporarily held. Our administrative team will verify your payment slip shortly. Once verified, you will receive a final confirmation email.\n\n` +
+    `Details:\n` +
+    `- Type: ${typeStr}\n` +
+    `- Item: ${targetName}\n` +
+    `- Status: WAITING VERIFICATION\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #000;">Bank Slip Uploaded Successfully</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>We've successfully received your bank slip for your <strong>${typeStr}</strong>.</p>
+      
+      <div style="background-color: #fcf8e3; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #f59e0b;">
+        <h3 style="margin-top: 0; color: #8a6d3b;">Pending Verification</h3>
+        <p style="margin: 0 0 8px;"><strong>Item:</strong> ${targetName}</p>
+        <p style="margin: 0 0 8px;"><strong>Declared Amount:</strong> LKR ${formattedAmount}</p>
+        <p style="margin: 0; color: #d97706; font-weight: bold;">Status: WAITING VERIFICATION</p>
+      </div>
+      
+      <p>Your spot has been temporarily held for you! Our staff will manually review your deposit slip soon. Once verified, we will send you a definitive confirmation email.</p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
+async function sendSessionCancelledEmail({ toEmail, toName, className, sessionDate, startTime, endTime }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const subject = `URGENT: Class Cancellation - ${className}`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Player";
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `We are writing to urgently inform you that a session for your enrolled class '${className}' has been CANCELLED by the coach.\n\n` +
+    `Cancelled Session Details:\n` +
+    `- Date: ${sessionDate}\n` +
+    `- Time: ${startTime} - ${endTime}\n\n` +
+    `Please do not attend the complex for this specific timeslot.\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #d32f2f;">Class Session Cancelled</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>This is an urgent notification that a session for your enrolled class <strong>${className}</strong> has been cancelled by the coach.</p>
+      
+      <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #ef4444;">
+        <h3 style="margin-top: 0; color: #b91c1c;">Cancelled Session Details</h3>
+        <p style="margin: 0 0 8px;"><strong>Date:</strong> ${sessionDate}</p>
+        <p style="margin: 0 0 8px;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+        <p style="margin: 0; color: #dc2626; font-weight: bold;">Status: CANCELLED</p>
+      </div>
+      
+      <p>Please do not attend the complex for this specific timeslot.</p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
+async function sendCourtBookingReminder({ toEmail, toName, sportName, startTime, endTime }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const subject = `Reminder: Your ${sportName} booking starts in 1 Hour`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Player";
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `This is a friendly 1-Hour reminder for your upcoming court booking!\n\n` +
+    `Booking Details:\n` +
+    `- Sport: ${sportName}\n` +
+    `- Time: ${startTime} - ${endTime}\n\n` +
+    `Please arrive safely and on time. We look forward to seeing you!\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #000;">Court Booking Reminder</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>This is a friendly reminder that your upcoming court booking starts in exactly <strong>1 hour</strong>.</p>
+      
+      <div style="background-color: #fafffa; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #3b82f6;">
+        <h3 style="margin-top: 0; color: #1e3a8a;">Booking Details</h3>
+        <p style="margin: 0 0 8px;"><strong>Sport:</strong> ${sportName}</p>
+        <p style="margin: 0 0 8px;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+        <p style="margin: 0; color: #2563eb; font-weight: bold;">Status: CONFIRMED</p>
+      </div>
+      
+      <p>Please make sure to arrive slightly early to get settled in. We are extremely excited to see you at the complex!</p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
+async function sendClassSessionReminder({ toEmail, toName, className, sportName, startTime, endTime }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const subject = `Reminder: Your ${sportName} class starts in 1 Hour`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Player";
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `This is a friendly 1-Hour reminder for your upcoming coaching class!\n\n` +
+    `Session Details:\n` +
+    `- Class: ${className}\n` +
+    `- Sport: ${sportName}\n` +
+    `- Time: ${startTime} - ${endTime}\n\n` +
+    `Please arrive safely and on time for your session.\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #000;">Class Session Reminder</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>This is a friendly reminder that a session for your enrolled class starts in exactly <strong>1 hour</strong>.</p>
+      
+      <div style="background-color: #fafffa; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #8b5cf6;">
+        <h3 style="margin-top: 0; color: #5b21b6;">Session Details</h3>
+        <p style="margin: 0 0 8px;"><strong>Class:</strong> ${className}</p>
+        <p style="margin: 0 0 8px;"><strong>Sport:</strong> ${sportName}</p>
+        <p style="margin: 0 0 8px;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+        <p style="margin: 0; color: #7c3aed; font-weight: bold;">Status: SCHEDULED</p>
+      </div>
+      
+      <p>Please make sure to arrive slightly early to get prepared for your class. We are extremely excited to see you!</p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
+async function sendCoachClassSessionReminder({ toEmail, toName, className, sportName, startTime, endTime }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const subject = `Urgent Reminder: Conducting your ${sportName} class in 1 Hour`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Coach";
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `This is a friendly reminder that you have a coaching session to conduct in exactly 1 hour.\n\n` +
+    `Session Details:\n` +
+    `- Class: ${className}\n` +
+    `- Sport: ${sportName}\n` +
+    `- Time: ${startTime} - ${endTime}\n\n` +
+    `Please ensure you are at the complex on time to welcome your students.\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #000;">Coach Session Reminder</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>This is a reminder that you are scheduled to conduct a coaching session in exactly <strong>1 hour</strong>.</p>
+      
+      <div style="background-color: #fffaf0; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #f6ad55;">
+        <h3 style="margin-top: 0; color: #7b341e;">Class Details</h3>
+        <p style="margin: 0 0 8px;"><strong>Class:</strong> ${className}</p>
+        <p style="margin: 0 0 8px;"><strong>Sport:</strong> ${sportName}</p>
+        <p style="margin: 0 0 8px;"><strong>Time:</strong> ${startTime} - ${endTime}</p>
+      </div>
+      
+      <p>Please ensure all equipment is ready and you are at the designated court on time. Your students are looking forward to the session!</p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendWelcomeEmail,
   sendAccountCreatedEmail,
-  sendBookingOtpEmail
+  sendBookingOtpEmail,
+  sendPaymentConfirmationEmail,
+  sendSlipPendingEmail,
+  sendSessionCancelledEmail,
+  sendCourtBookingReminder,
+  sendClassSessionReminder,
+  sendCoachClassSessionReminder
 };

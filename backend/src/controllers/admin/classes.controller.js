@@ -630,3 +630,65 @@ exports.listSessions = async (req, res, next) => {
         next(err);
     }
 };
+
+exports.getRecentCancellations = async (req, res, next) => {
+    try {
+        const [cancellations] = await pool.query(`
+            SELECT 
+                cs.SessionID as id,
+                c.Title as className,
+                DATE_FORMAT(cs.SessionDate, '%Y-%m-%d') as date,
+                DATE_FORMAT(cs.StartTime, '%H:%i') as startTime,
+                DATE_FORMAT(cs.EndTime, '%H:%i') as endTime,
+                u.FirstName as coachFirst,
+                u.LastName as coachLast
+            FROM classsession cs
+            JOIN class c ON cs.ClassID = c.ClassID
+            JOIN coach co ON c.CoachID = co.CoachID
+            JOIN useraccount u ON co.UserID = u.UserID
+            WHERE cs.Status = 'CANCELLED' AND cs.IsAcknowledged = 0 AND cs.SessionDate >= CURDATE()
+            ORDER BY cs.SessionDate ASC, cs.StartTime ASC
+            LIMIT 5
+        `);
+        res.json({ cancellations });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.acknowledgeCancellation = async (req, res, next) => {
+    try {
+        const sessionId = req.params.sessionId;
+        await pool.query("UPDATE classsession SET IsAcknowledged = 1 WHERE SessionID = ?", [sessionId]);
+        res.json({ message: "Cancellation acknowledged successfully" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.getCancelledSessionsHistory = async (req, res, next) => {
+    try {
+        const [history] = await pool.query(`
+            SELECT 
+                cs.SessionID as id,
+                c.Title as className,
+                DATE_FORMAT(cs.SessionDate, '%Y-%m-%d') as date,
+                DATE_FORMAT(cs.StartTime, '%H:%I %p') as startTime,
+                DATE_FORMAT(cs.EndTime, '%H:%I %p') as endTime,
+                u.FirstName as coachFirst,
+                u.LastName as coachLast,
+                s.SportName as sport,
+                cs.IsAcknowledged
+            FROM classsession cs
+            JOIN class c ON cs.ClassID = c.ClassID
+            JOIN sport s ON c.SportID = s.SportID
+            JOIN coach co ON c.CoachID = co.CoachID
+            JOIN useraccount u ON co.UserID = u.UserID
+            WHERE cs.Status = 'CANCELLED'
+            ORDER BY cs.SessionDate DESC, cs.StartTime DESC
+        `);
+        res.json({ history });
+    } catch (err) {
+        next(err);
+    }
+};

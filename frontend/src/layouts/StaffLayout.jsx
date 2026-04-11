@@ -29,23 +29,70 @@ export default function StaffLayout() {
   const displayName = `${user.firstName} ${user.lastName}`.trim();
   const initials = getInitials(user.firstName, user.lastName);
 
-  // Dropdown
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const profileRef = useRef(null);
+  const notifRef = useRef(null);
 
   useEffect(() => {
     function handleOutsideClick(e) {
-      if (!profileRef.current) return;
-      if (!profileRef.current.contains(e.target)) setIsProfileOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setIsNotifOpen(false);
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   useEffect(() => {
-    // Close dropdown on route change
+    // Close dropdowns on route change
     setIsProfileOpen(false);
+    setIsNotifOpen(false);
   }, [location.pathname]);
+
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  const [recentCancellations, setRecentCancellations] = useState([]);
+
+  useEffect(() => {
+    const fetchCountsAndFeeds = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        // Fetch Payments
+        fetch("http://localhost:5000/api/admin/payments/pending-count", {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => { if(data) setPendingPaymentsCount(data.count); })
+        .catch(e => console.error("Failed to fetch pending count", e));
+
+        // Fetch Recent Cancellations
+        fetch("http://localhost:5000/api/staff/classes/recent-cancellations", {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => { if(data) setRecentCancellations(data.cancellations); })
+        .catch(e => console.error("Failed to fetch cancellations", e));
+
+      } catch (e) { console.error(e); }
+    };
+    fetchCountsAndFeeds();
+    const interval = setInterval(fetchCountsAndFeeds, 30000); // 30 sec poll
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleAcknowledge = async (sessionId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:5000/api/staff/classes/cancel-alert/${sessionId}/acknowledge`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setRecentCancellations(prev => prev.filter(c => c.id !== sessionId));
+      }
+    } catch (e) { console.error("Error acknowledging notification", e); }
+  };
 
   function handleLogout() {
     localStorage.removeItem("email");
@@ -79,7 +126,8 @@ export default function StaffLayout() {
           </NavLink>
 
           <NavLink to="/staff/payments" className={({ isActive }) => (isActive ? "active" : "")}>
-            Payments
+            <span>Payments</span>
+            {pendingPaymentsCount > 0 && <span className="sidebar-badge">{pendingPaymentsCount}</span>}
           </NavLink>
         </nav>
       </aside>
@@ -90,8 +138,45 @@ export default function StaffLayout() {
         <div className="admin-topbar">
           <strong>ArenaPro - Staff Dashboard</strong>
 
-          <div className="topbar-right" ref={profileRef}>
-            <button
+          <div style={{display: 'flex', alignItems: 'center'}}>
+            <div className="notification-bell-container" ref={notifRef}>
+              <button 
+                className="bell-trigger" 
+                onClick={() => setIsNotifOpen(p => !p)}
+                title="Recent Cancellations"
+              >
+                🔔
+                {recentCancellations.length > 0 && <span className="bell-badge">{recentCancellations.length}</span>}
+              </button>
+
+              {isNotifOpen && (
+                <div className="notification-menu">
+                  <div className="notification-menu-head">Recent Cancellations</div>
+                  <div className="notification-list">
+                    {recentCancellations.length === 0 ? (
+                      <div className="notification-item empty">No recent cancellations.</div>
+                    ) : (
+                      recentCancellations.map(c => (
+                        <div key={c.id} className="notification-item">
+                          <button className="notification-dismiss-btn" onClick={() => handleAcknowledge(c.id)} title="Mark as Read">&times;</button>
+                          <span className="notification-title">[CANCELLED] {c.className}</span>
+                          <span className="notification-desc">Coach: {c.coachFirst} {c.coachLast} • {c.startTime}-{c.endTime}</span>
+                          <span className="notification-date">{c.date}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div style={{ padding: '8px 0', textAlign: 'center', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                    <Link to="/staff" onClick={() => setIsNotifOpen(false)} style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                      Go to Calendar &rarr;
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="topbar-right" ref={profileRef}>
+              <button
               type="button"
               className="profile-trigger"
               onClick={() => setIsProfileOpen((p) => !p)}
@@ -133,6 +218,7 @@ export default function StaffLayout() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
 

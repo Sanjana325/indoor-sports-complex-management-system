@@ -3,7 +3,7 @@ import "../../styles/Payments.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-const STATUS_OPTIONS = ["ALL", "PENDING", "VERIFIED", "COMPLETED", "REJECTED"];
+const STATUS_OPTIONS = ["ALL", "PENDING", "VERIFIED", "REJECTED"];
 
 function formatPaidAt(isoString) {
   if (!isoString) return "—";
@@ -29,6 +29,9 @@ export default function Payments() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const [showAllClasses, setShowAllClasses] = useState(false);
+  const [showAllCourts, setShowAllCourts] = useState(false);
 
   useEffect(() => {
     fetchPayments();
@@ -103,7 +106,6 @@ export default function Payments() {
   function statusLabel(status) {
     if (status === "PENDING") return "Pending";
     if (status === "VERIFIED") return "Verified";
-    if (status === "COMPLETED") return "Completed";
     if (status === "REJECTED") return "Rejected";
     return status;
   }
@@ -167,33 +169,53 @@ export default function Payments() {
       </div>
 
       <section className="pay-section">
-        <h3 className="pay-section-title">Court Booking Payments</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 className="pay-section-title">Class Fee Payments</h3>
+          {classFeePayments.length > 5 && (
+            <button 
+              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontWeight: 600 }}
+              onClick={() => setShowAllClasses(!showAllClasses)}
+            >
+              {showAllClasses ? "See Less" : "See All"}
+            </button>
+          )}
+        </div>
+        {loading ? (
+             <p style={{color: '#888', padding: '20px 0'}}>Loading payments...</p>
+        ) : (
+            <PaymentsTable
+              rows={showAllClasses ? classFeePayments : classFeePayments.slice(0, 5)}
+              onVerify={verifyPayment}
+              onReject={rejectPayment}
+              onViewSlip={handleViewSlip}
+              statusLabel={statusLabel}
+            />
+        )}
+      </section>
+
+      <section className="pay-section">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 className="pay-section-title">Court Booking Payments</h3>
+          {bookingPayments.length > 5 && (
+            <button 
+              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontWeight: 600 }}
+              onClick={() => setShowAllCourts(!showAllCourts)}
+            >
+              {showAllCourts ? "See Less" : "See All"}
+            </button>
+          )}
+        </div>
         {loading ? (
            <p style={{color: '#888', padding: '20px 0'}}>Loading payments...</p>
         ) : (
           <PaymentsTable
-            rows={bookingPayments}
+            rows={showAllCourts ? bookingPayments : bookingPayments.slice(0, 5)}
             onVerify={verifyPayment}
             onReject={rejectPayment}
             onViewSlip={handleViewSlip}
             statusLabel={statusLabel}
             showBookingId={true}
           />
-        )}
-      </section>
-
-      <section className="pay-section">
-        <h3 className="pay-section-title">Class Fee Payments</h3>
-        {loading ? (
-             <p style={{color: '#888', padding: '20px 0'}}>Loading payments...</p>
-        ) : (
-            <PaymentsTable
-              rows={classFeePayments}
-              onVerify={verifyPayment}
-              onReject={rejectPayment}
-              onViewSlip={handleViewSlip}
-              statusLabel={statusLabel}
-            />
         )}
       </section>
 

@@ -104,6 +104,9 @@ export default function ClassManagement() {
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
+  const [activeTab, setActiveTab] = useState("ACTIVE");
+  const [cancelledHistory, setCancelledHistory] = useState([]);
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -114,10 +117,11 @@ export default function ClassManagement() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [spRes, cRes, clsRes] = await Promise.all([
+      const [spRes, cRes, clsRes, histRes] = await Promise.all([
         fetch(`${API_BASE}/api/admin/sports`, { headers }),
         fetch(`${API_BASE}/api/admin/coaches`, { headers }),
-        fetch(`${API_BASE}/api/admin/classes`, { headers })
+        fetch(`${API_BASE}/api/admin/classes`, { headers }),
+        fetch(`${API_BASE}/api/admin/classes/cancellations/history`, { headers })
       ]);
 
       if (spRes.ok) {
@@ -145,6 +149,11 @@ export default function ClassManagement() {
       } else {
         const err = await clsRes.json().catch(() => ({}));
         alert(err.message || "Failed to fetch classes from server.");
+      }
+
+      if (histRes.ok) {
+        const d = await histRes.json();
+        setCancelledHistory(d.history || []);
       }
     } catch (err) {
       console.error("Fetch error", err);
@@ -495,65 +504,132 @@ export default function ClassManagement() {
       <div className="cm-header">
         <div>
           <h2 className="cm-title">Class Management</h2>
+          <div style={{ display: 'flex', gap: '15px', marginTop: '15px' }}>
+            <button 
+              style={{
+                background: activeTab === "ACTIVE" ? "#3b82f6" : "#f1f5f9",
+                color: activeTab === "ACTIVE" ? "white" : "#64748b",
+                padding: "8px 16px", borderRadius: "20px", border: "none", cursor: "pointer", fontSize: "0.85rem", fontWeight: "600", transition: "0.2s"
+              }}
+              onClick={() => setActiveTab("ACTIVE")}
+            >
+              Active Classes
+            </button>
+            <button 
+              style={{
+                background: activeTab === "CANCELLED_SESSIONS" ? "#ef4444" : "#f1f5f9",
+                color: activeTab === "CANCELLED_SESSIONS" ? "white" : "#64748b",
+                padding: "8px 16px", borderRadius: "20px", border: "none", cursor: "pointer", fontSize: "0.85rem", fontWeight: "600", transition: "0.2s"
+              }}
+              onClick={() => setActiveTab("CANCELLED_SESSIONS")}
+            >
+              Cancelled Sessions History
+            </button>
+          </div>
         </div>
 
-        <button className="cm-primary-btn" type="button" onClick={openAddModal}>
-          + Add Class
-        </button>
+        {activeTab === "ACTIVE" && (
+          <button className="cm-primary-btn" type="button" onClick={openAddModal}>
+            + Add Class
+          </button>
+        )}
       </div>
 
-      <div className="cm-toolbar">
-        <input
-          className="cm-search"
-          placeholder="Search by class name, coach, coach id, sport, court, day, date..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      {activeTab === "ACTIVE" && (
+        <div className="cm-toolbar">
+          <input
+            className="cm-search"
+            placeholder="Search by class name, coach, coach id, sport, court, day, date..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      )}
 
-      {filteredClasses.length === 0 ? (
-        <Box display="flex" justifyContent="center" mt={6}>
-          <Paper
-            elevation={0}
-            sx={{
-              px: 6,
-              py: 5,
-              textAlign: "center",
-              borderRadius: 3,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px dashed rgba(255,255,255,0.15)",
-            }}
-          >
-            <Typography variant="h6" sx={{ mb: 1, color: "text.secondary" }}>
-              No classes have been scheduled yet.
-            </Typography>
-            <Typography variant="body2" color="text.disabled">
-              Click <strong>+ Add Class</strong> to get started.
-            </Typography>
-          </Paper>
-        </Box>
-      ) : (
-        sportsList.map((sportObj) => {
-          const sportKey = sportObj.SportName;
-          const classesForThisSport = filteredClasses
-            .filter((c) => c.sport === sportKey)
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      {activeTab === "ACTIVE" && (
+        filteredClasses.length === 0 ? (
+          <Box display="flex" justifyContent="center" mt={6}>
+            <Paper
+              elevation={0}
+              sx={{
+                px: 6,
+                py: 5,
+                textAlign: "center",
+                borderRadius: 3,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px dashed rgba(255,255,255,0.15)",
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 1, color: "text.secondary" }}>
+                No active classes matched your search.
+              </Typography>
+            </Paper>
+          </Box>
+        ) : (
+          sportsList.map((sportObj) => {
+            const sportKey = sportObj.SportName;
+            const classesForThisSport = filteredClasses
+              .filter((c) => c.sport === sportKey)
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-          if (classesForThisSport.length === 0) return null;
+            if (classesForThisSport.length === 0) return null;
 
-          return (
-            <section key={sportKey} className="cm-section">
-              <h3 className="cm-section-title">
-                {sportKey.charAt(0) + sportKey.slice(1).toLowerCase()} Classes
-              </h3>
-              <ClassTable
-                rows={classesForThisSport}
-                onEdit={openEditModal}
-                onToggleStatus={handleToggleStatus}
-              />
-            </section>
-          );
-        })
+            return (
+              <section key={sportKey} className="cm-section">
+                <h3 className="cm-section-title">
+                  {sportKey.charAt(0) + sportKey.slice(1).toLowerCase()} Classes
+                </h3>
+                <ClassTable
+                  rows={classesForThisSport}
+                  onEdit={openEditModal}
+                  onToggleStatus={handleToggleStatus}
+                />
+              </section>
+            );
+          })
+        )
+      )}
+
+      {activeTab === "CANCELLED_SESSIONS" && (
+        <section className="cm-section">
+          <h3 className="cm-section-title" style={{color: '#f87171'}}>Historical Cancellation Ledger</h3>
+          {cancelledHistory.length === 0 ? (
+            <p style={{ color: "rgba(255,255,255,0.5)", marginTop: '10px' }}>No cancelled sessions exist in the system history.</p>
+          ) : (
+            <div className="cm-table-wrapper">
+              <table className="cm-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Class</th>
+                    <th>Sport</th>
+                    <th>Coach</th>
+                    <th>Acknowledge Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cancelledHistory.map(c => (
+                    <tr key={c.id}>
+                      <td>{c.date}</td>
+                      <td>{c.startTime} - {c.endTime}</td>
+                      <td><strong>{c.className}</strong></td>
+                      <td><span className="cm-tag">{c.sport}</span></td>
+                      <td>{c.coachFirst} {c.coachLast}</td>
+                      <td>
+                        {c.IsAcknowledged ? (
+                          <span style={{color: '#10b981', fontWeight: 'bold'}}>✓ Acknowledged</span>
+                        ) : (
+                          <span style={{color: '#ef4444', fontWeight: 'bold'}}>Pending</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       )}
 
       {isModalOpen && (

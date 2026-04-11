@@ -21,4 +21,9 @@ router.post("/staff/attendance/mark", requireAuth, requireRole("STAFF"), attenda
 // Staff Bookings Routes
 router.get("/staff/bookings", requireAuth, requireRole("STAFF"), bookingsController.listBookings);
 
+const classesController = require("../controllers/admin/classes.controller");
+router.get("/staff/classes/sessions", requireAuth, requireRole("STAFF"), classesController.listSessions);
+router.get("/staff/classes/recent-cancellations", requireAuth, requireRole("STAFF"), classesController.getRecentCancellations);
+router.patch("/staff/classes/cancel-alert/:sessionId/acknowledge", requireAuth, requireRole("STAFF"), classesController.acknowledgeCancellation);
+
 module.exports = router;

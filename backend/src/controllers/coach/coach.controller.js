@@ -107,7 +107,10 @@ exports.cancelSession = async (req, res, next) => {
 
         // 1. Verify this session belongs to a class coached by this coach
         const [rows] = await pool.query(`
-            SELECT cs.SessionID 
+            SELECT cs.SessionID, cs.ClassID, c.Title, 
+                   DATE_FORMAT(cs.SessionDate, '%Y-%m-%d') as SessionDate,
+                   DATE_FORMAT(cs.StartTime, '%H:%i') as StartTime,
+                   DATE_FORMAT(cs.EndTime, '%H:%i') as EndTime
             FROM classsession cs
             JOIN class c ON cs.ClassID = c.ClassID
             WHERE cs.SessionID = ? AND c.CoachID = ?
@@ -126,6 +129,42 @@ exports.cancelSession = async (req, res, next) => {
         `, [sessionId]);
 
         res.json({ message: "Session cancelled successfully" });
+
+        // 3. Fire-and-forget: Notify enrolled students
+        try {
+            const classRow = rows[0];
+            const [students] = await pool.query(`
+                SELECT u.Email, u.FirstName, u.LastName
+                FROM enrollment e
+                JOIN useraccount u ON e.UserID = u.UserID
+                WHERE e.ClassID = ? AND e.Status = 'ENROLLED'
+            `, [classRow.ClassID]);
+
+            if (students.length > 0) {
+                const emailService = require("../../services/email.service");
+                
+                Promise.allSettled(students.map(student => {
+                    if (student.Email) {
+                        return emailService.sendSessionCancelledEmail({
+                            toEmail: student.Email,
+                            toName: (student.FirstName + " " + student.LastName).trim(),
+                            className: classRow.Title,
+                            sessionDate: classRow.SessionDate,
+                            startTime: classRow.StartTime,
+                            endTime: classRow.EndTime
+                        });
+                    }
+                    return Promise.resolve();
+                })).then(results => {
+                    const failed = results.filter(r => r.status === 'rejected');
+                    if (failed.length > 0) {
+                        console.error("Failed to send " + failed.length + " cancellation emails.");
+                    }
+                });
+            }
+        } catch (err) {
+            console.error("Error triggering cancellation emails:", err);
+        }
     } catch (err) {
         console.error("[cancelSession] Error:", err);
         next(err);

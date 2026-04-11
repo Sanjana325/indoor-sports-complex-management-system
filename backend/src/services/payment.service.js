@@ -131,7 +131,7 @@ exports.verifyPayHerePayment = async (body) => {
                 const amount = Number(payhere_amount);
 
                 // 1. Double check class exists
-                const [cls] = await connection.query("SELECT Fee FROM class WHERE ClassID = ?", [classId]);
+                const [cls] = await connection.query("SELECT Title, Fee FROM class WHERE ClassID = ?", [classId]);
                 if (cls.length > 0) {
                     // 2. Create enrollment
                     const [enrRes] = await connection.query(
@@ -170,12 +170,29 @@ exports.verifyPayHerePayment = async (body) => {
                         "INSERT INTO enrollmentmonthpayment (PaymentID, EnrollmentMonthID) VALUES (?, ?)",
                         [payRes.insertId, enmRes.insertId]
                     );
+
+                    // Send email
+                    const [users] = await connection.query("SELECT Email, FirstName, LastName FROM useraccount WHERE UserID = ?", [userId]);
+                    if (users.length > 0 && users[0].Email) {
+                        try {
+                            const emailService = require("./email.service");
+                            await emailService.sendPaymentConfirmationEmail({
+                                toEmail: users[0].Email,
+                                toName: `${users[0].FirstName} ${users[0].LastName}`.trim(),
+                                targetName: cls[0].Title,
+                                amount: amount,
+                                isClass: true
+                            });
+                        } catch (err) {
+                            console.error("Failed to send class payment email:", err);
+                        }
+                    }
                 }
 
             } else {
                 // COURT BOOKING PAYMENT
                 const [bookings] = await connection.query(
-                    `SELECT b.UserID, b.StartDateTime, b.EndDateTime, c.PricePerHour, b.Status 
+                    `SELECT b.UserID, b.StartDateTime, b.EndDateTime, c.PricePerHour, c.CourtName, b.Status 
                      FROM booking b 
                      JOIN court c ON b.CourtID = c.CourtID 
                      WHERE b.BookingID = ?`,
@@ -203,6 +220,22 @@ exports.verifyPayHerePayment = async (body) => {
                         "UPDATE booking SET Status = 'CONFIRMED' WHERE BookingID = ?",
                         [order_id]
                     );
+
+                    const [users] = await connection.query("SELECT Email, FirstName, LastName FROM useraccount WHERE UserID = ?", [booking.UserID]);
+                    if (users.length > 0 && users[0].Email) {
+                        try {
+                            const emailService = require("./email.service");
+                            await emailService.sendPaymentConfirmationEmail({
+                                toEmail: users[0].Email,
+                                toName: `${users[0].FirstName} ${users[0].LastName}`.trim(),
+                                targetName: booking.CourtName,
+                                amount: amount,
+                                isClass: false
+                            });
+                        } catch (err) {
+                            console.error("Failed to send booking payment email:", err);
+                        }
+                    }
                 }
             }
 
@@ -226,14 +259,16 @@ exports.processBankSlip = async (userId, targetId, slipUrl, type = "BOOKING") =>
     try {
         connection = await pool.getConnection();
         let amount = 0;
+        let itemName = "";
 
         if (type === "CLASS") {
-            const [classes] = await connection.query("SELECT Fee FROM class WHERE ClassID = ? AND Status = 'ACTIVE'", [targetId]);
+            const [classes] = await connection.query("SELECT Title, Fee FROM class WHERE ClassID = ? AND Status = 'ACTIVE'", [targetId]);
             if (classes.length === 0) throw new Error("Class not found or not active");
             amount = Number(classes[0].Fee);
+            itemName = classes[0].Title;
         } else {
             const [bookings] = await connection.query(
-                `SELECT b.StartDateTime, b.EndDateTime, c.PricePerHour
+                `SELECT b.StartDateTime, b.EndDateTime, c.PricePerHour, c.CourtName
                  FROM booking b
                  JOIN court c ON b.CourtID = c.CourtID
                  WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING_PAYMENT'`,
@@ -244,12 +279,13 @@ exports.processBankSlip = async (userId, targetId, slipUrl, type = "BOOKING") =>
             const booking = bookings[0];
             const durationHours = (new Date(booking.EndDateTime) - new Date(booking.StartDateTime)) / (1000 * 60 * 60);
             amount = Number(booking.PricePerHour) * durationHours;
+            itemName = booking.CourtName;
         }
 
         await connection.beginTransaction();
 
         const [payRes] = await connection.query(
-            "INSERT INTO payment (UserID, Amount, Method, SlipPath, Status) VALUES (?, ?, 'BANK_SLIP', ?, 'PENDING')",
+            "INSERT INTO payment (UserID, Amount, Method, SlipPath, Status, PaidAt) VALUES (?, ?, 'BANK_SLIP', ?, 'PENDING', NOW())",
             [userId, amount, slipUrl]
         );
         const paymentId = payRes.insertId;
@@ -285,6 +321,23 @@ exports.processBankSlip = async (userId, targetId, slipUrl, type = "BOOKING") =>
         }
 
         await connection.commit();
+
+        try {
+            const [users] = await pool.query("SELECT Email, FirstName, LastName FROM useraccount WHERE UserID = ?", [userId]);
+            if (users.length > 0 && users[0].Email) {
+                const emailService = require("./email.service");
+                await emailService.sendSlipPendingEmail({
+                    toEmail: users[0].Email,
+                    toName: `${users[0].FirstName} ${users[0].LastName}`.trim(),
+                    targetName: itemName,
+                    amount: amount,
+                    isClass: type === "CLASS"
+                });
+            }
+        } catch (err) {
+            console.error("Failed to send slip pending email:", err);
+        }
+
         return { message: "Bank slip uploaded successfully", paymentId };
 
     } catch (err) {
