@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import MultiSelectWithAdd from "../../components/MultiSelectWithAdd";
+import adminService from "../../services/adminService";
+import ArenaTable from "../../components/shared/ArenaTable";
+import StatusPill from "../../components/shared/StatusPill";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function splitQualificationsToList(q) {
   if (!q) return [""];
@@ -76,30 +78,27 @@ export default function UserManagement() {
   const fetchUsersFromDb = async () => {
     setLoadingUsers(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (res.ok) setUsers((data.users || []).map(mapDbUserToUi));
-    } catch (err) { console.error(err); }
-    finally { setLoadingUsers(false); }
+      const data = await adminService.getUsers();
+      setUsers((data.users || []).map(mapDbUserToUi));
+    } catch (err) { 
+      console.error("Fetch users error:", err); 
+    } finally { 
+      setLoadingUsers(false); 
+    }
   };
 
   const fetchReferenceData = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const [resS, resQ] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/sports`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/api/admin/qualifications`, { headers: { Authorization: `Bearer ${token}` } })
+      const [sportsData, qualData] = await Promise.all([
+        adminService.getSports(),
+        adminService.getQualifications()
       ]);
-      if (resS.ok) {
-        const d = await resS.json();
-        setAllSports((d.sports || d).map(s => s.SportName || s));
-      }
-      if (resQ.ok) {
-        const d = await resQ.json();
-        setAllQualifications((d.qualifications || d).map(q => q.QualificationName || q));
-      }
-    } catch (e) { console.error(e); }
+      
+      setAllSports((sportsData.sports || sportsData).map(s => s.SportName || s));
+      setAllQualifications((qualData.qualifications || qualData).map(q => q.QualificationName || q));
+    } catch (e) { 
+      console.error("Reference data fetch error:", e); 
+    }
   };
 
   useEffect(() => { fetchUsersFromDb(); fetchReferenceData(); }, []);
@@ -191,56 +190,50 @@ export default function UserManagement() {
       {sections.map(sec => sec.visible && sec.rows.length > 0 && (
         <div key={sec.title} className="mb-4">
           <h3 className="mb-2" style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)" }}>{sec.title} ({sec.rows.length})</h3>
-          <div className="arena-table-container">
-            <table className="arena-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Contact</th>
-                  {sec.coach && <th>Qualifications & Specs</th>}
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sec.rows.map(u => (
-                  <tr key={u.userId}>
-                    <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{u.idDisplay}</td>
-                    <td>
-                      <div style={{ fontWeight: 700 }}>{u.firstName} {u.lastName}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "0.875rem" }}>{u.phone}</div>
-                    </td>
-                    {sec.coach && (
-                      <td style={{ maxWidth: "250px" }}>
-                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                          {u.specializations.map(s => <span key={s} className="status-pill success" style={{ fontSize: "0.65rem" }}>{s}</span>)}
-                          {u.qualifications.map(q => <span key={q} className="status-pill warning" style={{ fontSize: "0.65rem" }}>{q}</span>)}
-                        </div>
-                      </td>
-                    )}
-                    <td>
-                      <span className={`status-pill ${u.isActive ? "success" : "danger"}`}>
-                        {u.isActive ? "Active" : "Disabled"}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                        <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
-                        <button className={`btn ${u.isActive ? "btn-secondary" : "btn-primary"}`} style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDisableToggle(u)}>
-                          {u.isActive ? "Disable" : "Enable"}
-                        </button>
-                        {isSuperAdmin && <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemoveUser(u)}>Del</button>}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ArenaTable 
+            loading={loadingUsers}
+            data={sec.rows}
+            columns={[
+              { header: "ID" },
+              { header: "Name" },
+              { header: "Contact" },
+              ...(sec.coach ? [{ header: "Qualifications & Specs" }] : []),
+              { header: "Status" },
+              { header: "Actions", style: { textAlign: "right" } }
+            ]}
+            renderRow={(u) => (
+              <tr key={u.userId}>
+                <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{u.idDisplay}</td>
+                <td>
+                  <div style={{ fontWeight: 700 }}>{u.firstName} {u.lastName}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>
+                </td>
+                <td>
+                  <div style={{ fontSize: "0.875rem" }}>{u.phone}</div>
+                </td>
+                {sec.coach && (
+                  <td style={{ maxWidth: "250px" }}>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {u.specializations.map(s => <StatusPill key={s} status="ACTIVE" label={s} />)}
+                      {u.qualifications.map(q => <StatusPill key={q} status="PENDING" label={q} />)}
+                    </div>
+                  </td>
+                )}
+                <td>
+                  <StatusPill status={u.isActive ? "ACTIVE" : "DISABLED"} />
+                </td>
+                <td>
+                  <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                    <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
+                    <button className={`btn ${u.isActive ? "btn-secondary" : "btn-primary"}`} style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDisableToggle(u)}>
+                      {u.isActive ? "Disable" : "Enable"}
+                    </button>
+                    {isSuperAdmin && <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemoveUser(u)}>Del</button>}
+                  </div>
+                </td>
+              </tr>
+            )}
+          />
         </div>
       ))}
 

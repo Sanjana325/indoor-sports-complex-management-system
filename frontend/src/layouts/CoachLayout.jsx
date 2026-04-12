@@ -1,11 +1,9 @@
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Snackbar, Alert } from "@mui/material";
+import { useAuth } from "../hooks/useAuth";
+import { getInitials } from "../utils/formatters";
 
-function getInitials(firstName = "", lastName = "") {
-  const a = (firstName || "").trim().charAt(0).toUpperCase();
-  const b = (lastName || "").trim().charAt(0).toUpperCase();
-  return (a + b) || "U";
-}
 
 const COACH_NAV_ITEMS = [
   { path: "/coach", label: "Dashboard Home", icon: (
@@ -23,17 +21,13 @@ export default function CoachLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const user = useMemo(() => ({
-    firstName: localStorage.getItem("firstName") || "Coach",
-    lastName: localStorage.getItem("lastName") || "",
-    role: localStorage.getItem("role") || "COACH",
-    email: localStorage.getItem("email") || "coach@sports.com",
-  }), []);
+  const { user, logout: authLogout } = useAuth();
 
   const displayName = `${user.firstName} ${user.lastName}`.trim();
   const initials = getInitials(user.firstName, user.lastName);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showLockToast, setShowLockToast] = useState(false);
   const profileRef = useRef(null);
 
   useEffect(() => {
@@ -44,42 +38,72 @@ export default function CoachLayout() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  const logout = () => { localStorage.clear(); navigate("/"); };
+  const handleRestrictedClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowLockToast(true);
+  };
+
+  const logout = () => {
+    authLogout();
+    navigate("/");
+  };
 
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Arena<span>Pro</span></h2>
-        <nav className="sidebar-nav">
-          {COACH_NAV_ITEMS.map(item => (
-            <NavLink key={item.path} to={item.path} end={item.path === "/coach"}>
-              {item.icon}
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
+        <div className="sidebar-main">
+          <h2 className="sidebar-title">Arena<span>Pro</span></h2>
+          <nav 
+            className={`sidebar-nav ${user.mustChangePassword ? 'is-restricted' : ''}`}
+            onClickCapture={user.mustChangePassword ? handleRestrictedClick : undefined}
+          >
+            {COACH_NAV_ITEMS.map(item => (
+              <NavLink key={item.path} to={item.path} end={item.path === "/coach"}>
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        <footer className="sidebar-footer" ref={profileRef}>
+          {isProfileOpen && (
+            <div className="sidebar-popup-menu">
+              <Link to="/coach/profile" className="sidebar-popup-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                My Profile
+              </Link>
+              <Link to="/coach/settings" className="sidebar-popup-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Settings
+              </Link>
+              <button 
+                type="button" 
+                className="sidebar-popup-item logout" 
+                onClick={logout}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+              </button>
+            </div>
+          )}
+
+          <div 
+            className={`sidebar-user ${isProfileOpen ? 'is-active' : ''}`}
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+          >
+            <div className="sidebar-avatar">{initials}</div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{displayName}</div>
+              <div className="sidebar-user-role">Faculty Coach</div>
+            </div>
+            <span className="sidebar-user-caret">▾</span>
+          </div>
+        </footer>
       </aside>
 
       <main className="admin-main">
-        <header className="admin-topbar">
-          <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>Coach Portal</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <div ref={profileRef} style={{ position: "relative" }}>
-              <button onClick={() => setIsProfileOpen(!isProfileOpen)} style={{ display: "flex", alignItems: "center", gap: "10px", background: "none", border: "none", cursor: "pointer" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "var(--primary-glow)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{initials}</div>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{displayName}</div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Faculty Coach</div>
-                </div>
-              </button>
-              {isProfileOpen && (
-                <div style={{ position: "absolute", top: "100%", right: 0, width: "200px", background: "white", boxShadow: "var(--shadow-lg)", borderRadius: "12px", marginTop: "10px", padding: "8px", border: "1px solid var(--border-light)" }}>
-                  <button onClick={logout} style={{ width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "0.85rem", color: "#ef4444", fontWeight: 600 }}>Logout</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
 
         <section className="admin-content">
           <div className="admin-content-inner">
@@ -87,6 +111,22 @@ export default function CoachLayout() {
           </div>
         </section>
       </main>
+
+      <Snackbar 
+        open={showLockToast} 
+        autoHideDuration={6000} 
+        onClose={() => setShowLockToast(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowLockToast(false)} 
+          severity="warning" 
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 600 }}
+        >
+          Access Restricted: Please update your temporary password to unlock all dashboard features.
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

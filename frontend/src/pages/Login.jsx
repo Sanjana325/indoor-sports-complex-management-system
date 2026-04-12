@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { useAuth } from "../hooks/useAuth";
+import { profileRouteForRole, homeRouteForRole } from "../utils/navigation";
 import "../styles/Login.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function normalizeEmail(email) {
   if (typeof email !== "string") return "";
@@ -18,24 +19,9 @@ function isValidEmail(email) {
   return re.test(e);
 }
 
-function profileRouteForRole(role) {
-  if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin/profile";
-  if (role === "STAFF") return "/staff/profile";
-  if (role === "COACH") return "/coach/profile";
-  if (role === "PLAYER") return "/player/profile";
-  return "/profile";
-}
-
-function homeRouteForRole(role) {
-  if (role === "ADMIN" || role === "SUPER_ADMIN") return "/admin";
-  if (role === "STAFF") return "/staff";
-  if (role === "COACH") return "/coach";
-  if (role === "PLAYER") return "/player";
-  return "/";
-}
-
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -70,44 +56,16 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail, password })
-      });
+      const user = await login(normalizedEmail, password);
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data.message || "Login failed");
-        return;
-      }
-
-      const token = data.token;
-      const user = data.user;
-      const mustChangePassword = Boolean(data.mustChangePassword);
-
-      if (!token || !user || !user.role) {
-        setError("Invalid response from server");
-        return;
-      }
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("userId", String(user.userId || ""));
-      localStorage.setItem("firstName", user.firstName || "");
-      localStorage.setItem("lastName", user.lastName || "");
-      localStorage.setItem("email", user.email || normalizedEmail);
-      localStorage.setItem("role", user.role);
-      localStorage.setItem("mustChangePassword", mustChangePassword ? "true" : "false");
-
-      if (mustChangePassword) {
+      if (user.mustChangePassword) {
         navigate(profileRouteForRole(user.role));
         return;
       }
 
       navigate(homeRouteForRole(user.role));
     } catch (err) {
-      setError("Cannot connect to backend. Make sure the server is running.");
+      setError(err.response?.data?.message || err.message || "Cannot connect to backend.");
     } finally {
       setLoading(false);
     }

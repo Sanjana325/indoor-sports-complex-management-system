@@ -25,8 +25,7 @@ import {
 } from "@mui/icons-material";
 import "../../styles/PlayerMyClasses.css";
 import ClassPaymentModal from "../../components/ClassPaymentModal";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import playerService from "../../services/playerService";
 
 const DAY_MAP = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -88,19 +87,11 @@ export default function PlayerMyClasses() {
   const fetchMyClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/player/my-classes`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        console.log("[MyClasses] Enrollments:", data.enrollments);
-        setEnrollments(data.enrollments || []);
-      } else {
-        setError(data.message || "Failed to load classes");
-      }
+      const data = await playerService.getMyClasses();
+      console.log("[MyClasses] Enrollments:", data.enrollments);
+      setEnrollments(data.enrollments || []);
     } catch (err) {
-      setError("Connection error");
+      setError(err.response?.data?.message || "Failed to load classes");
     } finally {
       setLoading(false);
     }
@@ -109,20 +100,11 @@ export default function PlayerMyClasses() {
   const handleLeaveClass = async (enrollmentId) => {
     if (!window.confirm("Are you sure you want to leave this class? Recurring payments will be stopped.")) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/player/my-classes/${enrollmentId}/leave`, {
-        method: "PATCH",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (res.ok) {
-        alert("Successfully left the class.");
-        fetchMyClasses();
-      } else {
-        const data = await res.json();
-        alert(data.message || "Failed to leave class");
-      }
+      await playerService.leaveClass(enrollmentId);
+      alert("Successfully left the class.");
+      fetchMyClasses();
     } catch (err) {
-      alert("Error leaving class");
+      alert(err.response?.data?.message || "Error leaving class");
     }
   };
 

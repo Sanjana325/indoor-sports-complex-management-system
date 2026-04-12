@@ -1,11 +1,11 @@
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Snackbar, Alert } from "@mui/material";
+import { useAuth } from "../hooks/useAuth";
+import staffService from "../services/staffService";
+import adminService from "../services/adminService";
+import { getInitials } from "../utils/formatters";
 
-function getInitials(firstName = "", lastName = "") {
-  const a = (firstName || "").trim().charAt(0).toUpperCase();
-  const b = (lastName || "").trim().charAt(0).toUpperCase();
-  return (a + b) || "U";
-}
 
 const STAFF_NAV_ITEMS = [
   { path: "/staff", label: "Calendar", icon: (
@@ -32,12 +32,7 @@ export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const user = useMemo(() => ({
-    firstName: localStorage.getItem("firstName") || "Staff",
-    lastName: localStorage.getItem("lastName") || "",
-    role: localStorage.getItem("role") || "STAFF",
-    email: localStorage.getItem("email") || "staff@sports.com",
-  }), []);
+  const { user, logout: authLogout } = useAuth();
 
   const displayName = `${user.firstName} ${user.lastName}`.trim();
   const initials = getInitials(user.firstName, user.lastName);
@@ -49,6 +44,7 @@ export default function StaffLayout() {
 
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   const [recentCancellations, setRecentCancellations] = useState([]);
+  const [showLockToast, setShowLockToast] = useState(false);
 
   useEffect(() => {
     function handleOutsideClick(e) {
@@ -60,15 +56,16 @@ export default function StaffLayout() {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
     const fetchNotifs = async () => {
       try {
-        const pRes = await fetch("http://localhost:5000/api/admin/payments/pending-count", { headers: { Authorization: `Bearer ${token}` } });
-        if (pRes.ok) { const d = await pRes.json(); setPendingPaymentsCount(d.count); }
-        const cRes = await fetch("http://localhost:5000/api/staff/classes/recent-cancellations", { headers: { Authorization: `Bearer ${token}` } });
-        if (cRes.ok) { const d = await cRes.json(); setRecentCancellations(d.cancellations || []); }
-      } catch (e) { console.error(e); }
+        const countData = await adminService.getPendingPaymentsCount();
+        setPendingPaymentsCount(countData.count);
+
+        const cancelData = await staffService.getRecentCancellations();
+        setRecentCancellations(cancelData.cancellations || []);
+      } catch (e) {
+        console.error("Staff fetch error:", e);
+      }
     };
     fetchNotifs();
     const interval = setInterval(fetchNotifs, 30000);
@@ -77,71 +74,113 @@ export default function StaffLayout() {
 
   const handleAcknowledge = async (sessionId) => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/staff/classes/cancel-alert/${sessionId}/acknowledge`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setRecentCancellations(prev => prev.filter(c => c.id !== sessionId));
-    } catch (e) { console.error(e); }
+      await staffService.acknowledgeCancellation(sessionId);
+      setRecentCancellations(prev => prev.filter(c => c.id !== sessionId));
+    } catch (e) {
+      console.error("Acknowledge error:", e);
+    }
   };
 
-  const logout = () => { localStorage.clear(); navigate("/"); };
+  const handleRestrictedClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowLockToast(true);
+  };
+
+  const logout = () => {
+    authLogout();
+    navigate("/");
+  };
 
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Arena<span>Pro</span></h2>
-        <nav className="sidebar-nav">
-          {STAFF_NAV_ITEMS.map(item => (
-            <NavLink key={item.path} to={item.path} end={item.path === "/staff"}>
-              {item.icon}
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {item.badge && pendingPaymentsCount > 0 && (
-                <span style={{ background: "var(--primary)", color: "white", fontSize: "0.7rem", padding: "2px 6px", borderRadius: "10px", fontWeight: 700 }}>{pendingPaymentsCount}</span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="sidebar-main">
+          <h2 className="sidebar-title">Arena<span>Pro</span></h2>
+          <nav 
+            className={`sidebar-nav ${user.mustChangePassword ? "is-restricted" : ""}`}
+            onClickCapture={user.mustChangePassword ? handleRestrictedClick : undefined}
+          >
+            {STAFF_NAV_ITEMS.map(item => (
+              <NavLink key={item.path} to={item.path} end={item.path === "/staff"}>
+                {item.icon}
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.badge && pendingPaymentsCount > 0 && (
+                  <span style={{ background: "var(--primary)", color: "white", fontSize: "0.7rem", padding: "2px 6px", borderRadius: "10px", fontWeight: 700 }}>{pendingPaymentsCount}</span>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        <footer className="sidebar-footer" ref={profileRef}>
+          {isProfileOpen && (
+            <div className="sidebar-popup-menu">
+              <Link to="/staff/profile" className="sidebar-popup-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                My Profile
+              </Link>
+              <Link to="/staff/settings" className="sidebar-popup-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1-2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Settings
+              </Link>
+              <button 
+                type="button" 
+                className="sidebar-popup-item logout" 
+                onClick={logout}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+              </button>
+            </div>
+          )}
+
+          <div 
+            className={`sidebar-user ${isProfileOpen ? 'is-active' : ''}`}
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+          >
+            <div className="sidebar-avatar">{initials}</div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{displayName}</div>
+              <div className="sidebar-user-role">{user.role}</div>
+            </div>
+            <span className="sidebar-user-caret">▾</span>
+          </div>
+        </footer>
       </aside>
 
       <main className="admin-main">
-        <header className="admin-topbar">
-          <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>Staff Portal</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            <div ref={notifRef} style={{ position: "relative" }}>
-              <button onClick={() => setIsNotifOpen(!isNotifOpen)} style={{ background: "var(--bg-body)", border: "none", padding: "8px", borderRadius: "10px", cursor: "pointer", position: "relative" }}>
-                🔔 {recentCancellations.length > 0 && <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", fontSize: "0.65rem", padding: "2px 5px", borderRadius: "50%" }}>{recentCancellations.length}</span>}
-              </button>
-              {isNotifOpen && (
-                <div style={{ position: "absolute", top: "100%", right: 0, width: "300px", background: "white", boxShadow: "var(--shadow-lg)", borderRadius: "12px", marginTop: "10px", padding: "12px", border: "1px solid var(--border-light)" }}>
-                  <div style={{ fontWeight: 700, marginBottom: "8px", fontSize: "0.9rem" }}>Recent Alerts</div>
-                  {recentCancellations.length === 0 ? <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>No new alerts</p> : (
-                    recentCancellations.map(c => (
-                      <div key={c.id} style={{ fontSize: "0.75rem", padding: "8px", background: "#fef2f2", borderRadius: "8px", marginBottom: "6px", position: "relative" }}>
-                        <button onClick={() => handleAcknowledge(c.id)} style={{ position: "absolute", right: 4, top: 4, border: "none", background: "none", cursor: "pointer", fontSize: "1rem" }}>×</button>
-                        <div style={{ fontWeight: 700, color: "#991b1b" }}>CANCELLED: {c.className}</div>
-                        <div>{c.date} • {c.startTime}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
+        <div className="floating-notif-container" ref={notifRef}>
+          <button 
+            className="floating-notif-bell" 
+            onClick={() => setIsNotifOpen(!isNotifOpen)}
+          >
+            🔔
+            {recentCancellations.length > 0 && (
+              <span className="floating-notif-badge">{recentCancellations.length}</span>
+            )}
+          </button>
+          
+          {isNotifOpen && (
+            <div className="floating-notif-dropdown">
+              <div style={{ fontWeight: 800, marginBottom: "12px", fontSize: "0.95rem", color: "var(--text-main)" }}>Recent Alerts</div>
+              {recentCancellations.length === 0 ? (
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "center", padding: "10px" }}>No new alerts</p>
+              ) : (
+                recentCancellations.map(c => (
+                  <div key={c.id} style={{ fontSize: "0.8rem", padding: "10px", background: "#fef2f2", borderRadius: "10px", marginBottom: "8px", position: "relative", border: "1px solid #fee2e2" }}>
+                    <button 
+                      onClick={() => handleAcknowledge(c.id)} 
+                      style={{ position: "absolute", right: 6, top: 6, border: "none", background: "none", cursor: "pointer", fontSize: "1.2rem", color: "#991b1b", opacity: 0.5 }}
+                    >×</button>
+                    <div style={{ fontWeight: 700, color: "#991b1b", marginBottom: "2px" }}>CANCELLED: {c.className}</div>
+                    <div style={{ color: "#7f1d1d", opacity: 0.8 }}>{c.date} • {c.startTime}</div>
+                  </div>
+                ))
               )}
             </div>
-
-            <div ref={profileRef} style={{ position: "relative" }}>
-              <button onClick={() => setIsProfileOpen(!isProfileOpen)} style={{ display: "flex", alignItems: "center", gap: "10px", background: "none", border: "none", cursor: "pointer" }}>
-                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "var(--primary-glow)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{initials}</div>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 700 }}>{displayName}</div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{user.role}</div>
-                </div>
-              </button>
-              {isProfileOpen && (
-                <div style={{ position: "absolute", top: "100%", right: 0, width: "200px", background: "white", boxShadow: "var(--shadow-lg)", borderRadius: "12px", marginTop: "10px", padding: "8px", border: "1px solid var(--border-light)" }}>
-                  <button onClick={logout} style={{ width: "100%", textAlign: "left", padding: "8px 12px", background: "none", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "0.85rem", color: "#ef4444", fontWeight: 600 }}>Logout</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
+          )}
+        </div>
 
         <section className="admin-content">
           <div className="admin-content-inner">
@@ -149,6 +188,22 @@ export default function StaffLayout() {
           </div>
         </section>
       </main>
+
+      <Snackbar 
+        open={showLockToast} 
+        autoHideDuration={6000} 
+        onClose={() => setShowLockToast(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowLockToast(false)} 
+          severity="warning" 
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 600 }}
+        >
+          Access Restricted: Please update your temporary password to unlock all dashboard features.
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

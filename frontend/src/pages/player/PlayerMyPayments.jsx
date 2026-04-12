@@ -1,32 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import playerService from "../../services/playerService";
+import { formatLKR, normalizeStatusKey } from "../../utils/formatters";
 import "../../styles/PlayerPaymentsTabs.css";
 
-function formatLKR(n) {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return "-";
-  return `LKR ${num.toLocaleString("en-LK")}`;
-}
-
-function statusKey(status) {
-  const s = (status || "").toLowerCase().trim();
-  if (s === "verified" || s === "completed") return "COMPLETED";
-  if (s === "cancelled") return "CANCELLED";
-  return "PENDING";
-}
-
-function statusLabel(key) {
-  if (key === "PENDING") return "Pending";
-  if (key === "COMPLETED") return "Completed";
-  if (key === "CANCELLED") return "Cancelled";
-  return key;
-}
-
-function statusPillClass(key) {
-  const k = (key || "").toLowerCase();
-  if (k === "completed") return "pp-pill verified";
-  if (k === "cancelled") return "pp-pill cancelled";
-  return "pp-pill pending";
-}
 
 function sortByDate(rows, sortOrder) {
   return [...rows].sort((a, b) => {
@@ -62,22 +38,17 @@ export default function PlayerMyPayments() {
   const [classPayments, setClassPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
   useEffect(() => {
     async function fetchPayments() {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/player/payments`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await res.json();
+        const data = await playerService.getMyPayments();
         
-        if (res.ok && Array.isArray(data.payments)) {
+        if (Array.isArray(data.payments)) {
           const formatted = data.payments.map((p) => {
-            const rawStatus = String(p?.Status || "PENDING");
-            const safeStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+            const safeKey = normalizeStatusKey(p?.Status);
+            const safeStatus = safeKey.charAt(0) + safeKey.slice(1).toLowerCase();
             
             let safeDate;
             try {
@@ -93,6 +64,7 @@ export default function PlayerMyPayments() {
               amount: Number(p?.Amount || 0),
               method: p?.Method === "BANK_SLIP" ? "Bank Slip" : "Online",
               status: safeStatus,
+              statusKey: safeKey,
               slipUploaded: p?.Method === "BANK_SLIP" && !!p?.SlipPath,
               slipPath: p?.SlipPath || null,
               rawBookingId: p?.BookingID || null,
@@ -115,7 +87,7 @@ export default function PlayerMyPayments() {
   const courtCounts = useMemo(() => {
     const counts = { ALL: courtPayments.length, PENDING: 0, COMPLETED: 0, CANCELLED: 0 };
     courtPayments.forEach((p) => {
-      const k = statusKey(p.status);
+      const k = p.statusKey;
       counts[k] = (counts[k] || 0) + 1;
     });
     return counts;
@@ -124,7 +96,7 @@ export default function PlayerMyPayments() {
   const classCounts = useMemo(() => {
     const counts = { ALL: classPayments.length, PENDING: 0, COMPLETED: 0, CANCELLED: 0 };
     classPayments.forEach((p) => {
-      const k = statusKey(p.status);
+      const k = p.statusKey;
       counts[k] = (counts[k] || 0) + 1;
     });
     return counts;
@@ -135,7 +107,7 @@ export default function PlayerMyPayments() {
     let rows = sortByDate(courtPayments, courtSort);
 
     if (courtStatus !== "ALL") {
-      rows = rows.filter((r) => statusKey(r.status) === courtStatus);
+      rows = rows.filter((r) => r.statusKey === courtStatus);
     }
 
     rows = rows.filter((r) => matchesQuery(r, q, "COURT"));
@@ -147,7 +119,7 @@ export default function PlayerMyPayments() {
     let rows = sortByDate(classPayments, classSort);
 
     if (classStatus !== "ALL") {
-      rows = rows.filter((r) => statusKey(r.status) === classStatus);
+      rows = rows.filter((r) => r.statusKey === classStatus);
     }
 
     rows = rows.filter((r) => matchesQuery(r, q, "CLASS"));
@@ -179,6 +151,7 @@ export default function PlayerMyPayments() {
 
   function StatusChips({ value, onChange, counts }) {
     const items = ["ALL", "PENDING", "COMPLETED"];
+    const labels = { PENDING: "Pending", COMPLETED: "Completed", CANCELLED: "Cancelled" };
     return (
       <div className="pp-chips">
         {items.map((k) => (
@@ -188,7 +161,7 @@ export default function PlayerMyPayments() {
             className={`pp-chip ${value === k ? "is-active" : ""}`}
             onClick={() => onChange(k)}
           >
-            {k === "ALL" ? "All" : statusLabel(k)}
+            {k === "ALL" ? "All" : labels[k]}
             <span className="pp-chip-count">{counts[k] ?? 0}</span>
           </button>
         ))}
@@ -288,10 +261,13 @@ export default function PlayerMyPayments() {
               ) : (
                 <div className="pp-list">
                   {visibleCourt.map((p) => {
-                    const sk = statusKey(p.status);
+                    const sk = p.statusKey;
                     const canSlip = p.method === "Bank Slip";
                     const showUpload = canSlip && sk === "PENDING" && !p.slipUploaded;
                     const showView = canSlip && p.slipUploaded;
+                    
+                    const pillClass = `pp-pill ${sk.toLowerCase() === "completed" ? "verified" : sk.toLowerCase() === "cancelled" ? "cancelled" : "pending"}`;
+                    const displayLabel = sk === "COMPLETED" ? "Completed" : sk === "CANCELLED" ? "Cancelled" : "Pending";
 
                     return (
                       <div key={p.paymentId} className="pp-item">
@@ -319,7 +295,7 @@ export default function PlayerMyPayments() {
 
                         <div className="pp-item-center">
                           <div className="pp-amount">{formatLKR(p.amount)}</div>
-                          <span className={statusPillClass(sk)}>{statusLabel(sk)}</span>
+                          <span className={pillClass}>{displayLabel}</span>
                         </div>
 
                         <div className="pp-item-right">
@@ -403,10 +379,13 @@ export default function PlayerMyPayments() {
               ) : (
                 <div className="pp-list">
                   {visibleClass.map((p) => {
-                    const sk = statusKey(p.status);
+                    const sk = p.statusKey;
                     const canSlip = p.method === "Bank Slip";
                     const showUpload = canSlip && sk === "PENDING" && !p.slipUploaded;
                     const showView = canSlip && p.slipUploaded;
+                    
+                    const pillClass = `pp-pill ${sk.toLowerCase() === "completed" ? "verified" : sk.toLowerCase() === "cancelled" ? "cancelled" : "pending"}`;
+                    const displayLabel = sk === "COMPLETED" ? "Completed" : sk === "CANCELLED" ? "Cancelled" : "Pending";
 
                     return (
                       <div key={p.paymentId} className="pp-item">
@@ -443,7 +422,7 @@ export default function PlayerMyPayments() {
                             </svg>
                             <span>{p.className || "-"}</span>
                           </div>
-                          <span className={statusPillClass(sk)}>{statusLabel(sk)}</span>
+                          <span className={pillClass}>{displayLabel}</span>
                         </div>
 
                         <div className="pp-item-right">

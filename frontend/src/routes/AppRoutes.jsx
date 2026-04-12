@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 import Login from "../pages/Login";
 import Register from "../pages/Register";
@@ -50,51 +51,59 @@ export default function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminHome />} />
-        <Route path="calendar" element={<AdminCalendar />} />
-        <Route path="users" element={<UserManagement />} />
-        <Route path="courts" element={<Courts />} />
-        <Route path="sports" element={<Sports />} />
-        <Route path="classes" element={<ClassManagement />} />
-        <Route path="bookings" element={<Bookings />} />
-        <Route path="payments" element={<Payments />} />
-        <Route path="blocked-slots" element={<BlockedSlots />} />
-        <Route path="enrollments" element={<Enrollments />} />
-        <Route path="attendance" element={<Attendance />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
+      <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPER_ADMIN"]} />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminHome />} />
+          <Route path="calendar" element={<AdminCalendar />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="courts" element={<Courts />} />
+          <Route path="sports" element={<Sports />} />
+          <Route path="classes" element={<ClassManagement />} />
+          <Route path="bookings" element={<Bookings />} />
+          <Route path="payments" element={<Payments />} />
+          <Route path="blocked-slots" element={<BlockedSlots />} />
+          <Route path="enrollments" element={<Enrollments />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
       </Route>
 
-      <Route path="/staff" element={<StaffLayout />}>
-        <Route index element={<StaffHome />} />
-        <Route path="attendance" element={<Attendance />} />
-        <Route path="payments" element={<Payments />} />
-        <Route path="bookings" element={<Bookings />} />
-        <Route path="classes" element={<ClassManagement />} />
-        <Route path="enrollments" element={<Enrollments />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
+      <Route element={<ProtectedRoute allowedRoles={["STAFF"]} />}>
+        <Route path="/staff" element={<StaffLayout />}>
+          <Route index element={<StaffHome />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="payments" element={<Payments />} />
+          <Route path="bookings" element={<Bookings />} />
+          <Route path="classes" element={<ClassManagement />} />
+          <Route path="enrollments" element={<Enrollments />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
       </Route>
 
-      <Route path="/coach" element={<CoachLayout />}>
-        <Route index element={<CoachHome />} />
-        <Route path="my-classes" element={<MyClasses />} />
-        <Route path="cancelled-sessions" element={<CancelledSessions />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
+      <Route element={<ProtectedRoute allowedRoles={["COACH"]} />}>
+        <Route path="/coach" element={<CoachLayout />}>
+          <Route index element={<CoachHome />} />
+          <Route path="my-classes" element={<MyClasses />} />
+          <Route path="cancelled-sessions" element={<CancelledSessions />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
       </Route>
 
-      <Route path="/player" element={<PlayerLayout />}>
-        <Route index element={<PlayerHome />} />
-        <Route path="book-court" element={<PlayerBookCourt />} />
-        <Route path="available-classes" element={<PlayerAvailableClasses />} />
-        <Route path="my-bookings" element={<PlayerMyBookings />} />
-        <Route path="my-classes" element={<PlayerMyClasses />} />
-        <Route path="my-payments" element={<PlayerMyPayments />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="settings" element={<Settings />} />
+      <Route element={<ProtectedRoute allowedRoles={["PLAYER"]} />}>
+        <Route path="/player" element={<PlayerLayout />}>
+          <Route index element={<PlayerHome />} />
+          <Route path="book-court" element={<PlayerBookCourt />} />
+          <Route path="available-classes" element={<PlayerAvailableClasses />} />
+          <Route path="my-bookings" element={<PlayerMyBookings />} />
+          <Route path="my-classes" element={<PlayerMyClasses />} />
+          <Route path="my-payments" element={<PlayerMyPayments />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
       </Route>
     </Routes>
   );

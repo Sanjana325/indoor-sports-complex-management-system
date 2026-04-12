@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import adminService from "../../services/adminService";
+import ArenaTable from "../../components/shared/ArenaTable";
+import StatusPill from "../../components/shared/StatusPill";
+import { formatDate } from "../../utils/formatters";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-function formatPaidAt(isoString) {
-  if (!isoString) return "—";
-  const d = new Date(isoString);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-GB", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
@@ -20,15 +17,13 @@ export default function Payments() {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const role = localStorage.getItem("role");
-      const res = await fetch(`${API_BASE}${role === "STAFF" ? "/api/staff" : "/api/admin"}/payments`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setPayments(data.payments || []);
-      }
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+      const data = await adminService.getPayments();
+      setPayments(data.payments || []);
+    } catch (err) {
+      console.error("Fetch payments error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchPayments(); }, []);
@@ -36,15 +31,15 @@ export default function Payments() {
   const handleAction = async (endpoint, id, rawId, newStatus) => {
     if (newStatus === "REJECTED" && !window.confirm("Are you sure you want to REJECT this payment? This will cancel the associated reservation.")) return;
     try {
-      const token = localStorage.getItem("token");
-      const role = localStorage.getItem("role");
-      const res = await fetch(`${API_BASE}${role === "STAFF" ? "/api/staff" : "/api/admin"}/payments/${rawId}/${endpoint}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
-      else {
-        const d = await res.json();
-        alert(d.message || "Action failed");
+      if (endpoint === "verify") {
+        await adminService.verifyPayment(rawId);
+      } else {
+        await adminService.rejectPayment(rawId);
       }
-    } catch (e) { alert("Server error"); }
+      setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
+    } catch (e) {
+      alert(e.response?.data?.message || "Action failed");
+    }
   };
 
   const filtered = useMemo(() => {
@@ -96,61 +91,49 @@ function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onRej
           </button>
         )}
       </div>
-      <div className="arena-table-container">
-        <table className="arena-table">
-          <thead>
-            <tr>
-              <th>TxID</th>
-              {showBookingId && <th>Booking</th>}
-              <th>Payer</th>
-              <th>Method</th>
-              <th>Amount</th>
-              <th>Timestamp</th>
-              <th>Proof</th>
-              <th>Status</th>
-              <th style={{ textAlign: "right" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="9" style={{ textAlign: "center", padding: "1.5rem" }}>Fetching transactions...</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan="9" style={{ textAlign: "center", padding: "1.5rem" }}>No records found.</td></tr>
-            ) : (
-              rows.map(p => (
-                <tr key={p.id}>
-                  <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{p.id}</td>
-                  {showBookingId && <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>#{p.bookingId || "N/A"}</td>}
-                  <td><div style={{ fontWeight: 700 }}>{p.name}</div></td>
-                  <td>{p.method}</td>
-                  <td style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "0.85rem" }}>LKR {Number(p.amount).toLocaleString()}</td>
-                  <td style={{ fontSize: "0.8rem" }}>{formatPaidAt(p.paidAt)}</td>
-                  <td>
-                    {p.slip ? (
-                      <button className="btn-link" onClick={() => window.open(p.slip, "_blank")} style={{ color: "var(--primary)", fontSize: "0.85rem", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}>View Slip</button>
-                    ) : <span style={{ color: "var(--text-muted)" }}>-</span>}
-                  </td>
-                  <td>
-                    <span className={`status-pill ${p.status.toLowerCase()}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                      {p.status === "PENDING" ? (
-                        <>
-                          <button className="btn btn-primary" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => onVerify(p.id, p.paymentIdStr)}>Verify</button>
-                          <button className="btn btn-danger" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => onReject(p.id, p.paymentIdStr)}>Reject</button>
-                        </>
-                      ) : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>Finalized</span>}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <ArenaTable 
+        loading={loading}
+        data={rows}
+        columns={[
+          { header: "TxID" },
+          ...(showBookingId ? [{ header: "Booking" }] : []),
+          { header: "Payer" },
+          { header: "Method" },
+          { header: "Amount" },
+          { header: "Timestamp" },
+          { header: "Proof" },
+          { header: "Status" },
+          { header: "Actions", style: { textAlign: "right" } }
+        ]}
+        renderRow={(p) => (
+          <tr key={p.id}>
+            <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{p.id}</td>
+            {showBookingId && <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>#{p.bookingId || "N/A"}</td>}
+            <td><div style={{ fontWeight: 700 }}>{p.name}</div></td>
+            <td>{p.method}</td>
+            <td style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "0.85rem" }}>LKR {Number(p.amount).toLocaleString()}</td>
+            <td style={{ fontSize: "0.8rem" }}>{formatDate(p.paidAt)}</td>
+            <td>
+              {p.slip ? (
+                <button className="btn-link" onClick={() => window.open(p.slip, "_blank")} style={{ color: "var(--primary)", fontSize: "0.85rem", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}>View Slip</button>
+              ) : <span style={{ color: "var(--text-muted)" }}>-</span>}
+            </td>
+            <td>
+              <StatusPill status={p.status} />
+            </td>
+            <td>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                {p.status === "PENDING" ? (
+                  <>
+                    <button className="btn btn-primary" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => onVerify(p.id, p.paymentIdStr)}>Verify</button>
+                    <button className="btn btn-danger" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => onReject(p.id, p.paymentIdStr)}>Reject</button>
+                  </>
+                ) : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>Finalized</span>}
+              </div>
+            </td>
+          </tr>
+        )}
+      />
     </div>
   );
 }
