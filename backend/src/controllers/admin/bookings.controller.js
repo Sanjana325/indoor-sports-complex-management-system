@@ -6,11 +6,14 @@ exports.listBookings = async (req, res, next) => {
         const [rows] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
                     c.CourtName, c.PricePerHour, u.FirstName, u.LastName, u.PhoneNumber, 
-                    s.SportName, s.ColorCode
+                    s.SportName, s.ColorCode,
+                    p.PaymentID, p.Method as PaymentMethod
              FROM booking b
              JOIN court c ON b.CourtID = c.CourtID
              JOIN useraccount u ON b.UserID = u.UserID
              JOIN sport s ON b.SportID = s.SportID
+             LEFT JOIN bookingpayment bp ON b.BookingID = bp.BookingID
+             LEFT JOIN payment p ON bp.PaymentID = p.PaymentID
              ORDER BY b.CreatedAt DESC`
         );
 
@@ -44,7 +47,9 @@ exports.listBookings = async (req, res, next) => {
                 sportColor: r.ColorCode,
                 pricePerHour: r.PricePerHour,
                 startRaw: r.StartDateTime,
-                endRaw: r.EndDateTime
+                endRaw: r.EndDateTime,
+                paymentId: r.PaymentID ? `PAY${String(r.PaymentID).padStart(3, '0')}` : "-",
+                paymentMethod: r.PaymentID ? (r.PaymentMethod === 'BANK_SLIP' ? "Bank Slip" : "Online") : "-"
             };
         });
 

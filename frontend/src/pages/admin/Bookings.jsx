@@ -86,19 +86,20 @@ export default function Bookings() {
             <tr>
               <th>ID</th>
               <th>Player & Details</th>
-              <th>Sport</th>
-              <th>Court</th>
+              <th>Arena & Sport</th>
               <th>Session</th>
               <th>Created</th>
+              <th>Payment ID</th>
+              <th>Method</th>
               <th>Status</th>
               {!isStaff && <th style={{ textAlign: "right" }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="8" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing Archive...</td></tr>
+              <tr><td colSpan="10" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing Archive...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan="8" style={{ textAlign: "center", padding: "2rem" }}>No matching records found.</td></tr>
+              <tr><td colSpan="10" style={{ textAlign: "center", padding: "2rem" }}>No matching records found.</td></tr>
             ) : (
               filtered.map(b => (
                 <tr key={b.id}>
@@ -107,11 +108,11 @@ export default function Bookings() {
                     <div style={{ fontWeight: 700 }}>{b.playerName}</div>
                   </td>
                   <td>
-                    <span className="status-pill info" style={{ padding: "2px 8px", fontSize: "0.7rem", textTransform: "uppercase" }}>
+                    <div style={{ fontWeight: 600 }}>{b.court}</div>
+                    <span className="status-pill info" style={{ padding: "2px 8px", fontSize: "0.65rem", textTransform: "uppercase", marginTop: "4px", display: "inline-block" }}>
                       {b.sportName || "BOOKING"}
                     </span>
                   </td>
-                  <td><span style={{ fontWeight: 600 }}>{b.court}</span></td>
                   <td>
                     <div style={{ fontWeight: 700, color: "var(--primary-dark)" }}>{b.date}</div>
                     <div style={{ fontSize: "0.75rem" }}>{b.time}</div>
@@ -119,6 +120,14 @@ export default function Bookings() {
                   <td>
                     <div style={{ fontSize: "0.8rem" }}>{formatBookedDate(b.createdAt)}</div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{formatBookedTime(b.createdAt)}</div>
+                  </td>
+                  <td style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)" }}>{b.paymentId}</td>
+                  <td style={{ fontSize: "0.85rem" }}>
+                    {b.paymentMethod !== "-" ? (
+                      <span className="status-pill" style={{ background: "var(--bg-main)", color: "var(--text-main)", fontSize: "0.7rem" }}>
+                        {b.paymentMethod}
+                      </span>
+                    ) : "-"}
                   </td>
                   <td>
                     <span className={`status-pill ${b.status.toLowerCase()}`}>

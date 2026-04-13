@@ -164,8 +164,8 @@ export default function ClassManagement() {
             <table className="arena-table">
               <thead>
                 <tr>
-                  <th>Class Identity</th>
-                  <th>Faculty / Coach</th>
+                  <th>Class Name</th>
+                  <th>Coach</th>
                   <th>Arena Courts</th>
                   <th>Schedule Pattern</th>
                   <th>Timeline</th>

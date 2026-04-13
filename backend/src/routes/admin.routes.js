@@ -14,6 +14,7 @@ const bookingsController = require("../controllers/admin/bookings.controller");
 const enrollmentsController = require("../controllers/admin/enrollments.controller");
 const attendanceController = require("../controllers/admin/attendance.controller");
 const blockedSlotsController = require("../controllers/admin/blockedSlots.controller");
+const reportsController = require("../controllers/admin/reports.controller");
 
 // Test endpoint logic was in admin key "test", but not in any new controller. 
 // I will inline it or create a general admin controller if needed. 
@@ -93,5 +94,12 @@ router.get("/admin/blocked-slots", requireAuth, requireRole("ADMIN", "SUPER_ADMI
 router.post("/admin/blocked-slots", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), blockedSlotsController.createBlockedSlot);
 router.put("/admin/blocked-slots/:id", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), blockedSlotsController.updateBlockedSlot);
 router.delete("/admin/blocked-slots/:id", requireAuth, requireRole("ADMIN", "SUPER_ADMIN"), blockedSlotsController.deleteBlockedSlot);
+
+// Reports Routes
+router.get("/admin/reports/dashboard-stats", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), reportsController.getDashboardStats);
+router.get("/admin/reports/bookings", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), reportsController.getBookingsReport);
+router.get("/admin/reports/payments", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), reportsController.getPaymentsReport);
+router.get("/admin/reports/attendance", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), reportsController.getAttendanceReport);
+router.get("/admin/reports/enrollments", requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "STAFF"), reportsController.getEnrollmentsReport);
 
 module.exports = router;

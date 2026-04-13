@@ -47,15 +47,30 @@ function sportLabelFromKey(k) {
 }
 
 export default function AdminHome() {
-  const totals = useMemo(
-    () => ({
-      users: 124,
-      bookings: 38,
-      payments: 29,
-      classes: 12
-    }),
-    []
-  );
+  const [totals, setTotals] = useState({
+    users: 0,
+    bookings: 0,
+    payments: 0,
+    classes: 0
+  });
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/admin/reports/dashboard-stats`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.totals) {
+          setTotals(data.totals);
+        }
+      } catch (err) {
+        console.error("Dashboard stats fetch failed:", err);
+      }
+    }
+    fetchStats();
+  }, []);
 
   const [bookings] = useState([
     {
