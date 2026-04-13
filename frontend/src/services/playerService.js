@@ -29,6 +29,11 @@ const playerService = {
   getMyPayments: async () => {
     const response = await api.get("/api/player/payments");
     return response.data;
+  },
+
+  getSports: async () => {
+    const response = await api.get("/api/player/sports");
+    return response.data;
   }
 };
 

@@ -23,6 +23,10 @@ import BlockedSlots from "../pages/admin/BlockedSlots";
 import Enrollments from "../pages/admin/Enrollments";
 import Attendance from "../pages/admin/Attendance";
 import Reports from "../pages/admin/Reports";
+import BookingReportPage from "../pages/admin/reports/BookingReportPage";
+import PaymentsReportPage from "../pages/admin/reports/PaymentsReportPage";
+import AttendanceReportPage from "../pages/admin/reports/AttendanceReportPage";
+import EnrollmentsReportPage from "../pages/admin/reports/EnrollmentsReportPage";
 
 // Staff
 import StaffLayout from "../layouts/StaffLayout";
@@ -65,6 +69,10 @@ export default function AppRoutes() {
           <Route path="enrollments" element={<Enrollments />} />
           <Route path="attendance" element={<Attendance />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="reports/bookings" element={<BookingReportPage />} />
+          <Route path="reports/payments" element={<PaymentsReportPage />} />
+          <Route path="reports/attendance" element={<AttendanceReportPage />} />
+          <Route path="reports/enrollments" element={<EnrollmentsReportPage />} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
         </Route>

@@ -1,118 +1,159 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Event, SportsEsports, Schedule } from "@mui/icons-material";
-import "../../styles/PlayerHome.css";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Schedule, ChevronLeft, ChevronRight, SportsScore, Groups, ArrowForward } from "@mui/icons-material";
+import playerService from "../../services/playerService";
+import "../../styles/PlayerPortal.css";
+
+const SPORT_IMAGES = {
+  "Football": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=800",
+  "Badminton": "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800",
+  "Cricket": "https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80&w=800",
+  "Table Tennis": "https://images.unsplash.com/photo-1534158914592-062992fbe900?auto=format&fit=crop&q=80&w=800",
+  "Chess": "https://images.unsplash.com/photo-1528819622765-d6bcf132f793?auto=format&fit=crop&q=80&w=800",
+  "Basketball": "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&q=80&w=800",
+};
 
 export default function PlayerHome() {
   const navigate = useNavigate();
+  const [sports, setSports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
-  // Mock Data
-  const [bookings] = useState([
-    { id: "B-700001", playerName: "You", court: "Court A", date: "2025-10-19", time: "16:00-18:00", status: "CONFIRMED" },
-    { id: "B-700002", playerName: "You", court: "Court B", date: "2025-10-21", time: "10:00-12:00", status: "PENDING_PAYMENT" },
-  ]);
-
-  const [blockedSlots] = useState([
-    { id: "BS-900001", court: "Court A", date: "2025-10-20", startTime: "12:00", endTime: "14:00", reason: "Maintenance" },
-  ]);
-
-  // Derive today's date for availability
-  const [selectedDateISO] = useState(() => {
-    const d = new Date();
-    const pad2 = (n) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  });
-
-  // Next booking logic
-  const nextBooking = useMemo(() => bookings[0] || null, [bookings]);
-
-  const availability = useMemo(() => {
-    const dateISO = selectedDateISO;
-
-    const courtList = [
-      { name: "Court A", sportKey: "cricket" },
-      { name: "Court B", sportKey: "cricket" },
-      { name: "Badminton - A", sportKey: "badminton" },
-      { name: "Futsal - A", sportKey: "futsal" },
-    ];
-
-    function isBlocked(courtName) {
-      return blockedSlots.some((x) => x.date === dateISO && x.court === courtName);
+  useEffect(() => {
+    async function fetchSports() {
+      try {
+        const data = await playerService.getSports();
+        setSports(data.sports || []);
+      } catch (err) {
+        console.error("Failed to load sports", err);
+      } finally {
+        setLoading(false);
+      }
     }
-    function isBooked(courtName) {
-      return bookings.some((b) => b.date === dateISO && b.court === courtName && b.status !== "CANCELLED");
-    }
+    fetchSports();
+  }, []);
 
-    return courtList.map((c) => {
-      if (isBlocked(c.name)) return { ...c, statusKey: "blocked", statusLabel: "Blocked" };
-      if (isBooked(c.name)) return { ...c, statusKey: "booked", statusLabel: "Booked" };
-      return { ...c, statusKey: "available", statusLabel: "Available" };
-    });
-  }, [selectedDateISO, bookings, blockedSlots]);
+  const nextSlide = () => {
+    if (carouselIndex < sports.length - 1) setCarouselIndex(prev => prev + 1);
+  };
 
-  function onBookCourt() {
-    navigate("/player/book-court");
-  }
+  const prevSlide = () => {
+    if (carouselIndex > 0) setCarouselIndex(prev => prev - 1);
+  };
 
-  function onViewClasses() {
-    navigate("/player/available-classes");
-  }
+  const carouselTransform = {
+    transform: `translateX(-${carouselIndex * 324}px)` 
+  };
 
   return (
-    <div className="ph-page glass-page">
-      <div className="ph-container">
-        
-        {/* HERO SECTION */}
-        <section className="ph-hero glass-panel">
-          <div className="ph-hero-text">
-            <h1 className="ph-title-glass">Welcome to the Arena!</h1>
-            <p className="ph-subtitle-glass">Your personal sports dashboard.</p>
+    <div className="player-portal-home">
+      
+      {/* ELITE IMMERSIVE HERO */}
+      <section className="hero-wrapper-elite">
+        <h1 className="hero-title-elite">Welcome Back</h1>
+        <p className="hero-subtitle-elite">
+          Your premium destination for indoor sports and professional training. 
+          Ready to raise your game today?
+        </p>
+      </section>
+
+      {/* QUICK ACTIONS (Floating Grid) */}
+      <section className="player-quick-actions">
+        <Link to="/player/book-court" className="action-card">
+          <div className="action-icon-wrap">
+            <SportsScore sx={{ fontSize: '2.5rem' }} />
           </div>
-          
-          <div className="ph-hero-widget glass-widget">
-            <h3 className="widget-title"><Schedule fontSize="small" /> Next Upcoming Booking</h3>
-            {nextBooking ? (
-              <div className="next-booking-details">
-                <div className="nb-court">{nextBooking.court}</div>
-                <div className="nb-time">{nextBooking.date} • {nextBooking.time}</div>
-                <div className={`nb-status status-${nextBooking.status.toLowerCase()}`}>{nextBooking.status}</div>
+          <div>
+            <h2>Book a Court</h2>
+            <p>Reserve exclusive slots for friendly matches or high-performance practice.</p>
+            <div className="action-card-btn">
+              Get Started <ArrowForward fontSize="small" />
+            </div>
+          </div>
+        </Link>
+
+        <Link to="/player/available-classes" className="action-card">
+          <div className="action-icon-wrap">
+            <Groups sx={{ fontSize: '2.5rem' }} />
+          </div>
+          <div>
+            <h2>Join a Class</h2>
+            <p>Master new skills with elite coaches in our specialized group sessions.</p>
+            <div className="action-card-btn">
+              Explore Classes <ArrowForward fontSize="small" />
+            </div>
+          </div>
+        </Link>
+      </section>
+
+      {/* SPORTS CAROUSEL */}
+      <div className="sports-band-section">
+        <h2 className="sports-band-title">Explore Featured Sports</h2>
+        
+        <section className="sport-band-container">
+          <button 
+            className="band-nav-btn prev" 
+            onClick={prevSlide}
+            style={{ opacity: carouselIndex === 0 ? 0.3 : 1, pointerEvents: carouselIndex === 0 ? 'none' : 'auto' }}
+          >
+            <ChevronLeft />
+          </button>
+
+          <div className="sport-band-wrapper" style={carouselTransform}>
+            {loading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', width: '100%', color: 'var(--player-text-muted)' }}>
+                Preparing the arena...
               </div>
             ) : (
-              <div className="no-booking">No upcoming bookings.</div>
+              sports.map((sport) => (
+                <div 
+                  key={sport.SportID} 
+                  className="sport-card"
+                  onClick={() => navigate(`/player/book-court?sportId=${sport.SportID}`)}
+                >
+                  <img 
+                    src={SPORT_IMAGES[sport.SportName] || "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=800"} 
+                    alt={sport.SportName} 
+                    className="sport-card-img" 
+                  />
+                  <div className="sport-card-content">
+                    <h3 className="sport-card-name">{sport.SportName}</h3>
+                    <div className="sport-card-price">
+                      Rs. <em>{Number(sport.BasePrice || 500).toLocaleString("en-LK")}</em> / hr
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
+
+          <button 
+            className="band-nav-btn next" 
+            onClick={nextSlide}
+            style={{ opacity: carouselIndex >= sports.length - 1 ? 0.3 : 1, pointerEvents: carouselIndex >= sports.length - 1 ? 'none' : 'auto' }}
+          >
+            <ChevronRight />
+          </button>
         </section>
-
-        <div className="ph-main-grid">
-          {/* QUICK ACTIONS */}
-          <section className="ph-quick-actions">
-            <div className="quick-actions-grid">
-              <button className="action-card glass-button" onClick={onBookCourt}>
-                <Event className="action-icon vibrant-icon" />
-                <span>Book a Court</span>
-              </button>
-              <button className="action-card glass-button" onClick={onViewClasses}>
-                <SportsEsports className="action-icon vibrant-icon" />
-                <span>Join a Class</span>
-              </button>
-            </div>
-          </section>
-
-          {/* AVAILABILITY WIDGET */}
-          <section className="ph-availability-widget glass-panel">
-            <h2 className="section-title-glass">Today's Availability</h2>
-            <div className="availability-list">
-              {availability.map((court, idx) => (
-                <div key={idx} className={`avail-item status-${court.statusKey}`}>
-                  <span className="avail-court-name">{court.name}</span>
-                  <span className="avail-status-badge">{court.statusLabel}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-
       </div>
+
+      {/* QUICK OVERVIEW SECTION */}
+      <section className="player-grid-section">
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div className="glass-panel-light" style={{ borderLeft: '6px solid var(--player-primary)' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+                <Schedule style={{ color: 'var(--player-primary)' }} />
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.5px' }}>Member Essentials</h2>
+             </div>
+             <p style={{ color: 'var(--player-text-muted)', lineHeight: '1.8', fontSize: '1.1rem' }}>
+                Use your personalized dashboard to manage court bookings, enroll in upcoming skill sessions, 
+                and track payments. ArenaPro is dedicated to providing a seamless, high-performance experience 
+                for every member of our sports community.
+             </p>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }

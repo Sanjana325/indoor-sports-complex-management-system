@@ -906,3 +906,108 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.85rem;
   align-items: center;
 }
+
+/* --- PROFESSIONAL PRINT & PDF EXPORT --- */
+@media print {
+  .admin-sidebar, 
+  .floating-notif-container, 
+  .no-print, 
+  .btn, 
+  .btn-back, 
+  .form-input, 
+  select, 
+  .kpis,
+  .kpi-grid, 
+  .chart-container, 
+  .insight-panel, 
+  .analytics-info-tip,
+  .sidebar-footer,
+  aside,
+  header,
+  nav {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: absolute !important;
+    overflow: hidden !important;
+  }
+
+  /* 2. Reset Layout to Document View */
+  .admin-layout {
+    display: block !important;
+  }
+
+  .admin-main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    width: 100% !important;
+  }
+
+  .admin-content {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .admin-content-inner {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 10mm !important; /* Reduced margin */
+  }
+
+  /* 2.1 Collapse all Grids/Flex containers to save space */
+  div[style*="display: grid"],
+  div[style*="display: flex"],
+  .arena-dashboard-grid,
+  .profile-grid {
+    display: block !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 3. Focus on Title & Table */
+  .page-title {
+    font-size: 24pt !important;
+    -webkit-text-fill-color: #16a34a !important; /* Force color in print */
+    color: #16a34a !important;
+    margin-bottom: 30px !important;
+    display: block !important;
+  }
+
+  .arena-table-container {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    margin-top: 20px !important;
+  }
+
+  .arena-table th {
+    background: #f8fafc !important;
+    border-bottom: 2px solid #333 !important;
+    color: #000 !important;
+  }
+
+  .arena-table td {
+    border-bottom: 1px solid #eee !important;
+    color: #000 !important;
+  }
+
+  /* 4. Utilities for Print */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .arena-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

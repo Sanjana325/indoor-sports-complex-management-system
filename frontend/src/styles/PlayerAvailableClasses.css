@@ -1,58 +1,60 @@
+/* Player Available Classes - Clean Light Theme */
+
 .pac-portal-container {
-  min-height: 100vh;
-  background: transparent !important;
-  position: relative;
-  z-index: 10;
-  width: 100%;
+  padding: 2rem 5%;
+  background: var(--player-bg);
+  min-height: calc(100vh - 72px);
 }
 
 .heavy-frost-card {
-  background: rgba(18, 18, 18, 0.85) !important;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  border-radius: 20px !important;
+  background: white !important;
+  border: 1px solid #f1f5f9 !important;
+  border-radius: var(--player-radius) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5) !important;
+  box-shadow: var(--player-shadow) !important;
   overflow: hidden;
+  color: var(--player-text-main) !important;
 }
 
 .heavy-frost-card:hover {
   transform: translateY(-8px);
-  border-color: rgba(0, 230, 118, 0.4) !important;
-  box-shadow: 0 12px 40px 0 rgba(0, 230, 118, 0.25) !important;
+  border-color: var(--player-primary) !important;
+  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.08) !important; /* Greenish shadow */
 }
 
 .card-footer-flex {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid #f1f5f9;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
 }
 
-/* Custom Scrollbar for the portal */
-.pac-portal-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.pac-portal-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.pac-portal-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-.pac-portal-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Ensure Typography and other elements feel premium */
+/* Ensure Typography and other elements feel premium on white */
 .pac-portal-container h3, 
 .pac-portal-container h5,
 .pac-portal-container h6 {
-  font-family: 'Outfit', 'Inter', sans-serif !important;
-}
+  font-family: 'Inter', sans-serif !important;
+  color: var(--player-text-main) !important;
+  font-weight: 800 !important;
+}
+
+.pac-portal-container .MuiTypography-body1,
+.pac-portal-container .MuiTypography-body2 {
+  color: var(--player-text-muted) !important;
+}
+
+.pac-enroll-btn {
+  background: var(--player-primary) !important;
+  color: white !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  padding: 8px 20px !important;
+  text-transform: none !important;
+}
+
+.pac-enroll-btn:hover {
+  background: var(--player-primary-dark) !important;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3) !important;
+}
