@@ -154,7 +154,7 @@ export default function Register() {
     <div className="reg-page">
       <div className="reg-card">
         <div className="title-container">
-          <h2 className="brand-title">ArenaPro</h2>
+          <h2 className="brand-title">Arena<span>Pro</span></h2>
           <h3 className="action-title">Create Account</h3>
         </div>
 

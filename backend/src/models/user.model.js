@@ -20,13 +20,13 @@ async function findById(userId) {
   return rows.length ? rows[0] : null;
 }
 
-async function emailExists(email) {
-  const [rows] = await pool.query(`SELECT 1 FROM UserAccount WHERE Email = ? LIMIT 1`, [email]);
+async function emailExists(email, conn = pool) {
+  const [rows] = await conn.query(`SELECT 1 FROM UserAccount WHERE Email = ? LIMIT 1`, [email]);
   return rows.length > 0;
 }
 
-async function emailExistsExceptUser(email, userId) {
-  const [rows] = await pool.query(`SELECT 1 FROM UserAccount WHERE Email = ? AND UserID <> ? LIMIT 1`, [
+async function emailExistsExceptUser(email, userId, conn = pool) {
+  const [rows] = await conn.query(`SELECT 1 FROM UserAccount WHERE Email = ? AND UserID <> ? LIMIT 1`, [
     email,
     userId
   ]);

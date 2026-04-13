@@ -40,7 +40,7 @@ async function getConflictingCourtIds(conn, { scheduleType, weekdays, oneTimeDat
         if (!weekdays || weekdays.length === 0) return conflicting;
         const sDate = startDate || (new Date()).toISOString().split('T')[0];
 
-        // 1. WEEKLY new class vs existing WEEKLY active classes — any shared weekday + time overlap
+        const weekdayStr = weekdays.join(',');
         const [rows1] = await conn.query(`
             SELECT DISTINCT cc.CourtID
             FROM class c
@@ -50,10 +50,10 @@ async function getConflictingCourtIds(conn, { scheduleType, weekdays, oneTimeDat
             WHERE c.Status = 'ACTIVE'
               AND c.ClassID != ?
               AND sch.ScheduleType = 'WEEKLY'
-              AND csd.Weekday IN (?)
+              AND FIND_IN_SET(csd.Weekday, ?)
               AND TIME(?) < sch.EndTime
               AND TIME(?) > sch.StartTime
-        `, [excludeId, weekdays, startTime, endTime]);
+        `, [excludeId, weekdayStr, startTime, endTime]);
         rows1.forEach(r => conflicting.add(r.CourtID));
 
         // 2. WEEKLY new class vs existing ONE_TIME active classes on a matching weekday
@@ -68,10 +68,10 @@ async function getConflictingCourtIds(conn, { scheduleType, weekdays, oneTimeDat
               AND c.ClassID != ?
               AND sch.ScheduleType = 'ONE_TIME'
               AND sch.OneTimeDate >= ?
-              AND (DAYOFWEEK(sch.OneTimeDate) - 1) IN (?)
+              AND FIND_IN_SET(DAYOFWEEK(sch.OneTimeDate) - 1, ?)
               AND TIME(?) < sch.EndTime
               AND TIME(?) > sch.StartTime
-        `, [excludeId, sDate, weekdays, startTime, endTime]);
+        `, [excludeId, sDate, weekdayStr, startTime, endTime]);
         rows2.forEach(r => conflicting.add(r.CourtID));
 
     } else if (scheduleType === 'ONE_TIME') {
@@ -125,6 +125,7 @@ async function getConflictingCourtIds(conn, { scheduleType, weekdays, oneTimeDat
     if (scheduleType === 'ONE_TIME') {
         const startDT = `${oneTimeDate} ${startTime}`;
         const endDT = `${oneTimeDate} ${endTime}`;
+        // Blocked slots don't have ClassIDs, so no exclusion needed
         const [blockedRows] = await conn.query(`
             SELECT DISTINCT CourtID FROM blockedslot
             WHERE (StartDateTime < ? AND EndDateTime > ?)
@@ -132,16 +133,27 @@ async function getConflictingCourtIds(conn, { scheduleType, weekdays, oneTimeDat
         blockedRows.forEach(r => conflicting.add(r.CourtID));
 
     } else if (scheduleType === 'WEEKLY') {
-        // Find blocked slots that overlap with the weekly pattern (matching weekday + time)
-        // AND whose StartDateTime is on or after the class's StartDate.
+        const weekdayStr = weekdays.join(',');
         const [blockedRows] = await conn.query(`
             SELECT DISTINCT CourtID FROM blockedslot
-            WHERE (DAYOFWEEK(StartDateTime) - 1) IN (?)
+            WHERE FIND_IN_SET(DAYOFWEEK(StartDateTime) - 1, ?)
               AND DATE(StartDateTime) >= ?
               AND TIME(StartDateTime) < TIME(?)
               AND TIME(EndDateTime) > TIME(?)
-        `, [weekdays, startDate || (new Date()).toISOString().split('T')[0], endTime, startTime]);
+        `, [weekdayStr, startDate || (new Date()).toISOString().split('T')[0], endTime, startTime]);
         blockedRows.forEach(r => conflicting.add(r.CourtID));
+
+        // 4. NEW: Check Private Bookings (Confirmed/Waiting)
+        // For WEEKLY, we check if any future individual bookings overlap with the weekly pattern
+        const [bookingRows] = await conn.query(`
+            SELECT DISTINCT CourtID FROM booking
+            WHERE Status IN ('CONFIRMED', 'WAITING_VERIFICATION')
+              AND FIND_IN_SET(DAYOFWEEK(StartDateTime) - 1, ?)
+              AND DATE(StartDateTime) >= ?
+              AND TIME(StartDateTime) < TIME(?)
+              AND TIME(EndDateTime) > TIME(?)
+        `, [weekdayStr, startDate || (new Date()).toISOString().split('T')[0], endTime, startTime]);
+        bookingRows.forEach(r => conflicting.add(r.CourtID));
     }
 
     return conflicting;
@@ -232,7 +244,7 @@ async function getConflictingCoachIds(conn, { scheduleType, weekdays, oneTimeDat
 
 exports.getAvailableCourts = async (req, res, next) => {
     try {
-        const { sportId, scheduleType, startTime, endTime, weekdays, oneTimeDate, startDate } = req.query;
+        const { sportId, scheduleType, startTime, endTime, weekdays, oneTimeDate, startDate, excludeClassId } = req.query;
 
         if (!sportId || !scheduleType || !startTime || !endTime) {
             return res.status(400).json({ message: "Missing required fields" });
@@ -256,10 +268,11 @@ exports.getAvailableCourts = async (req, res, next) => {
                 }
             } catch (e) {
                 // qs parsing sends weekdays[] as an array already, or single value as string
-                if (Array.isArray(weekdays)) {
-                    parsedWeekdays = weekdays.map(Number);
-                } else if (weekdays !== undefined && weekdays !== null) {
-                    parsedWeekdays = [Number(weekdays)];
+                const rawWeekdays = weekdays;
+                if (Array.isArray(rawWeekdays)) {
+                    parsedWeekdays = rawWeekdays.map(Number);
+                } else if (rawWeekdays !== undefined && rawWeekdays !== null) {
+                    parsedWeekdays = [Number(rawWeekdays)];
                 } else {
                     return res.status(400).json({ message: "weekdays must be a valid JSON array or query array" });
                 }
@@ -296,7 +309,8 @@ exports.getAvailableCourts = async (req, res, next) => {
             oneTimeDate: oneTimeDate || null,
             startTime,
             endTime,
-            startDate: startDate || null
+            startDate: startDate || null,
+            excludeClassId: excludeClassId ? Number(excludeClassId) : 0
         });
 
         // 3. Keep only courts that are NOT conflicting
@@ -371,10 +385,8 @@ exports.getClasses = async (req, res, next) => {
         const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const mapped = classes.map(c => ({
             ...c,
-            // If it's weekly, days is a string "1,3", split it and map to names
-            days: c.scheduleType === 'WEEKLY' && c.days
-                ? c.days.split(',').map(d => dayMap[Number(d)])
-                : [],
+            // Keep days as an array of numbers (0-6) for frontend logic
+            days: c.days ? c.days.split(',').map(Number) : [],
             courtName: c.courtNames, // For UI table
             courtIds: c.courtIds ? c.courtIds.split(',').map(Number) : []
         }));
@@ -520,6 +532,151 @@ exports.createClass = async (req, res, next) => {
 
         await conn.commit();
         res.status(201).json({ message: "Class created successfully", classId, scheduleId });
+
+    } catch (err) {
+        try { await conn.rollback(); } catch (e) { }
+        next(err);
+    } finally {
+        conn.release();
+    }
+};
+
+exports.updateClass = async (req, res, next) => {
+    const conn = await pool.getConnection();
+    try {
+        const classId = Number(req.params.classId);
+        const {
+            title, sportId, coachId, courtIds, capacity, fee,
+            billingType, scheduleType,
+            startDate, oneTimeDate, startTime, endTime,
+            weekdays
+        } = req.body;
+
+        if (!classId) return res.status(400).json({ message: "Invalid class id" });
+        if (!title) return res.status(400).json({ message: "Class title is required" });
+        if (!sportId) return res.status(400).json({ message: "Sport selection is required" });
+        if (!coachId) return res.status(400).json({ message: "Coach selection is required" });
+         // Ensure days is an array of NUMBERS, filter out any rogue strings (like legacy 'Mon')
+        const days = (Array.isArray(weekdays) ? weekdays : [weekdays])
+            .map(d => Number(d))
+            .filter(d => !isNaN(d));
+
+        if (scheduleType === 'WEEKLY' && days.length === 0) {
+            return res.status(400).json({ message: "Please select at least one day for weekly schedule" });
+        }
+        if (!capacity) return res.status(400).json({ message: "Capacity is required" });
+        if (fee === undefined) return res.status(400).json({ message: "Fee is required" });
+        if (!billingType || !scheduleType) return res.status(400).json({ message: "Schedule type is required" });
+        if (!startDate && !oneTimeDate) return res.status(400).json({ message: "Start date is required" });
+        if (!startTime || !endTime) return res.status(400).json({ message: "Start and End times are required" });
+
+        const [existing] = await conn.query(`
+            SELECT c.*, sch.ScheduleID, sch.ScheduleType, sch.OneTimeDate, sch.StartTime, sch.EndTime,
+                   GROUP_CONCAT(DISTINCT csd.Weekday) as weekdays
+            FROM class c
+            JOIN classschedule sch ON c.ClassID = sch.ClassID
+            LEFT JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+            WHERE c.ClassID = ?
+            GROUP BY c.ClassID, sch.ScheduleID
+        `, [classId]);
+
+        if (existing.length === 0) {
+            conn.release();
+            return res.status(404).json({ message: "Class not found" });
+        }
+
+        const current = existing[0];
+        const checkStartDate = scheduleType === "WEEKLY" ? startDate : oneTimeDate;
+
+        // Hard conflict checks (excluding current class)
+        const conflictOpts = {
+            scheduleType,
+            weekdays: Array.isArray(weekdays) ? weekdays : [],
+            oneTimeDate: oneTimeDate || null,
+            startTime,
+            endTime,
+            startDate: startDate || null,
+            excludeClassId: classId
+        };
+
+        const conflictingCourtIds = await getConflictingCourtIds(conn, conflictOpts);
+        const busyCourts = courtIds.filter(id => conflictingCourtIds.has(Number(id)));
+        if (busyCourts.length > 0) {
+            conn.release();
+            return res.status(409).json({ message: `Scheduling Conflict: Some selected courts are already booked: ${busyCourts.join(', ')}` });
+        }
+
+        const conflictingCoachIds = await getConflictingCoachIds(conn, conflictOpts);
+        if (conflictingCoachIds.has(Number(coachId))) {
+            conn.release();
+            return res.status(409).json({ message: "Scheduling Conflict: This coach is busy during this time." });
+        }
+
+        await conn.beginTransaction();
+
+        // 1. Update Core Class Record
+        const numCapacity = Number(capacity);
+        const numFee = Number(fee);
+
+        await conn.query(
+            `UPDATE class SET SportID = ?, CoachID = ?, Title = ?, StartDate = ?, Capacity = ?, Fee = ?, BillingType = ? WHERE ClassID = ?`,
+            [sportId, coachId, title, checkStartDate, numCapacity, numFee, billingType, classId]
+        );
+
+        // 2. Update Courts
+        await conn.query("DELETE FROM class_court WHERE ClassID = ?", [classId]);
+        const classCourtVals = courtIds.map(cid => [classId, cid]);
+        await conn.query("INSERT INTO class_court (ClassID, CourtID) VALUES ?", [classCourtVals]);
+
+        // 3. Update Schedule
+        const scheduleId = current.ScheduleID;
+        await conn.query(
+            `UPDATE classschedule SET ScheduleType = ?, OneTimeDate = ?, StartTime = ?, EndTime = ? WHERE ScheduleID = ?`,
+            [scheduleType, scheduleType === 'ONE_TIME' ? oneTimeDate : null, startTime, endTime, scheduleId]
+        );
+
+        // 4. Update Weekdays
+        await conn.query("DELETE FROM classscheduleday WHERE ScheduleID = ?", [scheduleId]);
+        if (scheduleType === "WEEKLY") {
+            const weekdayVals = weekdays.map(day => [scheduleId, day]);
+            await conn.query(`INSERT INTO classscheduleday(ScheduleID, Weekday) VALUES ? `, [weekdayVals]);
+        }
+
+        // 5. Session Handling: Regenerate if schedule strictly changed
+        const oldDays = (current.weekdays || "").split(',').map(Number).sort().join(',');
+        const newDays = Array.isArray(weekdays) ? [...weekdays].map(Number).sort().join(',') : "";
+        
+        const scheduleChanged = 
+            current.ScheduleType !== scheduleType ||
+            current.StartTime !== startTime ||
+            current.EndTime !== endTime ||
+            (scheduleType === 'WEEKLY' && (current.StartDate?.split('T')[0] !== startDate || oldDays !== newDays)) ||
+            (scheduleType === 'ONE_TIME' && current.OneTimeDate?.split('T')[0] !== oneTimeDate);
+
+        if (scheduleChanged) {
+            // Delete future SCHEDULED sessions
+            await conn.query(
+                `DELETE FROM classsession WHERE ClassID = ? AND Status = 'SCHEDULED' AND SessionDate >= CURDATE()`,
+                [classId]
+            );
+
+            // Regenerate
+            let simulatedSessions = [];
+            if (scheduleType === 'WEEKLY') {
+                const dates = getWeeklySessionDates(startDate, weekdays, 4);
+                simulatedSessions = dates.map(d => ({ date: d, startTime, endTime }));
+            } else if (scheduleType === 'ONE_TIME') {
+                simulatedSessions = [{ date: oneTimeDate, startTime, endTime }];
+            }
+
+            const sessionVals = simulatedSessions.map(sim => [classId, sim.date, sim.startTime, sim.endTime, 'SCHEDULED']);
+            if (sessionVals.length > 0) {
+                await conn.query(`INSERT IGNORE INTO classsession(ClassID, SessionDate, StartTime, EndTime, Status) VALUES ? `, [sessionVals]);
+            }
+        }
+
+        await conn.commit();
+        res.json({ message: "Class updated successfully" });
 
     } catch (err) {
         try { await conn.rollback(); } catch (e) { }

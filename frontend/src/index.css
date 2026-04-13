@@ -2,10 +2,11 @@
 
 :root {
   /* Colors - Nitro Turf Green */
-  --primary: #22c55e;
+  --primary: #16a34a;
+  --primary-gradient: linear-gradient(135deg, #16a34a 0%, #059669 100%);
   --primary-dark: #15803d;
   --primary-light: #f0fdf4;
-  --primary-glow: rgba(34, 197, 94, 0.15);
+  --primary-glow: rgba(22, 163, 74, 0.15);
   
   /* Neutral Palette */
   --bg-body: #f1f5f9;
@@ -149,15 +150,27 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: var(--primary-gradient) !important;
   color: white;
-  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.2);
+  border: none;
+  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.25);
 }
 
 .btn-primary:hover {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.2);
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 15px -3px rgba(34, 197, 94, 0.35);
+}
+
+/* MUI Button Global Override */
+.MuiButton-containedPrimary {
+  background: var(--primary-gradient) !important;
+  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.25) !important;
+}
+
+.MuiButton-containedPrimary:hover {
+  filter: brightness(1.1) !important;
+  box-shadow: 0 8px 15px -3px rgba(34, 197, 94, 0.35) !important;
 }
 
 .btn-secondary {
@@ -191,10 +204,15 @@ h1, h2, h3, h4, h5, h6 {
 .px-3 { padding-left: var(--space-3); padding-right: var(--space-3); }
 
 .page-title {
-  font-size: 1.5rem;
+  font-size: 1.875rem;
   font-weight: 800;
-  color: var(--text-main);
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
   letter-spacing: -0.025em;
+  margin-bottom: 0.25rem;
 }
 
 /* Cards */
@@ -356,8 +374,7 @@ h1, h2, h3, h4, h5, h6 {
   filter: grayscale(0.5);
 }
 
-.sidebar-nav.is-restricted a,
-.sidebar-nav.is-restricted NavLink {
+.sidebar-nav.is-restricted a {
   cursor: not-allowed;
 }
 
@@ -496,16 +513,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  color: white;
   font-size: 1.5rem;
   font-weight: 800;
-  color: white;
   margin-bottom: var(--space-4);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-1);
 }
 
 .sidebar-title span {
-  color: var(--primary);
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  background-size: 100%;
 }
 
 .sidebar-nav {
@@ -553,15 +575,15 @@ h1, h2, h3, h4, h5, h6 {
 
 .floating-notif-container {
   position: fixed;
-  top: 24px;
-  right: 24px;
+  top: 12px;
+  right: 15px;
   z-index: 200;
 }
 
 .floating-notif-bell {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -602,9 +624,9 @@ h1, h2, h3, h4, h5, h6 {
 
 .floating-notif-dropdown {
   position: absolute;
-  top: 60px;
+  top: 52px;
   right: 0;
-  width: 320px;
+  width: 300px;
   background: white;
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
@@ -619,7 +641,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .admin-content {
-  padding: var(--space-4);
+  padding: 64px var(--space-4) var(--space-4);
   background: var(--bg-body);
   flex: 1;
 }
@@ -631,7 +653,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* --- OVERWRITES & FIXES --- */
 .status-pill { border: 1px solid transparent; }
-.arena-card { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+.arena-card { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
 
 /* --- Dashboard Utilities --- */
 .arena-dashboard-grid {
@@ -677,6 +699,11 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
   font-size: 0.875rem;
   font-weight: 600;
+  color: var(--text-main);
+}
+
+.arena-legend-name {
+  color: var(--text-main);
 }
 
 .arena-legend-dot {
@@ -694,6 +721,23 @@ h1, h2, h3, h4, h5, h6 {
 .arena-scroll-area::-webkit-scrollbar { width: 6px; }
 .arena-scroll-area::-webkit-scrollbar-track { background: transparent; }
 .arena-scroll-area::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+/* FullCalendar Overrides for Visibility */
+.fc-col-header-cell-cushion,
+.fc-daygrid-day-number,
+.fc-event-title,
+.fc-list-event-title {
+  color: var(--text-main) !important;
+  font-family: var(--font-main) !important;
+}
+
+.fc-col-header-cell-cushion {
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted) !important;
+}
 
 .arena-list {
   display: flex;

@@ -3,6 +3,9 @@ import MultiSelectWithAdd from "../../components/MultiSelectWithAdd";
 import adminService from "../../services/adminService";
 import ArenaTable from "../../components/shared/ArenaTable";
 import StatusPill from "../../components/shared/StatusPill";
+import api from "../../services/api";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 
 function splitQualificationsToList(q) {
@@ -74,6 +77,7 @@ export default function UserManagement() {
   const [tempModalOpen, setTempModalOpen] = useState(false);
   const [createdTempPassword, setCreatedTempPassword] = useState("");
   const [createdEmail, setCreatedEmail] = useState("");
+  const [expandedSections, setExpandedSections] = useState({});
 
   const fetchUsersFromDb = async () => {
     setLoadingUsers(true);
@@ -109,12 +113,16 @@ export default function UserManagement() {
     return users.filter(u => buildHaystack(u).includes(term));
   }, [users, search]);
 
+  const toggleSection = (title) => {
+    setExpandedSections(prev => ({ ...prev, [title]: !prev[title] }));
+  };
+
   const sections = [
-    { title: "Super Admins", rows: filteredUsers.filter(u => u.role === "SUPER_ADMIN"), visible: isSuperAdmin },
-    { title: "Admins", rows: filteredUsers.filter(u => u.role === "ADMIN"), visible: isSuperAdmin },
-    { title: "Staff", rows: filteredUsers.filter(u => u.role === "STAFF"), visible: true },
-    { title: "Coaches", rows: filteredUsers.filter(u => u.role === "COACH"), visible: true, coach: true },
-    { title: "Players", rows: filteredUsers.filter(u => u.role === "PLAYER"), visible: true }
+    { title: "Super Admins", roleKey: "SUPER_ADMIN", visible: isSuperAdmin },
+    { title: "Admins", roleKey: "ADMIN", visible: isSuperAdmin },
+    { title: "Players", roleKey: "PLAYER", visible: true },
+    { title: "Staff", roleKey: "STAFF", visible: true },
+    { title: "Coaches", roleKey: "COACH", visible: true, coach: true }
   ];
 
   const resetForm = () => {
@@ -134,40 +142,52 @@ export default function UserManagement() {
   const handleDisableToggle = async (u) => {
     if (!window.confirm(`${u.isActive ? "Disable" : "Enable"} user ${u.email}?`)) return;
     try {
-      const token = localStorage.getItem("token");
-      const url = `${API_BASE}/api/admin/users/${u.userId}/${u.isActive ? "disable" : "enable"}`;
-      const res = await fetch(url, { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) fetchUsersFromDb();
-    } catch (e) { console.error(e); }
+      const endpoint = u.isActive ? "disable" : "enable";
+      const res = await api.patch(`/api/admin/users/${u.userId}/${endpoint}`);
+      if (res.status === 200) fetchUsersFromDb();
+    } catch (e) {
+      console.error(e);
+      alert(e.response?.data?.message || "Toggle failed");
+    }
   };
 
   const handleRemoveUser = async (u) => {
     if (!window.confirm(`PERMANENTLY remove user ${u.email}?`)) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/users/${u.userId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) fetchUsersFromDb();
-    } catch (e) { console.error(e); }
+      const res = await api.delete(`/api/admin/users/${u.userId}`);
+      if (res.status === 200) fetchUsersFromDb();
+    } catch (e) {
+      console.error(e);
+      alert(e.response?.data?.message || "Removal failed");
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     const payload = { role, firstName, lastName, email, phoneNumber: phone, specializations, qualifications };
-    const token = localStorage.getItem("token");
-    const method = mode === "ADD" ? "POST" : "PUT";
-    const url = mode === "ADD" ? `${API_BASE}/api/admin/users` : `${API_BASE}/api/admin/users/${editingUserId}`;
+    
     try {
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (res.ok) {
+      const url = mode === "ADD" ? "/api/admin/users" : `/api/admin/users/${editingUserId}`;
+      const res = mode === "ADD" ? await api.post(url, payload) : await api.put(url, payload);
+      
+      if (res.status === 200 || res.status === 201) {
         if (mode === "ADD") {
-          setCreatedEmail(email); setCreatedTempPassword(data.tempPassword || ""); setTempModalOpen(true);
+          setCreatedEmail(email); 
+          setCreatedTempPassword(res.data.tempPassword || ""); 
+          setTempModalOpen(true);
         }
-        setIsModalOpen(false); fetchUsersFromDb();
-      } else setFormError(data.message || "Action failed");
-    } catch (e) { setFormError("Server error"); }
-    finally { setSubmitting(false); }
+        setIsModalOpen(false); 
+        fetchUsersFromDb();
+      } else {
+        setFormError(res.data.message || "Action failed");
+      }
+    } catch (e) {
+      console.error("Submit Error:", e);
+      setFormError(e.response?.data?.message || "Server error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -183,59 +203,80 @@ export default function UserManagement() {
         </div>
       </div>
 
-      <div className="arena-card mb-3" style={{ padding: "var(--space-1)" }}>
-        <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} />
+      <div className="arena-card mb-4" style={{ padding: "var(--space-1)" }}>
+        <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Search users by name, email, ID..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {sections.map(sec => sec.visible && sec.rows.length > 0 && (
-        <div key={sec.title} className="mb-4">
-          <h3 className="mb-2" style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)" }}>{sec.title} ({sec.rows.length})</h3>
-          <ArenaTable 
-            loading={loadingUsers}
-            data={sec.rows}
-            columns={[
-              { header: "ID" },
-              { header: "Name" },
-              { header: "Contact" },
-              ...(sec.coach ? [{ header: "Qualifications & Specs" }] : []),
-              { header: "Status" },
-              { header: "Actions", style: { textAlign: "right" } }
-            ]}
-            renderRow={(u) => (
-              <tr key={u.userId}>
-                <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{u.idDisplay}</td>
-                <td>
-                  <div style={{ fontWeight: 700 }}>{u.firstName} {u.lastName}</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>
-                </td>
-                <td>
-                  <div style={{ fontSize: "0.875rem" }}>{u.phone}</div>
-                </td>
-                {sec.coach && (
-                  <td style={{ maxWidth: "250px" }}>
-                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                      {u.specializations.map(s => <StatusPill key={s} status="ACTIVE" label={s} />)}
-                      {u.qualifications.map(q => <StatusPill key={q} status="PENDING" label={q} />)}
+      {sections.map(sec => {
+        const allRows = filteredUsers.filter(u => u.role === sec.roleKey);
+        const isExpanded = expandedSections[sec.title];
+        const displayRows = isExpanded ? allRows : allRows.slice(0, 3);
+        
+        if (!sec.visible || allRows.length === 0) return null;
+
+        return (
+          <div key={sec.title} className="mb-4">
+            <div className="flex-between mb-2">
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)" }}>
+                {sec.title} ({allRows.length})
+              </h3>
+              {allRows.length > 3 && (
+                <button 
+                  className="btn-link" 
+                  onClick={() => toggleSection(sec.title)}
+                  style={{ color: "var(--primary)", fontWeight: 700, fontSize: "0.85rem", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  {isExpanded ? "Collapse View" : "See All"}
+                </button>
+              )}
+            </div>
+            <ArenaTable 
+              loading={loadingUsers}
+              data={displayRows}
+              columns={[
+                { header: "ID", style: { width: "120px" } },
+                { header: "User Identity", style: { width: "300px" } },
+                { header: "Contact", style: { width: "180px" } },
+                ...(sec.coach ? [{ header: "Qualifications & Specs" }] : []),
+                { header: "Status", style: { width: "120px" } },
+                { header: "Actions", style: { textAlign: "right", width: "180px" } }
+              ]}
+              renderRow={(u) => (
+                <tr key={u.userId}>
+                  <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{u.idDisplay}</td>
+                  <td>
+                    <div style={{ fontWeight: 700 }}>{u.firstName} {u.lastName}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: "0.875rem" }}>{u.phone}</div>
+                  </td>
+                  {sec.coach && (
+                    <td style={{ maxWidth: "250px" }}>
+                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                        {u.specializations.map(s => <StatusPill key={s} status="ACTIVE" label={s} />)}
+                        {u.qualifications.map(q => <StatusPill key={q} status="PENDING" label={q} />)}
+                      </div>
+                    </td>
+                  )}
+                  <td>
+                    <StatusPill status={u.isActive ? "ACTIVE" : "DISABLED"} />
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                      <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
+                      <button className={`btn ${u.isActive ? "btn-secondary" : "btn-primary"}`} style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDisableToggle(u)}>
+                        {u.isActive ? "Disable" : "Enable"}
+                      </button>
+                      {isSuperAdmin && <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemoveUser(u)}>Del</button>}
                     </div>
                   </td>
-                )}
-                <td>
-                  <StatusPill status={u.isActive ? "ACTIVE" : "DISABLED"} />
-                </td>
-                <td>
-                  <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                    <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
-                    <button className={`btn ${u.isActive ? "btn-secondary" : "btn-primary"}`} style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDisableToggle(u)}>
-                      {u.isActive ? "Disable" : "Enable"}
-                    </button>
-                    {isSuperAdmin && <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemoveUser(u)}>Del</button>}
-                  </div>
-                </td>
-              </tr>
-            )}
-          />
-        </div>
-      ))}
+                </tr>
+              )}
+            />
+          </div>
+        );
+      })}
 
       {isModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>

@@ -205,7 +205,7 @@ export default function AdminCalendar() {
                 <>
                   <div className="arena-list-item">
                     <span className="form-label" style={{ margin: 0 }}>Customer:</span>
-                    <span style={{ fontWeight: 600 }}>[{selectedEvent.court}] {selectedEvent.playerName}</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.playerName}</span>
                   </div>
                   <div className="arena-list-item">
                     <span className="form-label" style={{ margin: 0 }}>Phone:</span>

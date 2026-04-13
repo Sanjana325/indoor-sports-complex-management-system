@@ -17,11 +17,13 @@ exports.listPayments = async (req, res, next) => {
             `SELECT p.PaymentID, p.Amount, p.Method, p.SlipPath, p.Status, p.PaidAt,
                     u.FirstName, u.LastName,
                     bp.BookingPaymentID, bp.BookingID,
-                    emp.EnrollmentMonthPaymentID
+                    emp.EnrollmentMonthPaymentID, e.EnrollmentID
              FROM payment p
              JOIN useraccount u ON p.UserID = u.UserID
              LEFT JOIN bookingpayment bp ON p.PaymentID = bp.PaymentID
              LEFT JOIN enrollmentmonthpayment emp ON p.PaymentID = emp.PaymentID
+             LEFT JOIN enrollmentmonth em ON emp.EnrollmentMonthID = em.EnrollmentMonthID
+             LEFT JOIN enrollment e ON em.EnrollmentID = e.EnrollmentID
              ORDER BY CASE WHEN p.Status = 'PENDING' THEN 1 ELSE 2 END ASC, p.PaidAt DESC`
         );
         console.log("FIRST ROW OUT:", rows[0]);
@@ -31,6 +33,7 @@ exports.listPayments = async (req, res, next) => {
             paymentIdStr: String(r.PaymentID),
             name: `${r.FirstName} ${r.LastName}`,
             bookingId: r.BookingID || null,
+            enrollmentId: r.EnrollmentID || null,
             type: r.BookingPaymentID ? "Court Booking" : "Class Fee",
             method: r.Method === 'BANK_SLIP' ? "Bank Slip" : "Online",
             amount: Number(r.Amount),

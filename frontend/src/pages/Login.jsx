@@ -79,7 +79,7 @@ export default function Login() {
     <div className="login-container">
       <form className="login-card" onSubmit={handleLogin}>
         <div className="title-container">
-          <h2 className="brand-title">ArenaPro</h2>
+          <h2 className="brand-title">Arena<span>Pro</span></h2>
           <h3 className="action-title">Sign In</h3>
         </div>
 

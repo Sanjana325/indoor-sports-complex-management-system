@@ -74,13 +74,13 @@ export default function Payments() {
         </select>
       </div>
 
-      <PaymentSection title="Class Fee Payments" rows={showAllClasses ? classFeePayments : classFeePayments.slice(0, 5)} onToggle={() => setShowAllClasses(!showAllClasses)} showAll={showAllClasses} total={classFeePayments.length} onVerify={(id, rid) => handleAction("verify", id, rid, "VERIFIED")} onReject={(id, rid) => handleAction("reject", id, rid, "REJECTED")} loading={loading} />
+      <PaymentSection title="Class Fee Payments" rows={showAllClasses ? classFeePayments : classFeePayments.slice(0, 5)} onToggle={() => setShowAllClasses(!showAllClasses)} showAll={showAllClasses} total={classFeePayments.length} onVerify={(id, rid) => handleAction("verify", id, rid, "VERIFIED")} onReject={(id, rid) => handleAction("reject", id, rid, "REJECTED")} loading={loading} showEnrollmentId={true} />
       <PaymentSection title="Court Reservation Payments" rows={showAllCourts ? bookingPayments : bookingPayments.slice(0, 5)} onToggle={() => setShowAllCourts(!showAllCourts)} showAll={showAllCourts} total={bookingPayments.length} onVerify={(id, rid) => handleAction("verify", id, rid, "VERIFIED")} onReject={(id, rid) => handleAction("reject", id, rid, "REJECTED")} loading={loading} showBookingId={true} />
     </div>
   );
 }
 
-function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onReject, loading, showBookingId }) {
+function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onReject, loading, showBookingId, showEnrollmentId }) {
   return (
     <div className="mb-4">
       <div className="flex-between mb-1" style={{ alignItems: "flex-end" }}>
@@ -97,6 +97,7 @@ function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onRej
         columns={[
           { header: "TxID" },
           ...(showBookingId ? [{ header: "Booking" }] : []),
+          ...(showEnrollmentId ? [{ header: "Enrollment" }] : []),
           { header: "Payer" },
           { header: "Method" },
           { header: "Amount" },
@@ -109,6 +110,7 @@ function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onRej
           <tr key={p.id}>
             <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{p.id}</td>
             {showBookingId && <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>#{p.bookingId || "N/A"}</td>}
+            {showEnrollmentId && <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>E-{String(p.enrollmentId || "000").padStart(3, '0')}</td>}
             <td><div style={{ fontWeight: 700 }}>{p.name}</div></td>
             <td>{p.method}</td>
             <td style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "0.85rem" }}>LKR {Number(p.amount).toLocaleString()}</td>

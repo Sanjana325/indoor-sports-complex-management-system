@@ -36,7 +36,12 @@ export default function Bookings() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const visibleStatuses = ["WAITING_VERIFICATION", "CONFIRMED", "CANCELLED"];
+    
     return bookings.filter(b => {
+      // Base filtration: exclude EXPIRED and PENDING_PAYMENT unless specifically selected (which they won't be from the filtered list)
+      if (!visibleStatuses.includes(b.status) && statusFilter === "ALL") return false;
+      
       const matchesText = !q || `${b.id} ${b.playerName} ${b.court} ${b.date} ${b.time} ${b.status}`.toLowerCase().includes(q);
       const matchesStatus = statusFilter === "ALL" || b.status === statusFilter;
       return matchesText && matchesStatus;
@@ -68,12 +73,10 @@ export default function Bookings() {
       <div className="arena-card mb-3" style={{ padding: "var(--space-1)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
         <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Filter by ID, player, court..." value={search} onChange={e => setSearch(e.target.value)} />
         <select className="form-input" style={{ maxWidth: "200px" }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="ALL">All Statuses</option>
-          <option value="PENDING_PAYMENT">Pending Payment</option>
+          <option value="ALL">All Active Statuses</option>
           <option value="WAITING_VERIFICATION">Waiting Verification</option>
           <option value="CONFIRMED">Confirmed</option>
           <option value="CANCELLED">Cancelled</option>
-          <option value="EXPIRED">Expired</option>
         </select>
       </div>
 
@@ -83,7 +86,8 @@ export default function Bookings() {
             <tr>
               <th>ID</th>
               <th>Player & Details</th>
-              <th>Arena</th>
+              <th>Sport</th>
+              <th>Court</th>
               <th>Session</th>
               <th>Created</th>
               <th>Status</th>
@@ -92,16 +96,20 @@ export default function Bookings() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="7" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing Archive...</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing Archive...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan="7" style={{ textAlign: "center", padding: "2rem" }}>No matching records found.</td></tr>
+              <tr><td colSpan="8" style={{ textAlign: "center", padding: "2rem" }}>No matching records found.</td></tr>
             ) : (
               filtered.map(b => (
                 <tr key={b.id}>
                   <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{b.id}</td>
                   <td>
                     <div style={{ fontWeight: 700 }}>{b.playerName}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Reservation Type: Player</div>
+                  </td>
+                  <td>
+                    <span className="status-pill info" style={{ padding: "2px 8px", fontSize: "0.7rem", textTransform: "uppercase" }}>
+                      {b.sportName || "BOOKING"}
+                    </span>
                   </td>
                   <td><span style={{ fontWeight: 600 }}>{b.court}</span></td>
                   <td>

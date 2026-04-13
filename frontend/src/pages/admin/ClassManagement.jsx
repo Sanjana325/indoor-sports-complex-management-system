@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import api from "../../services/api";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -63,18 +64,18 @@ export default function ClassManagement() {
   async function fetchInitialData() {
     try {
       setLoadingInitial(true);
-      const headers = getHeaders();
       const base = getBasePath();
       const [spRes, cRes, clsRes, histRes] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/sports`, { headers }), // Sports are usually shared or admin only
-        fetch(`${API_BASE}/api/admin/coaches`, { headers }),
-        fetch(`${API_BASE}${base}/classes`, { headers }),
-        fetch(`${API_BASE}/api/admin/classes/cancellations/history`, { headers })
+        api.get("/api/admin/sports"),
+        api.get("/api/admin/coaches"),
+        api.get(`${base}/classes`),
+        api.get("/api/admin/classes/cancellations/history")
       ]);
-      if (spRes.ok) { const d = await spRes.json(); setSportsList(d.sports || []); if (d.sports?.length > 0) setSport(d.sports[0].SportName); }
-      if (cRes.ok) { const d = await cRes.json(); setCoachesList(d.coaches || []); }
-      if (clsRes.ok) { const d = await clsRes.json(); setClasses(d.classes || []); }
-      if (histRes.ok) { const d = await histRes.json(); setCancelledHistory(d.history || []); }
+      setSportsList(spRes.data.sports || []); 
+      if (spRes.data.sports?.length > 0) setSport(spRes.data.sports[0].SportName);
+      setCoachesList(cRes.data.coaches || []);
+      setClasses(clsRes.data.classes || []);
+      setCancelledHistory(histRes.data.history || []);
     } catch (err) { console.error(err); } finally { setLoadingInitial(false); }
   }
 
@@ -90,15 +91,16 @@ export default function ClassManagement() {
       if (!hasSlotInputs) { setAvailableCourts([]); return; }
       try {
         const q = new URLSearchParams({ sportId: selectedSportObj.SportID, scheduleType, startTime, endTime });
+        if (mode === "EDIT" && editingId) q.set("excludeClassId", String(editingId));
         if (scheduleType === "ONE_TIME") q.append("oneTimeDate", oneTimeDate);
         else { q.append("startDate", startDate); days.forEach(d => q.append("weekdays", d)); }
-        const res = await fetch(`${API_BASE}/api/admin/classes/available-courts?${q.toString()}`, { headers: getHeaders() });
-        if (res.ok) { const data = await res.json(); setAvailableCourts(data.availableCourts || []); }
+        const res = await api.get(`/api/admin/classes/available-courts?${q.toString()}`);
+        setAvailableCourts(res.data.availableCourts || []);
       } catch (err) { console.error(err); }
     }
     const timer = setTimeout(fetchCourts, 300);
     return () => clearTimeout(timer);
-  }, [hasSlotInputs, selectedSportObj, scheduleType, startTime, endTime, oneTimeDate, startDate, days]);
+  }, [hasSlotInputs, selectedSportObj, scheduleType, startTime, endTime, oneTimeDate, startDate, days, mode, editingId]);
 
   const filteredClasses = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -111,14 +113,14 @@ export default function ClassManagement() {
   }
 
   function openAddModal() { setMode("ADD"); resetForm(); if (sportsList.length > 0) setSport(sportsList[0].SportName); setIsModalOpen(true); }
-  function openEditModal(item) { setMode("EDIT"); setEditingId(item.id); setSport(item.sport); setClassName(item.className); setCoachId(String(item.coachId)); setCourtIds(item.courtIds || []); setCapacity(String(item.capacity)); setFee(String(item.fee || "")); setScheduleType(item.scheduleType || "WEEKLY"); setDays(item.days || []); setOneTimeDate(item.oneTimeDate || ""); setStartTime(item.startTime || ""); setEndTime(item.endTime || ""); setIsModalOpen(true); }
+  function openEditModal(item) { setMode("EDIT"); setEditingId(item.id); setSport(item.sport); setClassName(item.className); setCoachId(String(item.coachId)); setCourtIds(item.courtIds || []); setCapacity(String(item.capacity)); setFee(String(item.fee || "")); setScheduleType(item.scheduleType || "WEEKLY"); setDays(item.days || []); setOneTimeDate(item.oneTimeDate || ""); setStartDate(item.startDate?.split('T')[0] || ""); setStartTime(item.startTime || ""); setEndTime(item.endTime || ""); setIsModalOpen(true); }
 
   async function handleToggleStatus(item) {
     const isDeactivating = item.status !== "DEACTIVATED";
     if (!window.confirm(`Are you sure you want to ${isDeactivating ? "deactivate" : "activate"} this class?`)) return;
     try {
-      const res = await fetch(`${API_BASE}/api/admin/classes/${item.id}/${isDeactivating ? "deactivate" : "activate"}`, { method: "PATCH", headers: getHeaders() });
-      if (res.ok) fetchInitialData();
+      const res = await api.patch(`/api/admin/classes/${item.id}/${isDeactivating ? "deactivate" : "activate"}`);
+      if (res.status === 200) fetchInitialData();
     } catch (err) { console.error(err); }
   }
 
@@ -126,10 +128,14 @@ export default function ClassManagement() {
     e.preventDefault(); setFormError(""); setSubmitting(true);
     const payload = { title: className.trim(), sportId: selectedSportObj.SportID, coachId: Number(coachId), courtIds: courtIds.map(Number), capacity: Number(capacity), fee: Number(fee), billingType: scheduleType === "WEEKLY" ? "MONTHLY" : "ONE_TIME", scheduleType, startDate: scheduleType === "WEEKLY" ? startDate : oneTimeDate, oneTimeDate: scheduleType === "ONE_TIME" ? oneTimeDate : "", startTime, endTime, weekdays: scheduleType === "WEEKLY" ? days : [] };
     try {
-      const res = await fetch(`${API_BASE}/api/admin/classes`, { method: "POST", headers: { "Content-Type": "application/json", ...getHeaders() }, body: JSON.stringify(payload) });
-      if (res.ok) { setIsModalOpen(false); fetchInitialData(); }
-      else { const d = await res.json(); setFormError(d.message || "Failed to save"); setIsConflict(res.status === 409); }
-    } catch (err) { setFormError("Connection failed"); }
+      const url = mode === "ADD" ? "/api/admin/classes" : `/api/admin/classes/${editingId}`;
+      const res = mode === "ADD" ? await api.post(url, payload) : await api.put(url, payload);
+      if (res.status === 200 || res.status === 201) { setIsModalOpen(false); fetchInitialData(); }
+      else { setFormError(res.data.message || "Failed to save"); setIsConflict(res.status === 409); }
+    } catch (err) { 
+      setFormError(err.response?.data?.message || "Connection failed"); 
+      setIsConflict(err.response?.status === 409);
+    }
     finally { setSubmitting(false); }
   }
 
@@ -356,7 +362,7 @@ export default function ClassManagement() {
 
               <div className="flex-between mt-3" style={{ justifyContent: "flex-end" }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting || availableCourts.length === 0}>{submitting ? "Processing..." : "Register Class"}</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting || availableCourts.length === 0}>{submitting ? "Processing..." : mode === "ADD" ? "Register Class" : "Save Changes"}</button>
               </div>
             </form>
           </div>

@@ -90,7 +90,7 @@ exports.createUser = async (req, res, next) => {
             if (!hasQualifications) return res.status(400).json({ message: "At least one qualification is required for COACH" });
         }
 
-        const exists = await userModel.emailExists(email);
+        const exists = await userModel.emailExists(email, conn);
         if (exists) return res.status(409).json({ message: "Email already exists" });
 
         const tempPassword = generateTempPassword();
@@ -209,7 +209,7 @@ exports.updateUser = async (req, res, next) => {
             if (!hasQualifications) return res.status(400).json({ message: "At least one qualification is required for COACH" });
         }
 
-        const emailTaken = await userModel.emailExistsExceptUser(email, targetUserId);
+        const emailTaken = await userModel.emailExistsExceptUser(email, targetUserId, conn);
         if (emailTaken) return res.status(409).json({ message: "Email already exists" });
 
         await conn.beginTransaction();
