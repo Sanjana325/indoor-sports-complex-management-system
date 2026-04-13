@@ -43,9 +43,11 @@ export default function PlayerLayout() {
     <div className="player-portal-layout">
       {/* TOP NAVIGATION */}
       <nav className="player-nav">
-        <Link to="/player" className="player-nav-brand">
-          Arena<span>Pro</span>
-        </Link>
+        <div className="player-nav-brand-container">
+          <Link to="/player" className="player-nav-brand">
+            Arena<span className="brand-pro">Pro</span>
+          </Link>
+        </div>
 
         <div className={`player-nav-links ${user.mustChangePassword ? 'is-restricted' : ''}`}
              onClickCapture={user.mustChangePassword ? handleRestrictedClick : undefined}>
