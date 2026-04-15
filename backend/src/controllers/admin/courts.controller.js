@@ -35,6 +35,9 @@ exports.createCourt = async (req, res, next) => {
             return res.status(400).json({ message: "At least one valid sport is required" });
         }
 
+        const alreadyExists = await courtModel.existsByName(nm);
+        if (alreadyExists) return res.status(400).json({ message: "A court with this name already exists" });
+
         await conn.beginTransaction();
 
         const courtId = await courtModel.createCourt(
@@ -76,6 +79,11 @@ exports.updateCourt = async (req, res, next) => {
         const sportIdList = sportIds !== undefined ? uniquePositiveInts(sportIds) : null;
         if (sportIdList && sportIdList.length === 0) {
             return res.status(400).json({ message: "At least one valid sport is required" });
+        }
+
+        if (nm) {
+            const alreadyExists = await courtModel.existsByName(nm, courtId);
+            if (alreadyExists) return res.status(400).json({ message: "A court with this name already exists" });
         }
 
         await conn.beginTransaction();

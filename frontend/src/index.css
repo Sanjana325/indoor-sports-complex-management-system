@@ -196,6 +196,19 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);
 }
 
+.btn-edit {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.btn-edit:hover {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
 /* Utilities */
 .flex-between { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .mb-1 { margin-bottom: var(--space-1); }

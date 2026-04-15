@@ -218,7 +218,7 @@ export default function ClassManagement() {
                       {localStorage.getItem("role") === "ADMIN" && (
                         <td>
                           <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                            <button className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => openEditModal(c)}>Edit</button>
+                            <button className="btn btn-edit" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => openEditModal(c)}>Edit</button>
                             <button className={`btn ${c.status === "DEACTIVATED" ? "btn-primary" : "btn-danger"}`} style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => handleToggleStatus(c)}>{c.status === "DEACTIVATED" ? "Re-activate" : "Deactivate"}</button>
                           </div>
                         </td>

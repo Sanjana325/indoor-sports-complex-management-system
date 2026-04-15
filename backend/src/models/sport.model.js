@@ -4,6 +4,17 @@ function normalizeText(name) {
     return String(name || "").trim();
 }
 
+async function createSport(sportName, colorCode = '#1976d2', isBookable = 1, conn = pool) {
+    const name = normalizeText(sportName);
+    const color = normalizeText(colorCode) || '#1976d2';
+    if (!name) return null;
+
+    const [result] = await conn.query(`INSERT INTO sport (SportName, ColorCode, IsBookable) VALUES (?, ?, ?)`, [name, color, isBookable]);
+    
+    const [rows] = await conn.query(`SELECT SportID, SportName, ColorCode, IsActive, IsBookable FROM sport WHERE SportID = ? LIMIT 1`, [result.insertId]);
+    return rows.length ? rows[0] : null;
+}
+
 async function createSportIfNotExists(sportName, colorCode = '#1976d2', isBookable = 1, conn = pool) {
     const name = normalizeText(sportName);
     const color = normalizeText(colorCode) || '#1976d2';
@@ -61,6 +72,7 @@ async function deleteSport(sportId, conn = pool) {
 }
 
 module.exports = {
+    createSport,
     createSportIfNotExists,
     listSports,
     getSportIdByName,

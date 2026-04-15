@@ -75,6 +75,7 @@ export default function PlayerBookCourt() {
   const [selectedDate, setSelectedDate] = useState(todayISO());
   const [selectedCourtId, setSelectedCourtId] = useState("");
   const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(""); // 'ONLINE' or 'BANK'
 
 
   // Payment Modal State
@@ -87,9 +88,46 @@ export default function PlayerBookCourt() {
   // OTP Modal State
   const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [otpArray, setOtpArray] = useState(["", "", "", "", "", ""]);
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (resendTimer > 0) {
+      interval = setInterval(() => setResendTimer(prev => prev - 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const handleOtpChange = (element, index) => {
+    if (isNaN(element.value)) return false;
+    const newOtp = [...otpArray];
+    newOtp[index] = element.value.substring(element.value.length - 1);
+    setOtpArray(newOtp);
+    setOtpCode(newOtp.join(""));
+
+    if (element.nextSibling && element.value) {
+      element.nextSibling.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e, index) => {
+    if (e.key === "Backspace" && !otpArray[index] && e.target.previousSibling) {
+      e.target.previousSibling.focus();
+    }
+  };
+
+  const handleResendOtp = async () => {
+    await handleConfirmBookingClick();
+    setResendTimer(60);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+  };
 
 
   // Fetch Sports on Mount
@@ -256,8 +294,8 @@ export default function PlayerBookCourt() {
 
 
   const handleConfirmBookingClick = async () => {
-    if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0) {
-      alert("Please complete all selections before confirming.");
+    if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0 || !selectedPaymentMethod) {
+      alert("Please complete all selections, including payment method, before confirming.");
       return;
     }
 
@@ -277,7 +315,9 @@ export default function PlayerBookCourt() {
       
       setOtpError("");
       setOtpCode("");
+      setOtpArray(["", "", "", "", "", ""]);
       setOtpModalOpen(true);
+      if (resendTimer === 0) setResendTimer(60);
     } catch (err) {
       console.error(err);
       alert("Error generating OTP");
@@ -307,9 +347,13 @@ export default function PlayerBookCourt() {
         return;
       }
       
-      // OTP Validated! Proceed to standard payment modal
+      // OTP Validated! Proceed based on pre-selected method
       setOtpModalOpen(false);
-      handleOpenPayment();
+      if (selectedPaymentMethod === 'ONLINE') {
+        handleOnlinePayment();
+      } else {
+        handleBankTransferClick();
+      }
 
     } catch (err) {
       console.error(err);
@@ -621,6 +665,64 @@ export default function PlayerBookCourt() {
           </section>
 
 
+          {/* STEP 4: Select Payment Method */}
+          <section className="pbc-section glass-panel">
+            <h2 className="pbc-section-title">4. Select Payment Method</h2>
+            
+            {!selectedCourtId || selectedTimeSlots.length === 0 ? (
+              <div className="pbc-hint-box">Please select time slots first.</div>
+            ) : (
+              <>
+                <div className="pbc-payment-options" style={{ marginTop: 0 }}>
+                  <Card 
+                    className={`pbc-payment-card ${selectedPaymentMethod === 'ONLINE' ? 'selected-payment' : ''}`} 
+                    onClick={() => setSelectedPaymentMethod('ONLINE')}
+                    sx={{ bgcolor: selectedPaymentMethod === 'ONLINE' ? 'rgba(0, 255, 136, 0.1) !important' : 'rgba(255,255,255,0.03) !important' }}
+                  >
+                    <CreditCard className="pbc-payment-icon" />
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Pay Online</Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.6 }}>Instant confirmation via PayHere</Typography>
+                  </Card>
+
+                  <Card 
+                    className={`pbc-payment-card ${selectedPaymentMethod === 'BANK' ? 'selected-payment' : ''}`} 
+                    onClick={() => setSelectedPaymentMethod('BANK')}
+                    sx={{ bgcolor: selectedPaymentMethod === 'BANK' ? 'rgba(0, 255, 136, 0.1) !important' : 'rgba(255,255,255,0.03) !important' }}
+                  >
+                    <Receipt className="pbc-payment-icon" />
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Bank Slip</Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.6 }}>Manual verification (2-4 hours)</Typography>
+                  </Card>
+                </div>
+
+                {selectedPaymentMethod === 'BANK' && (
+                  <Box sx={{ mt: 3, animation: 'pbc-fade-in 0.3s ease-out' }}>
+                    <Typography variant="body2" className="pbc-dialog-subtext" sx={{ mb: 1.5, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                      Bank Destination Details
+                    </Typography>
+                    <Box className="pbc-bank-details-card" style={{ marginTop: 0 }}>
+                        <div className="bank-info-row" style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span className="info-label">Bank</span>
+                            <span className="info-value" style={{ fontWeight: 700 }}>{BANK_DETAILS.bankName}</span>
+                        </div>
+                        <div className="bank-info-row" style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span className="info-label">Acc Number</span>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <span className="info-value" style={{ color: '#00ff88', fontWeight: 800, fontSize: '1.25rem' }}>{BANK_DETAILS.accountNumber}</span>
+                              <button className="copy-btn" onClick={() => copyToClipboard(BANK_DETAILS.accountNumber)}>Copy</button>
+                            </Box>
+                        </div>
+                        <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.5 }}>
+                          * You will be asked to upload the deposit slip after identity verification.
+                        </Typography>
+                    </Box>
+                  </Box>
+                )}
+              </>
+            )}
+          </section>
+
+
         </div>
 
 
@@ -668,7 +770,7 @@ export default function PlayerBookCourt() {
 
             <button
               className="pbc-confirm-btn"
-              disabled={!selectedSportId || !selectedCourtId || selectedTimeSlots.length === 0 || otpSending}
+              disabled={!selectedSportId || !selectedCourtId || selectedTimeSlots.length === 0 || !selectedPaymentMethod || otpSending}
               onClick={handleConfirmBookingClick}
             >
               {otpSending ? "SENDING VERIFICATION..." : "CONFIRM BOOKING"}
@@ -677,8 +779,7 @@ export default function PlayerBookCourt() {
         </div>
       </div>
 
-
-      {/* PAYMENT SELECTION MODAL */}
+      {/* BANK SLIP UPLOAD MODAL */}
       <Dialog
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
@@ -689,7 +790,7 @@ export default function PlayerBookCourt() {
         }}
       >
         <DialogTitle className="pbc-dialog-title">
-          Complete Payment
+          Upload Bank Slip
           <IconButton
             aria-label="close"
             onClick={() => setPaymentModalOpen(false)}
@@ -699,60 +800,25 @@ export default function PlayerBookCourt() {
           </IconButton>
         </DialogTitle>
         <DialogContent className="pbc-dialog-content">
-          {paymentModalStep === 1 ? (
-            <>
-              <Typography variant="body1" className="pbc-dialog-subtext" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                Your booking is reserved for 10 minutes. Please complete the payment of <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm.
-              </Typography>
-
-              <Box className="pbc-payment-options">
-                <Card className="pbc-payment-card" onClick={handleOnlinePayment}>
-                  <CreditCard className="pbc-payment-icon" />
-                  <Typography variant="h6">Online Payment</Typography>
-                  <Typography variant="body2">Pay instantly via secure gateway</Typography>
-                </Card>
-
-                <Card className="pbc-payment-card" onClick={handleBankTransferClick}>
-                  <Receipt className="pbc-payment-icon" />
-                  <Typography variant="h6">Bank Transfer</Typography>
-                  <Typography variant="body2">Upload bank deposit slip</Typography>
-                </Card>
-              </Box>
-            </>
-          ) : (
              <Box sx={{ mt: 2 }}>
-                 <Typography variant="body1" sx={{ mb: 2, opacity: 0.9, color: '#fff' }}>
-                     Please deposit <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to the following account and upload your deposit slip.
+                 <Typography variant="body1" className="pbc-dialog-subtext" sx={{ mb: 2, textAlign: 'center' }}>
+                     Please upload the deposit slip for <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm your booking.
                  </Typography>
                  
-                 <Box className="pbc-bank-details-card" sx={{ bgcolor: 'rgba(255,255,255,0.05)', p: 3, borderRadius: 3 }}>
-                     <div className="bank-info-row" style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Bank</span>
-                         <span className="info-value" style={{ color: '#fff', fontWeight: 600 }}>{BANK_DETAILS.bankName}</span>
-                     </div>
-                     <div className="bank-info-row" style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Branch</span>
-                         <span className="info-value" style={{ color: '#fff', fontWeight: 600 }}>{BANK_DETAILS.branch}</span>
-                     </div>
-                     <div className="bank-info-row" style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Acc Name</span>
-                         <span className="info-value" style={{ color: '#fff', fontWeight: 600 }}>{BANK_DETAILS.accountName}</span>
-                     </div>
-                     <div className="bank-info-row highlighted" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
-                         <span className="info-label" style={{ color: 'rgba(255,255,255,0.6)' }}>Acc Number</span>
-                         <span className="info-value" style={{ color: '#00ff88', fontWeight: 700, fontSize: '1.2rem', letterSpacing: '1px' }}>{BANK_DETAILS.accountNumber}</span>
-                     </div>
-                 </Box>
-                 
-                 <Typography variant="body2" sx={{ mb: 1, opacity: 0.7, fontWeight: 600, color: '#fff' }}>Upload Slip (JPG, PNG, PDF):</Typography>
-                 <div className="pbc-file-upload-wrapper">
+                  <Typography variant="body2" className="pbc-dialog-subtext" sx={{ mb: 1.5, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>Upload Transaction Slip</Typography>
+                  <div className="file-upload-zone" onClick={() => document.getElementById('slip-input').click()}>
+                    <Receipt sx={{ fontSize: '2rem', mb: 1, color: 'rgba(255,255,255,0.3)' }} />
+                    <Typography variant="body2" sx={{ color: slipFile ? '#00ff88' : 'rgba(255,255,255,0.5)' }}>
+                      {slipFile ? slipFile.name : "Click to select or drag and drop slip"}
+                    </Typography>
                     <input 
+                        id="slip-input"
                         type="file" 
                         accept="image/jpeg,image/png,application/pdf"
                         onChange={(e) => setSlipFile(e.target.files[0])}
-                        style={{ color: '#aaa' }}
+                        style={{ display: 'none' }}
                     />
-                 </div>
+                  </div>
                  
                  <Button 
                     variant="contained" 
@@ -760,12 +826,11 @@ export default function PlayerBookCourt() {
                     className="pbc-submit-slip-btn"
                     disabled={!slipFile || uploadingSlip}
                     onClick={handleBankSlipSubmit}
-                    sx={{ mt: 2 }}
+                    sx={{ mt: 3 }}
                  >
                     {uploadingSlip ? "Uploading..." : "Submit Bank Slip"}
                  </Button>
              </Box>
-          )}
         </DialogContent>
         <DialogActions className="pbc-dialog-actions">
           <Button onClick={() => setPaymentModalOpen(false)} className="pbc-cancel-btn">
@@ -773,6 +838,7 @@ export default function PlayerBookCourt() {
           </Button>
         </DialogActions>
       </Dialog>
+
 
       {/* OTP VERIFICATION MODAL */}
       <Dialog
@@ -796,65 +862,58 @@ export default function PlayerBookCourt() {
           </IconButton>
         </DialogTitle>
         <DialogContent className="pbc-dialog-content">
-          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', mb: 2, textAlign: 'center' }}>
+          <Typography variant="body1" className="pbc-dialog-subtext" sx={{ mb: 2, textAlign: 'center' }}>
             We've sent a 6-digit Secure Booking OTP to your registered email address.
             It is valid for 10 minutes.
           </Typography>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-             <input
-                type="text"
-                placeholder="------"
-                maxLength={6}
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                disabled={otpVerifying}
-                style={{
-                  width: '100%',
-                  maxWidth: '200px',
-                  margin: '16px 0',
-                  padding: '12px',
-                  fontSize: '24px',
-                  letterSpacing: '8px',
-                  textAlign: 'center',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  outline: 'none'
-                }}
-             />
-             {otpError && (
-                 <Typography variant="body2" sx={{ color: '#ff4d4d', mb: 2 }}>
-                     {otpError}
-                 </Typography>
-             )}
-             <Button
-                variant="contained"
-                fullWidth
-                disabled={otpCode.length !== 6 || otpVerifying}
-                onClick={handleVerifyOtp}
-                sx={{
-                  background: 'linear-gradient(90deg, #ff8a00, #e52e71)',
-                  color: '#fff',
-                  fontWeight: 'bold',
-                  py: 1.5,
-                  '&:hover': {
-                      background: 'linear-gradient(90deg, #e52e71, #ff8a00)',
-                  }
-                }}
-             >
-                {otpVerifying ? "Verifying..." : "Verify & Proceed"}
-             </Button>
+              <div className="otp-input-container">
+                {otpArray.map((data, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    className={`otp-box ${data ? "filled" : ""}`}
+                    maxLength={1}
+                    value={data}
+                    onChange={(e) => handleOtpChange(e.target, index)}
+                    onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                    disabled={otpVerifying}
+                  />
+                ))}
+              </div>
 
-             <Button
-                variant="text"
-                disabled={otpSending || otpVerifying}
-                onClick={handleConfirmBookingClick}
-                sx={{ color: 'rgba(255,255,255,0.6)', mt: 2, fontSize: '0.8rem' }}
-             >
-                Resend Code
-             </Button>
+              {otpError && (
+                  <Typography variant="body2" sx={{ color: '#ff4d4d', mb: 2, fontWeight: 600 }}>
+                      <ErrorOutline fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+                      {otpError}
+                  </Typography>
+              )}
+
+              <Button
+                 variant="contained"
+                 fullWidth
+                 className="pbc-submit-slip-btn"
+                 disabled={otpCode.length !== 6 || otpVerifying}
+                 onClick={handleVerifyOtp}
+              >
+                 {otpVerifying ? "Verifying..." : "Verify Identity"}
+              </Button>
+
+              <Box sx={{ mt: 3, textAlign: 'center' }}>
+                {resendTimer > 0 ? (
+                  <Typography className="resend-timer-text">
+                    Resend code in <strong style={{ color: '#fff' }}>{resendTimer}s</strong>
+                  </Typography>
+                ) : (
+                  <Typography className="resend-timer-text">
+                    Didn't receive code?
+                    <button className="resend-link" onClick={handleResendOtp} disabled={otpSending}>
+                      Resend Now
+                    </button>
+                  </Typography>
+                )}
+              </Box>
           </Box>
         </DialogContent>
       </Dialog>

@@ -121,8 +121,11 @@ export default function Courts() {
     try {
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
       if (res.ok) { closeModal(); fetchCourts(); }
-      else alert("Failed to save court");
-    } catch (err) { console.error(err); }
+      else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "Failed to save court");
+      }
+    } catch (err) { console.error(err); alert("Connection error"); }
   }
 
   return (
@@ -174,12 +177,12 @@ export default function Courts() {
                   </td>
                   <td>{c.capacity} Players</td>
                   <td style={{ fontWeight: 600, color: "var(--primary-dark)" }}>{formatLKR(c.pricePerHour)}</td>
-                  <td>
-                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                      <button className="btn btn-secondary" style={{ padding: "6px 12px" }} onClick={() => openEditModal(c)}>Edit</button>
-                      <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => handleRemove(c.id)}>Delete</button>
-                    </div>
-                  </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                        <button className="btn btn-edit" style={{ padding: "6px 12px" }} onClick={() => openEditModal(c)}>Edit</button>
+                        <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => handleRemove(c.id)}>Delete</button>
+                      </div>
+                    </td>
                 </tr>
               ))}
             </tbody>

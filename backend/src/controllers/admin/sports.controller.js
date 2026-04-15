@@ -14,10 +14,13 @@ exports.createSport = async (req, res, next) => {
     try {
         const { sportName, colorCode, isBookable } = req.body || {};
         const isBookableVal = isBookable === undefined ? 1 : (isBookable ? 1 : 0);
-        const row = await sportModel.createSportIfNotExists(sportName, colorCode, isBookableVal);
+        const row = await sportModel.createSport(sportName, colorCode, isBookableVal);
         if (!row) return res.status(400).json({ message: "Sport name is required" });
         res.status(201).json({ sport: row });
     } catch (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+            return res.status(400).json({ message: "A sport with this name already exists." });
+        }
         next(err);
     }
 };

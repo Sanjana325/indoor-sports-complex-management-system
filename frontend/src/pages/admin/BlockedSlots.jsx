@@ -136,7 +136,7 @@ export default function BlockedSlots() {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                      <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(b)}>Edit</button>
+                      <button className="btn btn-edit" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(b)}>Edit</button>
                       <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemove(b.BlockedSlotID)}>Remove</button>
                     </div>
                   </td>

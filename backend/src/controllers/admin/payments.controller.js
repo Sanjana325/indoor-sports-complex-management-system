@@ -145,7 +145,11 @@ exports.rejectPayment = async (req, res, next) => {
         connection = await pool.getConnection();
 
         // Check if payment exists
-        const [payRes] = await connection.query("SELECT * FROM payment WHERE PaymentID = ?", [paymentId]);
+        const [payRes] = await connection.query(`
+            SELECT p.*, u.Email, u.FirstName, u.LastName 
+            FROM payment p 
+            JOIN useraccount u ON p.UserID = u.UserID 
+            WHERE p.PaymentID = ?`, [paymentId]);
         if (payRes.length === 0) {
             connection.release();
             return res.status(404).json({ message: "Payment not found" });
@@ -165,33 +169,57 @@ exports.rejectPayment = async (req, res, next) => {
             [paymentId]
         );
 
+        let targetName = "";
+        let isClass = false;
+
         // 2. Determine type and update linked entity
-        const [bp] = await connection.query("SELECT BookingID FROM bookingpayment WHERE PaymentID = ?", [paymentId]);
+        const [bp] = await connection.query(`
+            SELECT bp.BookingID, c.CourtName 
+            FROM bookingpayment bp
+            JOIN booking b ON bp.BookingID = b.BookingID
+            JOIN court c ON b.CourtID = c.CourtID
+            WHERE bp.PaymentID = ?`, [paymentId]);
+
         if (bp.length > 0) {
             const bookingId = bp[0].BookingID;
+            targetName = bp[0].CourtName;
             // Complete cancel of the booking
             await connection.query("UPDATE booking SET Status = 'CANCELLED' WHERE BookingID = ?", [bookingId]);
         } else {
-            // For class fees, the user requested not to kick them out entirely, 
-            // so we'll just leave them enrolled and leave the month as DUE or set to CANCELLED. 
-            // We can leave the month status as DUE so they must try again, 
-            // or we could mark that specific month attempt as CANCELLED. 
-            // Let's mark the month as DUE to allow another payment try, 
-            // but the frontend/backend will block duplicate attempts if not careful.
-            // Wait, processBankSlip handles creating another payment.
-            // The cleanest approach without kicking them out is to just leave enrollment alone, 
-            // but the specific payment record is REJECTED. 
-            // We can perhaps keep EnrollmentMonth 'DUE' so they can try exactly that month again.
-            const [emp] = await connection.query("SELECT EnrollmentMonthID FROM enrollmentmonthpayment WHERE PaymentID = ?", [paymentId]);
+            const [emp] = await connection.query(`
+                SELECT emp.EnrollmentMonthID, c.Title 
+                FROM enrollmentmonthpayment emp
+                JOIN enrollmentmonth em ON emp.EnrollmentMonthID = em.EnrollmentMonthID
+                JOIN enrollment e ON em.EnrollmentID = e.EnrollmentID
+                JOIN class c ON e.ClassID = c.ClassID
+                WHERE emp.PaymentID = ?`, [paymentId]);
+
             if (emp.length > 0) {
                const monthId = emp[0].EnrollmentMonthID;
+               targetName = emp[0].Title;
+               isClass = true;
                // We ensure it stays DUE but is no longer linked to an active pending payment process 
-               // (the payment is rejected, so it's not pending anymore).
                await connection.query("UPDATE enrollmentmonth SET Status = 'DUE' WHERE EnrollmentMonthID = ?", [monthId]);
             }
         }
 
         await connection.commit();
+
+        if (payment.Email && targetName) {
+            try {
+                const emailService = require("../../services/email.service");
+                await emailService.sendPaymentRejectionEmail({
+                    toEmail: payment.Email,
+                    toName: `${payment.FirstName} ${payment.LastName}`.trim(),
+                    targetName,
+                    amount: payment.Amount,
+                    isClass
+                });
+            } catch (err) {
+                console.error("Failed to send admin rejection email:", err);
+            }
+        }
+
         res.json({ message: "Payment rejected successfully" });
     } catch (err) {
         if (connection) await connection.rollback();

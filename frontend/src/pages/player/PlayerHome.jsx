@@ -1,11 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Schedule, ChevronLeft, ChevronRight, SportsScore, Groups, ArrowForward } from "@mui/icons-material";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  SportsScore, 
+  Groups, 
+  ArrowForward,
+  CreditCard,
+  Schedule,
+  TrendingUp,
+  NotificationsActive,
+  SportsTennis,
+  School
+} from "@mui/icons-material";
 import playerService from "../../services/playerService";
+import { formatLKR } from "../../utils/formatters";
 import "../../styles/PlayerPortal.css";
 
-const CARD_WIDTH = 304; // 280px card + 24px gap
-
+const CARD_WIDTH = 304; 
 const SPORT_IMAGES = {
   "Football":     "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=800",
   "Badminton":    "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800",
@@ -19,149 +31,153 @@ const SPORT_IMAGES = {
 
 export default function PlayerHome() {
   const navigate = useNavigate();
-  const [sports, setSports]         = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [offset, setOffset]         = useState(0);   // px translateX value
+  const [sports, setSports] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [offset, setOffset] = useState(0);
 
   useEffect(() => {
-    playerService.getSports()
-      .then(data => setSports(data.sports || []))
-      .catch(err => console.error("Failed to load sports:", err))
-      .finally(() => setLoading(false));
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [sportsData, bookingsData, classesData, paymentsData] = await Promise.all([
+          playerService.getSports(),
+          playerService.getMyBookings(),
+          playerService.getMyClasses(),
+          playerService.getMyPayments()
+        ]);
+        
+        setSports(sportsData.sports || []);
+        setBookings(bookingsData.bookings || []);
+        setClasses(classesData.enrollments || []);
+        setPayments(paymentsData.payments || []);
+      } catch (err) {
+        console.error("Dashboard Load Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
-  const maxOffset = Math.max(0, (sports.length - 1) * CARD_WIDTH);
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todaySessions = bookings.filter(b => b.Date?.split('T')[0] === today).length;
+    const activeClassesCount = classes.filter(c => c.EnrollmentStatus === 'ENROLLED').length;
+    const pendingActions = payments.filter(p => p.Status === 'PENDING' && p.Method === 'BANK_SLIP' && !p.SlipPath).length;
+    
+    return { todaySessions, activeClassesCount, pendingActions };
+  }, [bookings, classes, payments]);
 
+  const maxOffset = Math.max(0, (sports.length - 1) * CARD_WIDTH);
   const slidePrev = () => setOffset(prev => Math.max(prev - CARD_WIDTH, 0));
   const slideNext = () => setOffset(prev => Math.min(prev + CARD_WIDTH, maxOffset));
 
   return (
     <div className="player-portal-home">
-
-      {/* ── HERO ─────────────────────────────── */}
+      {/* HERO Section - Asymmetrical Split */}
       <section className="hero-wrapper-elite">
-        <h1 className="hero-title-elite">Welcome Back</h1>
-        <p className="hero-subtitle-elite">
-          Your premium destination for indoor sports and professional coaching.
-          Ready to raise your game?
-        </p>
-      </section>
+        <div className="hero-content-left">
+          <h1 className="hero-title-elite">Player Dashboard</h1>
+          <p className="hero-subtitle-elite">
+            Track your performance, manage bookings, and raise your game.
+          </p>
+        </div>
 
-      {/* ── QUICK ACTIONS — cards straddle hero/stadium boundary ── */}
-      <section className="player-quick-actions">
-        <Link to="/player/book-court" className="action-card">
-          <div className="action-icon-wrap">
-            <SportsScore sx={{ fontSize: '2rem' }} />
-          </div>
-          <div>
-            <h2>Book a Court</h2>
-            <p>Reserve your slot for a competitive match or focused practice session.</p>
-            <div className="action-card-btn">
-              Book Now <ArrowForward fontSize="small" />
+        <div className="hero-stats-right">
+          <div className="stat-card-micro">
+            <div className="stat-icon-wrap" style={{ background: 'rgba(5, 150, 105, 0.2)', color: '#10b981' }}>
+              <TrendingUp fontSize="small" />
+            </div>
+            <div className="stat-info-wrap">
+              <span className="stat-label">Active Classes</span>
+              <span className="stat-value">{stats.activeClassesCount}</span>
             </div>
           </div>
-        </Link>
-
-        <Link to="/player/available-classes" className="action-card">
-          <div className="action-icon-wrap" style={{ background: '#f7fee7' }}>
-            <Groups sx={{ fontSize: '2rem' }} />
-          </div>
-          <div>
-            <h2>Join a Class</h2>
-            <p>Train with expert coaches in specialized group sessions designed for every level.</p>
-            <div className="action-card-btn">
-              Explore Training <ArrowForward fontSize="small" />
+          <div className="stat-card-micro">
+            <div className="stat-icon-wrap" style={{ background: 'rgba(37, 99, 235, 0.2)', color: '#60a5fa' }}>
+              <Schedule fontSize="small" />
+            </div>
+            <div className="stat-info-wrap">
+              <span className="stat-label">Sessions Today</span>
+              <span className="stat-value">{stats.todaySessions}</span>
             </div>
           </div>
-        </Link>
+          <div className="stat-card-micro">
+            <div className="stat-icon-wrap" style={{ background: 'rgba(225, 29, 72, 0.2)', color: '#fb7185' }}>
+              <NotificationsActive fontSize="small" className={stats.pendingActions > 0 ? "pt-pulse" : ""} />
+            </div>
+            <div className="stat-info-wrap">
+              <span className="stat-label">Pending Actions</span>
+              <span className="stat-value">{stats.pendingActions}</span>
+            </div>
+          </div>
+        </div>
       </section>
 
-      {/* ── SPORTS CAROUSEL ─────────────────── */}
-      <div className="sports-band-section">
+      {/* QUICK ACTIONS - Centered and Compacted */}
+      <section className="player-quick-actions" style={{ marginTop: '-11rem', padding: '0 10%', gap: '2rem' }}>
+        <div className="action-card action-card-primary" style={{ flex: 1, padding: '2rem 1.75rem' }}>
+          <SportsScore className="action-card-ghost" style={{ fontSize: '8rem' }} />
+          <div className="action-icon-wrap" style={{ background: '#0f172a', color: '#bef264', width: '60px', height: '60px' }}>
+            <SportsTennis sx={{ fontSize: '2.2rem' }} />
+          </div>
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '6px' }}>Book a Court</h2>
+            <p style={{ color: 'var(--player-text-muted)', fontSize: '0.9rem', marginBottom: '20px', lineHeight: 1.5 }}>
+              Reserve professional-grade arenas for practice.
+            </p>
+            <Link to="/player/book-court" className="pt-btn-primary" style={{ width: '100%', padding: '10px 20px', fontSize: '0.9rem' }}>
+              Book Arena Now <ArrowForward fontSize="small" />
+            </Link>
+          </div>
+        </div>
 
-        {/* Title + Controls side-by-side */}
+        <div className="action-card action-card-primary" style={{ flex: 1, padding: '2rem 1.75rem' }}>
+          <Groups className="action-card-ghost" style={{ fontSize: '8rem' }} />
+          <div className="action-icon-wrap" style={{ background: '#0f172a', color: '#bef264', width: '60px', height: '60px' }}>
+            <School sx={{ fontSize: '2.2rem' }} />
+          </div>
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '6px' }}>Join a Class</h2>
+            <p style={{ color: 'var(--player-text-muted)', fontSize: '0.9rem', marginBottom: '20px', lineHeight: 1.5 }}>
+              Train with professional coaches in specialized sessions.
+            </p>
+            <Link to="/player/available-classes" className="pt-btn-primary" style={{ width: '100%', padding: '10px 20px', fontSize: '0.9rem' }}>
+              Browse Training <ArrowForward fontSize="small" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* SPORTS CAROUSEL */}
+      <div className="sports-band-section" style={{ marginTop: '5rem' }}>
         <div className="sports-band-header">
           <h2 className="sports-band-title">Explore Your Arena</h2>
           <div className="carousel-controls">
-            <button
-              className="band-nav-btn"
-              onClick={slidePrev}
-              disabled={offset === 0}
-              aria-label="Previous sport"
-            >
-              <ChevronLeft />
-            </button>
-            <button
-              className="band-nav-btn"
-              onClick={slideNext}
-              disabled={offset >= maxOffset}
-              aria-label="Next sport"
-            >
-              <ChevronRight />
-            </button>
+            <button className="band-nav-btn" onClick={slidePrev} disabled={offset === 0} aria-label="Previous sport"><ChevronLeft /></button>
+            <button className="band-nav-btn" onClick={slideNext} disabled={offset >= maxOffset} aria-label="Next sport"><ChevronRight /></button>
           </div>
         </div>
-
-        {/* Scrolling track */}
+        
         <div className="sport-band-container">
-          <div
-            className="sport-band-wrapper"
-            style={{ transform: `translateX(-${offset}px)` }}
-          >
-            {loading
-              ? Array(4).fill(null).map((_, i) => (
-                  <div
-                    key={i}
-                    className="sport-card"
-                    style={{ height: 280, background: '#f8fafc', border: 'none', boxShadow: 'none' }}
-                  />
-                ))
-              : sports.map(sport => (
-                  <div
-                    key={sport.SportID}
-                    className="sport-card"
-                    onClick={() => navigate(`/player/book-court?sportId=${sport.SportID}`)}
-                  >
-                    <img
-                      src={SPORT_IMAGES[sport.SportName] ?? "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&q=80&w=800"}
-                      alt={sport.SportName}
-                      className="sport-card-img"
-                    />
-                    <div className="sport-card-content">
-                      <h3 className="sport-card-name">{sport.SportName}</h3>
-                      <p className="sport-card-price">
-                        Rs.&nbsp;
-                        <strong style={{ color: 'var(--player-primary)' }}>
-                          {Number(sport.BasePrice ?? 500).toLocaleString("en-LK")}
-                        </strong>
-                        &nbsp;/ hr
-                      </p>
-                    </div>
-                  </div>
-                ))
-            }
+          <div className="sport-band-wrapper" style={{ transform: `translateX(-${offset}px)` }}>
+            {loading ? Array(4).fill(null).map((_, i) => (
+              <div key={i} className="sport-card" style={{ height: 280, opacity: 0.5 }} />
+            )) : sports.map(sport => (
+              <div key={sport.SportID} className="sport-card" onClick={() => navigate(`/player/book-court?sportId=${sport.SportID}`)}>
+                <img src={SPORT_IMAGES[sport.SportName] ?? "https://placeholder.com/800"} alt={sport.SportName} className="sport-card-img" />
+                <div className="sport-card-content">
+                  <h3 className="sport-card-name">{sport.SportName}</h3>
+                  <p className="sport-card-price">Rs. <strong style={{ color: 'var(--player-primary)' }}>{Number(sport.BasePrice ?? 500).toLocaleString()}</strong> / hr</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-
-      {/* ── PERFORMANCE CENTER ───────────────── */}
-      <section className="player-grid-section">
-        <div style={{ maxWidth: 1160, margin: '0 auto' }}>
-          <div className="glass-panel-light" style={{ borderLeft: '6px solid var(--player-primary)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1.25rem' }}>
-              <Schedule style={{ color: 'var(--player-primary)', fontSize: '2rem' }} />
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--player-navy)', margin: 0 }}>
-                Performance Center
-              </h2>
-            </div>
-            <p style={{ color: 'var(--player-text-muted)', lineHeight: 1.8, fontSize: '1.05rem', maxWidth: 760 }}>
-              Track your upcoming sessions, manage court bookings, and review professional
-              training enrollments — all from your ArenaPro dashboard.
-            </p>
-          </div>
-        </div>
-      </section>
-
     </div>
   );
 }

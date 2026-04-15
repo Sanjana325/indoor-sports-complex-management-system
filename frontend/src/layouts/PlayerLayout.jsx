@@ -52,8 +52,7 @@ export default function PlayerLayout() {
         <div className={`player-nav-links ${user.mustChangePassword ? 'is-restricted' : ''}`}
              onClickCapture={user.mustChangePassword ? handleRestrictedClick : undefined}>
           <NavLink to="/player" className="player-nav-link" end>Home</NavLink>
-          <NavLink to="/player/book-court" className="player-nav-link">Bookings</NavLink>
-          <NavLink to="/player/available-classes" className="player-nav-link">Join Class</NavLink>
+          <NavLink to="/player/my-bookings" className="player-nav-link">My Bookings</NavLink>
           <NavLink to="/player/my-classes" className="player-nav-link">My Classes</NavLink>
           <NavLink to="/player/my-payments" className="player-nav-link">Payments</NavLink>
         </div>

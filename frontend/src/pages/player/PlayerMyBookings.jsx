@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { 
+  History, 
+  CheckCircle, 
+  PendingActions, 
+  Cancel, 
+  FilterAlt, 
+  Schedule, 
+  EventNote,
+  CalendarMonth 
+} from "@mui/icons-material";
 import "../../styles/PlayerTables.css";
 
 function pillClass(status) {
@@ -36,9 +46,11 @@ function isSameOrAfter(a, b) {
   return a.getTime() >= b.getTime();
 }
 
+const MONTH_NAMES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
 export default function PlayerMyBookings() {
   const [sortOrder, setSortOrder] = useState("NEWEST");
-  const [activeTab, setActiveTab] = useState("UPCOMING");
+  const [activeTab, setActiveTab] = useState("ALL");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,27 +65,30 @@ export default function PlayerMyBookings() {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const data = await res.json();
-        
         if (res.ok && Array.isArray(data.bookings)) {
           const formatted = data.bookings.map(b => {
-             const safeDate = new Date(b.StartDateTime).toISOString().split('T')[0];
-             const rawStatus = b.Status || "PENDING";
-             // Clean presentation status mapping
-             let displayStatus = "Pending";
-             if (rawStatus === 'CONFIRMED') displayStatus = "Confirmed";
-             else if (rawStatus === 'CANCELLED') displayStatus = "Cancelled";
-             else if (rawStatus === 'EXPIRED') displayStatus = "Expired";
-             else if (rawStatus === 'WAITING_VERIFICATION') displayStatus = "Waiting Verification";
-             else if (rawStatus === 'PENDING_PAYMENT') displayStatus = "Pending Payment";
+            const dateObj = new Date(b.StartDateTime);
+            const safeDate = dateObj.toISOString().split('T')[0];
+            const rawStatus = b.Status || "PENDING";
+            
+            let displayStatus = "Pending";
+            if (rawStatus === 'CONFIRMED') displayStatus = "Confirmed";
+            else if (rawStatus === 'CANCELLED') displayStatus = "Cancelled";
+            else if (rawStatus === 'EXPIRED') displayStatus = "Expired";
+            else if (rawStatus === 'WAITING_VERIFICATION') displayStatus = "Waiting Verification";
+            else if (rawStatus === 'PENDING_PAYMENT') displayStatus = "Pending Payment";
 
-             return {
-                bookingId: `B-${String(b.BookingID).padStart(6, '0')}`,
-                courtName: b.CourtName || "Court",
-                date: safeDate,
-                timeDuration: formatTimeRange(b.StartDateTime, b.EndDateTime),
-                bookingStatus: displayStatus,
-                rawStartTime: b.StartDateTime
-             };
+            return {
+              bookingId: `B-${String(b.BookingID).padStart(6, '0')}`,
+              courtName: b.CourtName || "Court",
+              date: safeDate,
+              day: dateObj.getDate(),
+              month: MONTH_NAMES[dateObj.getMonth()],
+              timeDuration: formatTimeRange(b.StartDateTime, b.EndDateTime),
+              bookingStatus: displayStatus,
+              rawStatus: rawStatus,
+              rawStartTime: b.StartDateTime
+            };
           });
           setRows(formatted);
         }
@@ -87,23 +102,25 @@ export default function PlayerMyBookings() {
   }, []);
 
   const computed = useMemo(() => {
-    const today = new Date();
-    const todayKey = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-    const withMeta = rows.map((r) => {
+    const withMeta = rows.filter(r => r.rawStatus !== 'PENDING_PAYMENT').map((r) => {
       const dateObj = new Date(r.date);
       const dateKey = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-      const statusKey = normalizeStatus(r.bookingStatus);
+      
+      const isConfirmed = r.rawStatus === 'CONFIRMED';
+      const isPending = r.rawStatus === 'WAITING_VERIFICATION';
+      const isCancelled = r.rawStatus === 'CANCELLED' || r.rawStatus === 'EXPIRED';
 
-      const isCancelled = statusKey === "cancelled";
-      const isUpcoming = !isCancelled && isSameOrAfter(dateKey, todayKey);
-      const isPast = !isCancelled && dateKey.getTime() < todayKey.getTime();
-
-      return { ...r, _dateKey: dateKey, _statusKey: statusKey, _isUpcoming: isUpcoming, _isPast: isPast, _isCancelled: isCancelled };
+      return { 
+        ...r, 
+        _dateKey: dateKey, 
+        _isConfirmed: isConfirmed, 
+        _isPending: isPending, 
+        _isCancelled: isCancelled 
+      };
     });
 
-    const upcoming = withMeta.filter((x) => x._isUpcoming);
-    const past = withMeta.filter((x) => x._isPast);
+    const confirmed = withMeta.filter((x) => x._isConfirmed);
+    const pending = withMeta.filter((x) => x._isPending);
     const cancelled = withMeta.filter((x) => x._isCancelled);
 
     function sorter(a, b) {
@@ -113,18 +130,26 @@ export default function PlayerMyBookings() {
     }
 
     return {
-      upcoming: upcoming.sort(sorter),
-      past: past.sort(sorter),
+      all: [...withMeta].sort(sorter),
+      confirmed: confirmed.sort(sorter),
+      pending: pending.sort(sorter),
       cancelled: cancelled.sort(sorter),
-      counts: { upcoming: upcoming.length, past: past.length, cancelled: cancelled.length },
+      counts: { 
+        all: withMeta.length, 
+        confirmed: confirmed.length, 
+        pending: pending.length, 
+        cancelled: cancelled.length 
+      },
     };
   }, [rows, sortOrder]);
 
   const list =
-    activeTab === "UPCOMING"
-      ? computed.upcoming
-      : activeTab === "PAST"
-      ? computed.past
+    activeTab === "ALL"
+      ? computed.all
+      : activeTab === "CONFIRMED"
+      ? computed.confirmed
+      : activeTab === "PENDING"
+      ? computed.pending
       : computed.cancelled;
 
   return (
@@ -133,13 +158,11 @@ export default function PlayerMyBookings() {
         <header className="pt-header">
           <div className="pt-header-content">
             <h1 className="pt-title">My Bookings</h1>
-            <p className="pt-subtitle">View and track your court bookings</p>
+            <p className="pt-subtitle">Track and manage your sessions at ArenaPro</p>
           </div>
 
           <div className="pt-sort-wrapper">
-            <svg className="pt-sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 6h18M7 12h10m-7 6h4"/>
-            </svg>
+            <FilterAlt className="pt-sort-icon" />
             <select className="pt-sort" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
               <option value="NEWEST">Newest First</option>
               <option value="OLDEST">Oldest First</option>
@@ -150,26 +173,32 @@ export default function PlayerMyBookings() {
         <div className="pt-tabs">
           <button
             type="button"
-            className={`pt-tab ${activeTab === "UPCOMING" ? "active" : ""}`}
-            onClick={() => setActiveTab("UPCOMING")}
+            className={`pt-tab ${activeTab === "ALL" ? "active" : ""}`}
+            onClick={() => setActiveTab("ALL")}
           >
-            <svg className="pt-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
-            </svg>
-            Upcoming 
-            <span className="pt-tab-count">{computed.counts.upcoming}</span>
+            <History className="pt-tab-icon" />
+            All 
+            <span className="pt-tab-count">{computed.counts.all}</span>
           </button>
 
           <button
             type="button"
-            className={`pt-tab ${activeTab === "PAST" ? "active" : ""}`}
-            onClick={() => setActiveTab("PAST")}
+            className={`pt-tab ${activeTab === "CONFIRMED" ? "active" : ""}`}
+            onClick={() => setActiveTab("CONFIRMED")}
           >
-            <svg className="pt-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/>
-            </svg>
-            Past 
-            <span className="pt-tab-count">{computed.counts.past}</span>
+            <CheckCircle className="pt-tab-icon" />
+            Confirmed 
+            <span className="pt-tab-count">{computed.counts.confirmed}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`pt-tab ${activeTab === "PENDING" ? "active" : ""}`}
+            onClick={() => setActiveTab("PENDING")}
+          >
+            <PendingActions className="pt-tab-icon" />
+            Pending 
+            <span className="pt-tab-count">{computed.counts.pending}</span>
           </button>
 
           <button
@@ -177,11 +206,7 @@ export default function PlayerMyBookings() {
             className={`pt-tab ${activeTab === "CANCELLED" ? "active" : ""}`}
             onClick={() => setActiveTab("CANCELLED")}
           >
-            <svg className="pt-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="15" y1="9" x2="9" y2="15"/>
-              <line x1="9" y1="9" x2="15" y2="15"/>
-            </svg>
+            <Cancel className="pt-tab-icon" />
             Cancelled 
             <span className="pt-tab-count">{computed.counts.cancelled}</span>
           </button>
@@ -202,29 +227,30 @@ export default function PlayerMyBookings() {
           <div className="pt-cards">
             {list.map((r) => (
               <div key={r.bookingId} className="pt-booking-card">
-                <div className="pt-booking-header">
-                  <div className="pt-booking-main">
+                <div className="pt-date-block">
+                  <div className="pt-date-month">{r.month}</div>
+                  <div className="pt-date-day">{r.day}</div>
+                </div>
+
+                <div className="pt-booking-main">
+                  <div className="pt-booking-header-row">
                     <h3 className="pt-booking-court">{r.courtName}</h3>
-                    <div className="pt-booking-meta">
-                      <svg className="pt-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
-                      <span className="pt-meta-item">{r.date}</span>
-                      <span className="pt-meta-dot">•</span>
-                      <svg className="pt-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      <span className="pt-meta-item">{r.timeDuration}</span>
-                    </div>
+                    <span className={pillClass(r.bookingStatus)}>{r.bookingStatus}</span>
                   </div>
 
-                  <div className="pt-booking-side">
-                    <div className="pt-booking-id">#{r.bookingId}</div>
-                    <span className={pillClass(r.bookingStatus)}>{r.bookingStatus}</span>
+                  <div className="pt-booking-meta">
+                    <div className="pt-meta-group">
+                      <CalendarMonth sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
+                      <span>{r.date}</span>
+                    </div>
+                    <div className="pt-meta-group">
+                      <Schedule sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
+                      <span>{r.timeDuration}</span>
+                    </div>
+                    <div className="pt-meta-group">
+                      <EventNote sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
+                      <span className="pt-booking-id">#{r.bookingId}</span>
+                    </div>
                   </div>
                 </div>
               </div>

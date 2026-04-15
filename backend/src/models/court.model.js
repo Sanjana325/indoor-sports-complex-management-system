@@ -1,5 +1,16 @@
 const { pool } = require("../config/db");
 
+async function existsByName(name, excludeId = null, conn = pool) {
+    let sql = `SELECT 1 FROM court WHERE CourtName = ?`;
+    const params = [name];
+    if (excludeId) {
+        sql += ` AND CourtID <> ?`;
+        params.push(excludeId);
+    }
+    const [rows] = await conn.query(sql, params);
+    return rows.length > 0;
+}
+
 async function createCourt({ name, capacity, pricePerHour }, conn = pool) {
     const [result] = await conn.query(
         `INSERT INTO court (CourtName, Capacity, PricePerHour)
@@ -89,6 +100,7 @@ async function deleteCourtHard(courtId, conn = pool) {
 
 module.exports = {
     createCourt,
+    existsByName,
     addSportsToCourt,
     listCourts,
     updateCourt,

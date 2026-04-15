@@ -235,10 +235,11 @@ export default function UserManagement() {
               data={displayRows}
               columns={[
                 { header: "ID", style: { width: "120px" } },
-                { header: "User Identity", style: { width: "300px" } },
+                { header: "User Identity", style: { width: "250px" } },
                 { header: "Contact", style: { width: "180px" } },
+                { header: "Joined Date", style: { width: "140px" } },
                 ...(sec.coach ? [{ header: "Qualifications & Specs" }] : []),
-                { header: "Status", style: { width: "120px" } },
+                { header: "Status", style: { width: "110px" } },
                 { header: "Actions", style: { textAlign: "right", width: "180px" } }
               ]}
               renderRow={(u) => (
@@ -250,6 +251,11 @@ export default function UserManagement() {
                   </td>
                   <td>
                     <div style={{ fontSize: "0.875rem" }}>{u.phone}</div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-main)" }}>
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
+                    </div>
                   </td>
                   {sec.coach && (
                     <td style={{ maxWidth: "250px" }}>
@@ -264,7 +270,7 @@ export default function UserManagement() {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                      <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
+                      <button className="btn btn-edit" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
                       <button className={`btn ${u.isActive ? "btn-secondary" : "btn-primary"}`} style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDisableToggle(u)}>
                         {u.isActive ? "Disable" : "Enable"}
                       </button>

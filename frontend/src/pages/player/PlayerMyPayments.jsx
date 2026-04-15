@@ -1,8 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
+import { 
+  History, 
+  Payments, 
+  Search, 
+  FilterAlt, 
+  CreditCard, 
+  ReceiptLong, 
+  CloudUpload, 
+  Visibility,
+  School,
+  SportsTennis,
+  AccessTime
+} from "@mui/icons-material";
 import playerService from "../../services/playerService";
 import { formatLKR, normalizeStatusKey } from "../../utils/formatters";
-import "../../styles/PlayerPaymentsTabs.css";
+import "../../styles/PlayerTables.css";
 
+const MONTH_NAMES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 function sortByDate(rows, sortOrder) {
   return [...rows].sort((a, b) => {
@@ -22,22 +36,27 @@ function matchesQuery(row, q, type) {
   return base.toLowerCase().includes(q);
 }
 
+function formatFullDateTime(iso) {
+  if (!iso) return "Transaction Pending";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "Invalid Date";
+  
+  const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${dateStr} • ${timeStr}`;
+}
+
 export default function PlayerMyPayments() {
   const [activeTab, setActiveTab] = useState("COURT");
-
   const [courtSort, setCourtSort] = useState("NEWEST");
   const [classSort, setClassSort] = useState("NEWEST");
-
   const [courtQuery, setCourtQuery] = useState("");
   const [classQuery, setClassQuery] = useState("");
-
   const [courtStatus, setCourtStatus] = useState("ALL");
   const [classStatus, setClassStatus] = useState("ALL");
-
   const [courtPayments, setCourtPayments] = useState([]);
   const [classPayments, setClassPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-
 
   useEffect(() => {
     async function fetchPayments() {
@@ -46,21 +65,24 @@ export default function PlayerMyPayments() {
         const data = await playerService.getMyPayments();
         
         if (Array.isArray(data.payments)) {
+          console.log("[MyPayments] Raw Data:", data.payments[0]);
           const formatted = data.payments.map((p) => {
-            const safeKey = normalizeStatusKey(p?.Status);
+            const rawStatus = p?.Status || "";
+            const safeKey = normalizeStatusKey(rawStatus);
             const safeStatus = safeKey.charAt(0) + safeKey.slice(1).toLowerCase();
             
-            let safeDate;
-            try {
-               const d = new Date(p?.PaidAt || p?.VerifiedAt || Date.now());
-               safeDate = isNaN(d.getTime()) ? new Date().toISOString().split('T')[0] : d.toISOString().split('T')[0];
-            } catch(e) {
-               safeDate = new Date().toISOString().split('T')[0];
+            // Hardened date extraction
+            const rawDate = p?.PaidAt || p?.VerifiedAt || p?.CreatedAt || null;
+            let dateObj = rawDate ? new Date(rawDate) : null;
+            if (!dateObj || isNaN(dateObj.getTime())) {
+              dateObj = new Date(); // Fallback to current if still nothing
             }
 
             return {
               paymentId: `PAY-${p?.PaymentID || 'Unknown'}`,
-              date: safeDate,
+              date: dateObj.toISOString().split('T')[0],
+              day: dateObj.getDate().toString().padStart(2, '0'),
+              month: MONTH_NAMES[dateObj.getMonth()],
               amount: Number(p?.Amount || 0),
               method: p?.Method === "BANK_SLIP" ? "Bank Slip" : "Online",
               status: safeStatus,
@@ -69,7 +91,8 @@ export default function PlayerMyPayments() {
               slipPath: p?.SlipPath || null,
               rawBookingId: p?.BookingID || null,
               className: p?.ClassTitle || null,
-              type: p?.ClassTitle ? "CLASS" : "COURT"
+              type: p?.ClassTitle ? "CLASS" : "COURT",
+              paidAtFull: formatFullDateTime(rawDate)
             };
           });
           setCourtPayments(formatted.filter(p => p.type === "COURT"));
@@ -105,11 +128,7 @@ export default function PlayerMyPayments() {
   const visibleCourt = useMemo(() => {
     const q = courtQuery.trim().toLowerCase();
     let rows = sortByDate(courtPayments, courtSort);
-
-    if (courtStatus !== "ALL") {
-      rows = rows.filter((r) => r.statusKey === courtStatus);
-    }
-
+    if (courtStatus !== "ALL") rows = rows.filter((r) => r.statusKey === courtStatus);
     rows = rows.filter((r) => matchesQuery(r, q, "COURT"));
     return rows;
   }, [courtPayments, courtSort, courtQuery, courtStatus]);
@@ -117,348 +136,230 @@ export default function PlayerMyPayments() {
   const visibleClass = useMemo(() => {
     const q = classQuery.trim().toLowerCase();
     let rows = sortByDate(classPayments, classSort);
-
-    if (classStatus !== "ALL") {
-      rows = rows.filter((r) => r.statusKey === classStatus);
-    }
-
+    if (classStatus !== "ALL") rows = rows.filter((r) => r.statusKey === classStatus);
     rows = rows.filter((r) => matchesQuery(r, q, "CLASS"));
     return rows;
   }, [classPayments, classSort, classQuery, classStatus]);
 
   function handleUploadSlip(paymentId, type) {
-    alert(`Upload bank slip for ${paymentId} (UI-only for now)`);
-
+    alert(`Upload bank slip for ${paymentId} (Action is pending integration)`);
     if (type === "COURT") {
-      setCourtPayments((prev) =>
-        prev.map((p) => (p.paymentId === paymentId ? { ...p, slipUploaded: true } : p))
-      );
-      return;
+      setCourtPayments((prev) => prev.map((p) => (p.paymentId === paymentId ? { ...p, slipUploaded: true } : p)));
+    } else {
+      setClassPayments((prev) => prev.map((p) => (p.paymentId === paymentId ? { ...p, slipUploaded: true } : p)));
     }
-
-    setClassPayments((prev) =>
-      prev.map((p) => (p.paymentId === paymentId ? { ...p, slipUploaded: true } : p))
-    );
   }
 
   function handleViewSlip(slipPath) {
-    if (slipPath) {
-      window.open(slipPath, '_blank');
-    } else {
-      alert("Slip not available.");
-    }
+    if (slipPath) window.open(slipPath, '_blank');
+    else alert("Slip not available.");
   }
 
-  function StatusChips({ value, onChange, counts }) {
-    const items = ["ALL", "PENDING", "COMPLETED"];
-    const labels = { PENDING: "Pending", COMPLETED: "Completed", CANCELLED: "Cancelled" };
-    return (
-      <div className="pp-chips">
-        {items.map((k) => (
-          <button
-            key={k}
-            type="button"
-            className={`pp-chip ${value === k ? "is-active" : ""}`}
-            onClick={() => onChange(k)}
-          >
-            {k === "ALL" ? "All" : labels[k]}
-            <span className="pp-chip-count">{counts[k] ?? 0}</span>
-          </button>
-        ))}
-      </div>
-    );
-  }
+  const isCourt = activeTab === "COURT";
+  const currentList = isCourt ? visibleCourt : visibleClass;
+  const currentQuery = isCourt ? courtQuery : classQuery;
+  const setQuery = isCourt ? setCourtQuery : setClassQuery;
+  const currentSort = isCourt ? courtSort : classSort;
+  const setSort = isCourt ? setCourtSort : setClassSort;
+  const currentStatus = isCourt ? courtStatus : classStatus;
+  const handleStatusChange = (val) => isCourt ? setCourtStatus(val) : setClassStatus(val);
+  const currentCounts = isCourt ? courtCounts : classCounts;
 
   return (
-    <div className="pp-page">
-      <div className="pp-container">
-        <header className="pp-header">
-          <div className="pp-header-content">
-            <h1 className="pp-title">My Payments</h1>
-            <p className="pp-subtitle">Track and manage all your payment transactions</p>
+    <div className="pt-page">
+      <div className="pt-container">
+        <header className="pt-header">
+          <div className="pt-header-content">
+            <h1 className="pt-title">My Payments</h1>
+            <p className="pt-subtitle">Manage your transactions and track payment status</p>
           </div>
         </header>
 
-        <div className="pp-tabs">
+        {/* Level 1 Tabs */}
+        <div className="pt-tabs">
           <button
             type="button"
-            className={`pp-tab ${activeTab === "COURT" ? "is-active" : ""}`}
+            className={`pt-tab ${activeTab === "COURT" ? "active" : ""}`}
             onClick={() => setActiveTab("COURT")}
           >
-            <svg className="pp-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            Court Booking 
-            <span className="pp-count">{courtCounts.ALL}</span>
+            <SportsTennis className="pt-tab-icon" />
+            Court Bookings 
+            <span className="pt-tab-count">{courtCounts.ALL}</span>
           </button>
 
           <button
             type="button"
-            className={`pp-tab ${activeTab === "CLASS" ? "is-active" : ""}`}
+            className={`pt-tab ${activeTab === "CLASS" ? "active" : ""}`}
             onClick={() => setActiveTab("CLASS")}
           >
-            <svg className="pp-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
+            <School className="pt-tab-icon" />
             Classes 
-            <span className="pp-count">{classCounts.ALL}</span>
+            <span className="pt-tab-count">{classCounts.ALL}</span>
           </button>
         </div>
 
-        <div className="pp-panel">
-          {activeTab === "COURT" ? (
-            <>
-              <div className="pp-panel-head">
-                <div className="pp-panel-title">
-                  <h3>Court Booking Payments</h3>
-                  <div className="pp-sub">Search, filter and upload slips for bank transfers</div>
-                </div>
+        {/* Dashboard Controls */}
+        <div className="pt-controls-row">
+          <div className="pt-search-wrapper">
+            <Search className="pt-search-icon" />
+            <input
+              className="pt-search"
+              placeholder={`Search ${isCourt ? 'court' : 'class'} payments...`}
+              value={currentQuery}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
 
-                <div className="pp-controls">
-                  <div className="pp-search-wrap">
-                    <svg className="pp-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="11" cy="11" r="8"/>
-                      <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    <input
-                      className="pp-search"
-                      placeholder="Search by ID, date, method, amount..."
-                      value={courtQuery}
-                      onChange={(e) => setCourtQuery(e.target.value)}
-                    />
-                  </div>
+          <div className="pt-chips">
+            {["ALL", "PENDING", "COMPLETED", "CANCELLED"].map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`pt-chip ${currentStatus === k ? "active" : ""}`}
+                onClick={() => handleStatusChange(k)}
+              >
+                {k.charAt(0) + k.slice(1).toLowerCase()}
+                <span className="pt-chip-count">{currentCounts[k] || 0}</span>
+              </button>
+            ))}
+          </div>
 
-                  <div className="pp-sort-wrapper">
-                    <svg className="pp-sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 6h18M7 12h10m-7 6h4"/>
-                    </svg>
-                    <select className="pp-sort" value={courtSort} onChange={(e) => setCourtSort(e.target.value)}>
-                      <option value="NEWEST">Newest First</option>
-                      <option value="OLDEST">Oldest First</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <StatusChips value={courtStatus} onChange={setCourtStatus} counts={courtCounts} />
-
-              {visibleCourt.length === 0 ? (
-                <div className="pp-empty">
-                  <svg className="pp-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                  <div className="pp-empty-title">No payments found</div>
-                  <div className="pp-empty-sub">Try changing filters or searching a different keyword.</div>
-                </div>
-              ) : (
-                <div className="pp-list">
-                  {visibleCourt.map((p) => {
-                    const sk = p.statusKey;
-                    const canSlip = p.method === "Bank Slip";
-                    const showUpload = canSlip && sk === "PENDING" && !p.slipUploaded;
-                    const showView = canSlip && p.slipUploaded;
-                    
-                    const pillClass = `pp-pill ${sk.toLowerCase() === "completed" ? "verified" : sk.toLowerCase() === "cancelled" ? "cancelled" : "pending"}`;
-                    const displayLabel = sk === "COMPLETED" ? "Completed" : sk === "CANCELLED" ? "Cancelled" : "Pending";
-
-                    return (
-                      <div key={p.paymentId} className="pp-item">
-                        <div className="pp-item-left">
-                          <div className="pp-id">{p.paymentId}</div>
-                          <div className="pp-details">
-                            <div className="pp-detail-row">
-                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                              </svg>
-                              <span className="pp-date">{p.date}</span>
-                            </div>
-                            <div className="pp-detail-row">
-                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="2" y="5" width="20" height="14" rx="2"/>
-                                <line x1="2" y1="10" x2="22" y2="10"/>
-                              </svg>
-                              <span className="pp-method">{p.method}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="pp-item-center">
-                          <div className="pp-amount">{formatLKR(p.amount)}</div>
-                          <span className={pillClass}>{displayLabel}</span>
-                        </div>
-
-                        <div className="pp-item-right">
-                          {showUpload ? (
-                            <button
-                              className="pp-slip-btn"
-                              type="button"
-                              onClick={() => handleUploadSlip(p.paymentId, "COURT")}
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                              </svg>
-                              Upload Slip
-                            </button>
-                          ) : showView ? (
-                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.slipPath)}>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                              </svg>
-                              View Slip
-                            </button>
-                          ) : (
-                            <span className="pp-muted">—</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div className="pp-panel-head">
-                <div className="pp-panel-title">
-                  <h3>Class Payments</h3>
-                  <div className="pp-sub">Track payments made for classes and upload slips if needed</div>
-                </div>
-
-                <div className="pp-controls">
-                  <div className="pp-search-wrap">
-                    <svg className="pp-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="11" cy="11" r="8"/>
-                      <path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    <input
-                      className="pp-search"
-                      placeholder="Search by ID, class, date, method..."
-                      value={classQuery}
-                      onChange={(e) => setClassQuery(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="pp-sort-wrapper">
-                    <svg className="pp-sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 6h18M7 12h10m-7 6h4"/>
-                    </svg>
-                    <select className="pp-sort" value={classSort} onChange={(e) => setClassSort(e.target.value)}>
-                      <option value="NEWEST">Newest First</option>
-                      <option value="OLDEST">Oldest First</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <StatusChips value={classStatus} onChange={setClassStatus} counts={classCounts} />
-
-              {visibleClass.length === 0 ? (
-                <div className="pp-empty">
-                  <svg className="pp-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                  <div className="pp-empty-title">No payments found</div>
-                  <div className="pp-empty-sub">Try changing filters or searching a different keyword.</div>
-                </div>
-              ) : (
-                <div className="pp-list">
-                  {visibleClass.map((p) => {
-                    const sk = p.statusKey;
-                    const canSlip = p.method === "Bank Slip";
-                    const showUpload = canSlip && sk === "PENDING" && !p.slipUploaded;
-                    const showView = canSlip && p.slipUploaded;
-                    
-                    const pillClass = `pp-pill ${sk.toLowerCase() === "completed" ? "verified" : sk.toLowerCase() === "cancelled" ? "cancelled" : "pending"}`;
-                    const displayLabel = sk === "COMPLETED" ? "Completed" : sk === "CANCELLED" ? "Cancelled" : "Pending";
-
-                    return (
-                      <div key={p.paymentId} className="pp-item">
-                        <div className="pp-item-left">
-                          <div className="pp-id">{p.paymentId}</div>
-                          <div className="pp-details">
-                            <div className="pp-detail-row">
-                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                              </svg>
-                              <span className="pp-date">{p.date}</span>
-                            </div>
-                            <div className="pp-detail-row">
-                              <svg className="pp-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="2" y="5" width="20" height="14" rx="2"/>
-                                <line x1="2" y1="10" x2="22" y2="10"/>
-                              </svg>
-                              <span className="pp-method">{p.method}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="pp-item-center">
-                          <div className="pp-amount">{formatLKR(p.amount)}</div>
-                          <div className="pp-class-info">
-                            <svg className="pp-class-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                              <circle cx="9" cy="7" r="4"/>
-                              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                            <span>{p.className || "-"}</span>
-                          </div>
-                          <span className={pillClass}>{displayLabel}</span>
-                        </div>
-
-                        <div className="pp-item-right">
-                          {showUpload ? (
-                            <button
-                              className="pp-slip-btn"
-                              type="button"
-                              onClick={() => handleUploadSlip(p.paymentId, "CLASS")}
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                              </svg>
-                              Upload Slip
-                            </button>
-                          ) : showView ? (
-                            <button className="pp-link" type="button" onClick={() => handleViewSlip(p.slipPath)}>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                              </svg>
-                              View Slip
-                            </button>
-                          ) : (
-                            <span className="pp-muted">—</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
+          <div className="pt-sort-wrapper">
+            <FilterAlt className="pt-sort-icon" />
+            <select className="pt-sort" value={currentSort} onChange={(e) => setSort(e.target.value)}>
+              <option value="NEWEST">Newest First</option>
+              <option value="OLDEST">Oldest First</option>
+            </select>
+          </div>
         </div>
+
+        {/* Transaction Content */}
+        {loading ? (
+          <div className="pt-loading-indicator">Retrieving transactions...</div>
+        ) : currentList.length === 0 ? (
+          <div className="pt-empty-state">
+            <ReceiptLong className="pt-empty-icon" style={{ fontSize: '4rem' }} />
+            <h3 className="pt-empty-title">No transactions found</h3>
+            <p className="pt-empty-text">Your payment history for this category is currently empty.</p>
+          </div>
+        ) : (
+          <div className="pt-cards">
+            {currentList.map((p) => {
+              const sk = p.statusKey;
+              const canSlip = p.method === "Bank Slip";
+              const showUpload = canSlip && sk === "PENDING" && !p.slipUploaded;
+              const showView = canSlip && p.slipUploaded;
+
+              return (
+                <div key={p.paymentId} className="pt-booking-card">
+                  {/* Visual Date Block */}
+                  <div className="pt-date-block">
+                    <div className="pt-date-month">{p.month}</div>
+                    <div className="pt-date-day">{p.day}</div>
+                  </div>
+
+                  {/* Upgraded Main Content */}
+                  <div className="pt-booking-main">
+                    <div className="pt-booking-header-row" style={{ alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="pt-booking-id" style={{ fontWeight: 800 }}>#{p.paymentId}</span>
+                        <h3 className="pt-booking-court" style={{ fontSize: '1.75rem', marginTop: '4px', letterSpacing: '-0.02em' }}>
+                          {formatLKR(p.amount)}
+                        </h3>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                        <span className={`pt-pill ${sk.toLowerCase() === "completed" ? "confirmed" : sk.toLowerCase() === "cancelled" ? "cancelled" : "pending"}`}>
+                          {p.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-booking-meta" style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', 
+                      gap: '1.25rem', 
+                      marginTop: '1.25rem',
+                      background: 'rgba(0,0,0,0.015)',
+                      padding: '12px 16px',
+                      borderRadius: '14px',
+                      border: '1px solid rgba(0,0,0,0.025)'
+                    }}>
+                      <div className="pt-meta-group" style={{ gap: '12px' }}>
+                        <CreditCard sx={{ fontSize: '1.1rem', color: 'var(--pt-primary)' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>Method</span>
+                          <span style={{ fontSize: '0.9rem', color: 'var(--pt-navy)', fontWeight: 700 }}>{p.method}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-meta-group" style={{ gap: '12px' }}>
+                        <AccessTime sx={{ fontSize: '1.1rem', color: 'var(--pt-primary)' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>Paid At</span>
+                          <span style={{ fontSize: '0.9rem', color: 'var(--pt-navy)', fontWeight: 700 }}>{p.paidAtFull}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-meta-group" style={{ gap: '12px' }}>
+                        {isCourt ? <SportsTennis sx={{ fontSize: '1.1rem', color: 'var(--pt-primary)' }} /> : <School sx={{ fontSize: '1.1rem', color: 'var(--pt-primary)' }} />}
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>{isCourt ? 'Booking Info' : 'Class Title'}</span>
+                          <span style={{ fontSize: '0.9rem', color: 'var(--pt-navy)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '250px' }}>
+                             {isCourt ? `Ref: BD-${p.rawBookingId || 'N/A'}` : p.className}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Footer Actions */}
+                    <div style={{ 
+                      marginTop: '1rem', 
+                      display: 'flex', 
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                      gap: '1rem'
+                    }}>
+                      {showUpload && (
+                        <button
+                          className="pt-tab active"
+                          style={{ padding: '8px 18px', fontSize: '0.8rem', background: 'var(--pt-primary)', color: 'white' }}
+                          onClick={() => handleUploadSlip(p.paymentId, isCourt ? "COURT" : "CLASS")}
+                        >
+                          <CloudUpload sx={{ fontSize: '1rem', mr: 1 }} />
+                          Upload Slip
+                        </button>
+                      )}
+                      {showView && (
+                        <button 
+                         className="pt-tab active"
+                         style={{ 
+                            padding: '8px 18px', 
+                            fontSize: '0.8rem', 
+                            background: '#f1f5f9', 
+                            color: 'var(--pt-navy)', 
+                            boxShadow: 'none',
+                            border: '1px solid #e2e8f0'
+                         }}
+                         onClick={() => handleViewSlip(p.slipPath)}
+                        >
+                          <Visibility sx={{ fontSize: '1rem', mr: 1 }} />
+                          View Slip
+                        </button>
+                      )}
+                      {!canSlip && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--pt-success)', fontSize: '0.75rem', fontWeight: 800 }}>
+                           <Visibility sx={{ fontSize: '0.9rem' }} />
+                           Electronic Verification Completed
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

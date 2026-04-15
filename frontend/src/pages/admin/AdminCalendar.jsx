@@ -271,7 +271,7 @@ export default function AdminCalendar() {
             </div>
 
             <div className="flex-between mt-2">
-              <button className="btn btn-primary" onClick={() => window.location.href = selectedEvent.type === 'BOOKING' ? '/admin/bookings' : '/admin/classes'}>Edit</button>
+              <button className="btn btn-edit" onClick={() => window.location.href = selectedEvent.type === 'BOOKING' ? '/admin/bookings' : '/admin/classes'}>Edit</button>
               <button className="btn btn-secondary" onClick={() => setIsDetailModalOpen(false)}>Close</button>
             </div>
           </div>

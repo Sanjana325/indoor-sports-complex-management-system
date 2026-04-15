@@ -557,6 +557,68 @@ async function sendCoachClassSessionReminder({ toEmail, toName, className, sport
   });
 }
 
+async function sendPaymentRejectionEmail({ toEmail, toName, targetName, amount, isClass }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const typeStr = isClass ? "Coaching Class Enrollment" : "Court Booking";
+  const subject = `Update: Your Payment for ${targetName}`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Player";
+
+  const formattedAmount = Number(amount).toLocaleString("en-LK", { minimumFractionDigits: 2 });
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `We are writing to inform you that your payment for ${targetName} (LKR ${formattedAmount}) could not be verified and has been REJECTED by our administration.\n\n` +
+    (isClass 
+      ? `This payment was for a Coaching Class installment. Your enrollment remains active, but the payment is still marked as DUE. Please upload a valid payment slip as soon as possible to avoid losing your spot.\n\n` 
+      : `Because this payment was for a Court Booking, your reservation has been automatically CANCELLED and the court time has been released. If you still wish to play, please create a new booking.\n\n`) +
+    `Common reasons for rejection include blurry slip images, incorrect amounts, or missing transaction details.\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+      <h2 style="margin: 0 0 16px; color: #d32f2f;">Payment Verification Update</h2>
+      <p>Hi <strong>${safeName}</strong>,</p>
+      <p>We are writing to inform you that we could not verify your payment slip for <strong>${targetName}</strong>.</p>
+      
+      <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #dc2626;">
+        <h3 style="margin-top: 0; color: #b91c1c;">Payment Rejected</h3>
+        <p style="margin: 0 0 8px;"><strong>Item:</strong> ${targetName}</p>
+        <p style="margin: 0 0 8px;"><strong>Amount:</strong> LKR ${formattedAmount}</p>
+        <p style="margin: 0; color: #dc2626; font-weight: bold;">Status: REJECTED</p>
+      </div>
+      
+      <p>
+        ${isClass 
+          ? "This installment is still marked as <strong>DUE</strong>. Please log in and upload a valid payment slip to maintain your enrollment standing." 
+          : "Because this was for a court booking, your reservation has been <strong>CANCELLED</strong> and the slot has been released for other players."}
+      </p>
+      
+      <p style="color: #666; font-size: 14px; margin-top: 20px;">
+        Common rejection reasons: Blurry images, incorrect payment amount, or invalid transaction reference.
+      </p>
+      
+      <p style="margin-top: 32px; color:#888; font-size: 14px;">
+        Best regards,<br>
+        <strong>The ArenaPro Team</strong>
+      </p>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendWelcomeEmail,
@@ -567,5 +629,6 @@ module.exports = {
   sendSessionCancelledEmail,
   sendCourtBookingReminder,
   sendClassSessionReminder,
-  sendCoachClassSessionReminder
+  sendCoachClassSessionReminder,
+  sendPaymentRejectionEmail
 };

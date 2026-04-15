@@ -1,29 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Box, 
-  Typography, 
-  Button, 
-  Grid, 
-  CircularProgress, 
-  Card, 
-  CardContent, 
-  Avatar, 
-  Chip,
-  Container,
-  IconButton
-} from "@mui/material";
-import { 
   Person, 
-  EventNote, 
   Place, 
   ArrowBack,
-  Info,
   Payments,
   Schedule,
-  CalendarMonth
+  School,
+  ErrorOutline
 } from "@mui/icons-material";
-import "../../styles/PlayerMyClasses.css";
+import "../../styles/PlayerTables.css";
 import ClassPaymentModal from "../../components/ClassPaymentModal";
 import playerService from "../../services/playerService";
 
@@ -36,7 +22,6 @@ function formatTime(t) {
 }
 
 function formatScheduleDetailed(c) {
-  console.log("[Format] Class:", c.Title, "Start:", c.StartTime, "Days:", c.Weekdays);
   const start = formatTime(c.StartTime);
   const end = formatTime(c.EndTime);
   const timeRange = start && end ? `${start} - ${end}` : (start || end || "");
@@ -74,7 +59,6 @@ export default function PlayerMyClasses() {
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedCoach, setSelectedCoach] = useState(null);
 
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -88,7 +72,6 @@ export default function PlayerMyClasses() {
     try {
       setLoading(true);
       const data = await playerService.getMyClasses();
-      console.log("[MyClasses] Enrollments:", data.enrollments);
       setEnrollments(data.enrollments || []);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load classes");
@@ -119,148 +102,153 @@ export default function PlayerMyClasses() {
   };
 
   return (
-    <div className="pmc-page">
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+    <div className="pt-page">
+      <div className="pt-container">
         {/* HEADER SECTION */}
-        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h3" sx={{ 
-              fontWeight: 800, 
-              color: '#fff', 
-              mb: 1,
-              textShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            }}>
-              My Classes
-            </Typography>
-            <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 400 }}>
-              Manage your enrollments and track your progress.
-            </Typography>
-          </Box>
-          <Button 
-            startIcon={<ArrowBack />} 
+        <header className="pt-header">
+          <div className="pt-header-content">
+            <h1 className="pt-title">My Classes</h1>
+            <p className="pt-subtitle">Manage your enrollments and track your progress</p>
+          </div>
+
+          <button 
+            className="pt-sort" 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             onClick={() => navigate("/player")}
-            sx={{ 
-              color: '#fff', 
-              borderColor: 'rgba(255,255,255,0.3)',
-              textTransform: 'none',
-              borderRadius: '12px',
-              px: 3,
-              '&:hover': { borderColor: '#fff' }
-            }}
-            variant="outlined"
           >
+            <ArrowBack sx={{ fontSize: '1.1rem' }} />
             Dashboard
-          </Button>
-        </Box>
+          </button>
+        </header>
 
         {/* CONTENT */}
         {loading ? (
-             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10 }}>
-                <CircularProgress sx={{ color: '#00e676', mb: 2 }} />
-                <Typography sx={{ color: '#fff', opacity: 0.8 }}>Loading your classes...</Typography>
-             </Box>
+          <div className="pt-loading-indicator">Loading your classes...</div>
+        ) : error ? (
+           <div className="pt-empty-state">
+              <ErrorOutline className="pt-empty-icon" />
+              <h3 className="pt-empty-title">Something went wrong</h3>
+              <p className="pt-empty-text">{error}</p>
+           </div>
         ) : enrollments.length === 0 ? (
-          <Box className="heavy-frost-card" sx={{ textAlign: 'center', py: 12 }}>
-            <CalendarMonth sx={{ fontSize: 64, color: 'rgba(255,255,255,0.2)', mb: 2 }} />
-            <Typography variant="h5" sx={{ color: '#fff', mb: 1 }}>No enrolled classes yet</Typography>
-            <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>Your joined classes will appear here after payment.</Typography>
-          </Box>
+          <div className="pt-empty-state">
+            <School className="pt-empty-icon" style={{ fontSize: '4rem' }} />
+            <h3 className="pt-empty-title">No enrolled classes yet</h3>
+            <p className="pt-empty-text">Join a class to start your training journey at ArenaPro.</p>
+          </div>
         ) : (
-          <Grid container spacing={3}>
+          <div className="pt-cards">
             {enrollments.map((c) => (
-              <Grid item xs={12} md={6} key={c.EnrollmentID}>
-                <Card className="heavy-frost-card">
-                  <CardContent sx={{ p: 4 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                       <Box>
-                          <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, mb: 0.5 }}>{c.Title}</Typography>
-                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>#ENR-{c.EnrollmentID}</Typography>
-                       </Box>
-                       <Chip 
-                         label={(c.PaymentStatus || "ACTIVE").toUpperCase()} 
-                         sx={{ 
-                            bgcolor: c.PaymentStatus === 'PAID' ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 167, 38, 0.15)',
-                            color: c.PaymentStatus === 'PAID' ? '#00e676' : '#ffa726',
-                            fontWeight: 700,
-                            border: `1px solid ${c.PaymentStatus === 'PAID' ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 167, 38, 0.3)'}`
-                         }}
-                       />
-                    </Box>
+              <div key={c.EnrollmentID} className="pt-booking-card">
+                {/* Visual Block */}
+                <div className="pt-date-block" style={{ background: 'var(--pt-primary-soft)', border: 'none' }}>
+                  <div className="pt-date-month" style={{ background: 'var(--pt-primary)' }}>CLASS</div>
+                  <div className="pt-date-day">
+                    <School sx={{ color: 'var(--pt-primary)', fontSize: '1.8rem' }} />
+                  </div>
+                </div>
 
-                    <Grid container spacing={2} sx={{ mb: 3 }}>
-                       <Grid item xs={12} sm={6}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                            <Person sx={{ color: '#40c4ff', fontSize: 20 }} />
-                            <Box>
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Coach</Typography>
-                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{c.CoachFirstName} {c.CoachLastName}</Typography>
-                            </Box>
-                          </Box>
-                       </Grid>
-                       <Grid item xs={12} sm={6}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-                            <Schedule sx={{ color: '#40c4ff', fontSize: 20 }} />
-                            <Box>
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Schedule</Typography>
-                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{formatScheduleDetailed(c)}</Typography>
-                            </Box>
-                          </Box>
-                       </Grid>
-                       <Grid item xs={12} sm={6}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Place sx={{ color: '#40c4ff', fontSize: 20 }} />
-                            <Box>
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Location</Typography>
-                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{c.CourtNames || "TBA"}</Typography>
-                            </Box>
-                          </Box>
-                       </Grid>
-                       <Grid item xs={12} sm={6}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Payments sx={{ color: '#40c4ff', fontSize: 20 }} />
-                            <Box>
-                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Fee</Typography>
-                                <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>{formatLKR(c.Fee)} / {c.BillingType === 'MONTHLY' ? 'Mo' : 'Once'}</Typography>
-                            </Box>
-                          </Box>
-                       </Grid>
-                    </Grid>
+                {/* Main Content */}
+                <div className="pt-booking-main">
+                  <div className="pt-booking-header-row">
+                    <h3 className="pt-booking-court">{c.Title}</h3>
+                    <span className={`pt-pill ${c.PaymentStatus === 'PAID' ? 'confirmed' : 'pending'}`}>
+                      {c.PaymentStatus || "ACTIVE"}
+                    </span>
+                  </div>
 
-                    {c.PaymentStatus !== "PAID" && (
-                         <Box sx={{ 
-                            mt: 2, p: 2, 
-                            borderRadius: '12px', 
-                            background: 'rgba(255, 167, 38, 0.1)', 
-                            border: '1px solid rgba(255, 167, 38, 0.2)',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                         }}>
-                            <Typography variant="body2" sx={{ color: '#ffa726', fontWeight: 600 }}>Payment is Due</Typography>
-                            <Button 
-                              size="small" 
-                              variant="contained" 
-                              sx={{ bgcolor: '#ffa726', color: '#000', fontWeight: 700, '&:hover': { bgcolor: '#fb8c00' } }}
-                              onClick={(e) => handlePayNow(e, c)}
-                            >
-                                Pay Now
-                            </Button>
-                         </Box>
-                    )}
+                  <div className="pt-booking-meta" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div className="pt-meta-group">
+                      <Person sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Coach</span>
+                        <span style={{ fontSize: '0.9rem' }}>{c.CoachFirstName} {c.CoachLastName}</span>
+                      </div>
+                    </div>
 
-                    <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button 
-                          onClick={() => handleLeaveClass(c.EnrollmentID)}
-                          sx={{ color: '#ff5252', textTransform: 'none', fontWeight: 600, '&:hover': { background: 'rgba(255,82,82,0.1)' } }}
-                        >
-                          Leave Class
-                        </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
+                    <div className="pt-meta-group">
+                      <Schedule sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Schedule</span>
+                        <span style={{ fontSize: '0.9rem' }}>{formatScheduleDetailed(c)}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-meta-group">
+                      <Place sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Location</span>
+                        <span style={{ fontSize: '0.9rem' }}>{c.CourtNames || "TBA"}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-meta-group">
+                      <Payments sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Fee</span>
+                        <span style={{ fontSize: '0.9rem' }}>{formatLKR(c.Fee)} / {c.BillingType === 'MONTHLY' ? 'Mo' : 'Once'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Alert if Pending */}
+                  {c.PaymentStatus !== "PAID" && (
+                    <div style={{ 
+                      marginTop: '1rem', 
+                      padding: '12px 16px', 
+                      background: '#fffbeb', 
+                      borderRadius: '12px', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      border: '1px solid #fef3c7'
+                    }}>
+                      <span style={{ color: '#d97706', fontSize: '0.85rem', fontWeight: 800 }}>Payment is Due</span>
+                      <button 
+                         className="pt-tab active" 
+                         style={{ padding: '6px 16px', fontSize: '0.75rem', background: '#d97706', color: 'white' }}
+                         onClick={(e) => handlePayNow(e, c)}
+                      >
+                        Pay Now
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Footer Action */}
+                  <div style={{ 
+                    marginTop: '1.25rem', 
+                    paddingTop: '0.75rem', 
+                    borderTop: '1px solid #f1f5f9', 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span className="pt-booking-id" style={{ background: 'transparent', padding: 0 }}>Enrollment: #ENR-{c.EnrollmentID}</span>
+                    <button 
+                      onClick={() => handleLeaveClass(c.EnrollmentID)}
+                      style={{ 
+                        background: 'transparent', 
+                        border: 'none', 
+                        color: '#ef4444', 
+                        fontWeight: 700, 
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        transition: '0.2s'
+                      }}
+                      onMouseOver={(e) => e.target.style.background = '#fef2f2'}
+                      onMouseOut={(e) => e.target.style.background = 'transparent'}
+                    >
+                      Leave Class
+                    </button>
+                  </div>
+                </div>
+              </div>
             ))}
-          </Grid>
+          </div>
         )}
-      </Container>
+      </div>
 
       {/* Class Payment Modal */}
       {payClassData && (
@@ -273,4 +261,4 @@ export default function PlayerMyClasses() {
       )}
     </div>
   );
-}
+}

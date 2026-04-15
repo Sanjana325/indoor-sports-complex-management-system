@@ -117,7 +117,7 @@ export default function Sports() {
                                     </td>
                                     <td>
                                         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                                            <button className="btn btn-secondary" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleEditClick(s)}>Edit</button>
+                                            <button className="btn btn-edit" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleEditClick(s)}>Edit</button>
                                             <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDeleteSport(s.SportID, s.SportName)}>Delete</button>
                                         </div>
                                     </td>
