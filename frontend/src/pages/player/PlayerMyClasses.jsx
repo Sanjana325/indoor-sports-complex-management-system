@@ -1,18 +1,57 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
+  Box, 
+  Typography, 
+  Button, 
+  Grid, 
+  CircularProgress, 
+  Card, 
+  CardContent, 
+  Avatar, 
+  Chip,
+  Container,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Link
+} from "@mui/material";
+import { 
   Person, 
   Place, 
   ArrowBack,
   Payments,
-  Schedule,
+  EventNote,
   School,
-  ErrorOutline
+  ErrorOutline,
+  SportsCricket,
+  SportsTennis,
+  SportsSoccer,
+  SportsBasketball,
+  SportsVolleyball,
+  Verified,
+  Info
 } from "@mui/icons-material";
-import "../../styles/PlayerTables.css";
+import CloseIcon from '@mui/icons-material/Close';
+import "../../styles/PlayerMyClasses.css";
 import ClassPaymentModal from "../../components/ClassPaymentModal";
 import playerService from "../../services/playerService";
 
+const ICON_MAP = {
+  "Cricket": SportsCricket,
+  "Badminton": SportsTennis,
+  "Futsal": SportsSoccer,
+  "Basketball": SportsBasketball,
+  "Volleyball": SportsVolleyball,
+};
+
+const DEFAULT_ICON = SportsSoccer;
 const DAY_MAP = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function formatTime(t) {
@@ -64,6 +103,10 @@ export default function PlayerMyClasses() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [payClassData, setPayClassData] = useState(null);
 
+  // Coach Profile Modal State
+  const [coachModalOpen, setCoachModalOpen] = useState(false);
+  const [selectedCoach, setSelectedCoach] = useState(null);
+
   useEffect(() => {
     fetchMyClasses();
   }, []);
@@ -101,154 +144,183 @@ export default function PlayerMyClasses() {
     setPaymentModalOpen(true);
   };
 
-  return (
-    <div className="pt-page">
-      <div className="pt-container">
-        {/* HEADER SECTION */}
-        <header className="pt-header">
-          <div className="pt-header-content">
-            <h1 className="pt-title">My Classes</h1>
-            <p className="pt-subtitle">Manage your enrollments and track your progress</p>
-          </div>
+  const handleSeeMoreCoach = (c) => {
+    setSelectedCoach({
+      name: `${c.CoachFirstName} ${c.CoachLastName}`,
+      qualifications: c.CoachQualifications ? c.CoachQualifications.split(',') : []
+    });
+    setCoachModalOpen(true);
+  };
 
-          <button 
-            className="pt-sort" 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+  return (
+    <div className="pmc-portal-container">
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* HEADER SECTION */}
+        <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box>
+            <Typography variant="h3" className="pmc-title">
+              My Classes
+            </Typography>
+            <Typography variant="h6" className="pmc-subtitle">
+              Manage your enrollments and track your progress
+            </Typography>
+          </Box>
+          <Button 
+            startIcon={<ArrowBack />} 
             onClick={() => navigate("/player")}
+            className="pbc-back-btn"
+            sx={{ textTransform: 'none', px: 3 }}
           >
-            <ArrowBack sx={{ fontSize: '1.1rem' }} />
             Dashboard
-          </button>
-        </header>
+          </Button>
+        </Box>
 
         {/* CONTENT */}
         {loading ? (
-          <div className="pt-loading-indicator">Loading your classes...</div>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10 }}>
+            <CircularProgress sx={{ color: 'var(--primary)', mb: 2 }} />
+            <Typography sx={{ color: 'var(--text-muted)' }}>Loading your classes...</Typography>
+          </Box>
         ) : error ? (
-           <div className="pt-empty-state">
-              <ErrorOutline className="pt-empty-icon" />
-              <h3 className="pt-empty-title">Something went wrong</h3>
-              <p className="pt-empty-text">{error}</p>
-           </div>
+           <Box sx={{ textAlign: 'center', py: 10, bgcolor: 'rgba(239, 68, 68, 0.05)', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+              <ErrorOutline sx={{ fontSize: 48, color: '#ef4444', mb: 2 }} />
+              <Typography variant="h6" sx={{ color: 'var(--text-main)', fontWeight: 800 }}>Something went wrong</Typography>
+              <Typography sx={{ color: 'var(--text-muted)' }}>{error}</Typography>
+              <Button onClick={fetchMyClasses} sx={{ mt: 2, color: 'var(--primary)', fontWeight: 700 }}>Try Again</Button>
+           </Box>
         ) : enrollments.length === 0 ? (
-          <div className="pt-empty-state">
-            <School className="pt-empty-icon" style={{ fontSize: '4rem' }} />
-            <h3 className="pt-empty-title">No enrolled classes yet</h3>
-            <p className="pt-empty-text">Join a class to start your training journey at ArenaPro.</p>
-          </div>
+          <Box sx={{ 
+            textAlign: 'center', 
+            py: 12, 
+            bgcolor: 'var(--bg-surface)', 
+            borderRadius: '24px',
+            border: '1px dashed var(--border-light)'
+          }}>
+            <School sx={{ fontSize: 64, color: 'var(--text-muted)', opacity: 0.2, mb: 2 }} />
+            <Typography variant="h5" sx={{ color: 'var(--text-main)', mb: 1, fontWeight: 800 }}>No enrolled classes yet</Typography>
+            <Typography sx={{ color: 'var(--text-muted)' }}>Join a class to start your training journey at ArenaPro.</Typography>
+            <Button 
+                variant="contained" 
+                onClick={() => navigate("/player/available-classes")}
+                sx={{ mt: 3, bgcolor: 'var(--primary)', fontWeight: 700, borderRadius: '10px', px: 4 }}
+            >
+                Explore Classes
+            </Button>
+          </Box>
         ) : (
-          <div className="pt-cards">
-            {enrollments.map((c) => (
-              <div key={c.EnrollmentID} className="pt-booking-card">
-                {/* Visual Block */}
-                <div className="pt-date-block" style={{ background: 'var(--pt-primary-soft)', border: 'none' }}>
-                  <div className="pt-date-month" style={{ background: 'var(--pt-primary)' }}>CLASS</div>
-                  <div className="pt-date-day">
-                    <School sx={{ color: 'var(--pt-primary)', fontSize: '1.8rem' }} />
-                  </div>
-                </div>
+          <Grid container spacing={3}>
+            {enrollments.map((c) => {
+              const IconComp = ICON_MAP[c.SportName] || DEFAULT_ICON;
+              const isPaid = c.PaymentStatus === 'PAID';
+              
+              return (
+                <Grid item xs={12} sm={6} md={4} key={c.EnrollmentID}>
+                  <Card className="pmc-enrollment-card">
+                    <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                      {/* TOP BAR: Enrollment ID */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                        <Typography className="pmc-enrollment-id">
+                          #ENR-{c.EnrollmentID}
+                        </Typography>
+                        <Chip 
+                          label={c.PaymentStatus || "ACTIVE"}
+                          className={`pmc-status-chip ${isPaid ? 'pmc-status-paid' : 'pmc-status-pending'}`}
+                          size="small"
+                        />
+                      </Box>
 
-                {/* Main Content */}
-                <div className="pt-booking-main">
-                  <div className="pt-booking-header-row">
-                    <h3 className="pt-booking-court">{c.Title}</h3>
-                    <span className={`pt-pill ${c.PaymentStatus === 'PAID' ? 'confirmed' : 'pending'}`}>
-                      {c.PaymentStatus || "ACTIVE"}
-                    </span>
-                  </div>
+                      {/* HEADER: Sport Badge */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                        <Avatar sx={{ bgcolor: 'var(--primary-light)', color: 'var(--primary)', width: 44, height: 44, border: '1px solid rgba(22, 163, 74, 0.1)' }}>
+                          <IconComp />
+                        </Avatar>
+                        <Typography variant="subtitle2" sx={{ color: 'var(--primary)', fontWeight: 800, letterSpacing: 1, fontSize: '0.75rem' }}>
+                          {c.SportName?.toUpperCase() || "CLASS"}
+                        </Typography>
+                      </Box>
 
-                  <div className="pt-booking-meta" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                    <div className="pt-meta-group">
-                      <Person sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Coach</span>
-                        <span style={{ fontSize: '0.9rem' }}>{c.CoachFirstName} {c.CoachLastName}</span>
-                      </div>
-                    </div>
+                      {/* TITLE */}
+                      <Typography variant="h5" sx={{ color: 'var(--text-main)', fontWeight: 800, mb: 2, lineHeight: 1.2 }}>
+                        {c.Title}
+                      </Typography>
 
-                    <div className="pt-meta-group">
-                      <Schedule sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Schedule</span>
-                        <span style={{ fontSize: '0.9rem' }}>{formatScheduleDetailed(c)}</span>
-                      </div>
-                    </div>
+                      {/* DETAILS */}
+                      <Box sx={{ mb: 2 }}>
+                        <div className="pmc-detail-item">
+                          <Person sx={{ fontSize: 20 }} />
+                          <Typography variant="body2" sx={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                            Coach <strong>{c.CoachFirstName} {c.CoachLastName}</strong>
+                            <Link 
+                              component="button"
+                              onClick={() => handleSeeMoreCoach(c)}
+                              sx={{ 
+                                ml: 1, 
+                                color: 'var(--primary)', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 700,
+                                textDecoration: 'none',
+                                '&:hover': { textDecoration: 'underline' }
+                              }}
+                            >
+                              (see more)
+                            </Link>
+                          </Typography>
+                        </div>
+                        <div className="pmc-detail-item">
+                          <EventNote sx={{ fontSize: 20 }} />
+                          <Typography variant="body2" sx={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                            {formatScheduleDetailed(c)}
+                          </Typography>
+                        </div>
+                        <div className="pmc-detail-item">
+                          <Place sx={{ fontSize: 20 }} />
+                          <Typography variant="body2" sx={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                            {c.CourtNames || "Arena Court"}
+                          </Typography>
+                        </div>
+                        <div className="pmc-detail-item">
+                          <Payments sx={{ fontSize: 20 }} />
+                          <div className="pmc-fee-text">
+                            {formatLKR(c.Fee)} <span style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.6 }}>/{c.BillingType === 'MONTHLY' ? 'mo' : 'once'}</span>
+                          </div>
+                        </div>
+                      </Box>
 
-                    <div className="pt-meta-group">
-                      <Place sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Location</span>
-                        <span style={{ fontSize: '0.9rem' }}>{c.CourtNames || "TBA"}</span>
-                      </div>
-                    </div>
+                      {/* Payment Alert if Pending */}
+                      {!isPaid && (
+                        <div className="pmc-payment-due-alert">
+                          <Typography variant="body2" sx={{ color: '#ca8a04', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                            Payment Overdue
+                          </Typography>
+                          <Button 
+                             className="pmc-pay-btn"
+                             onClick={(e) => handlePayNow(e, c)}
+                          >
+                            Pay Now
+                          </Button>
+                        </div>
+                      )}
 
-                    <div className="pt-meta-group">
-                      <Payments sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--pt-muted)', textTransform: 'uppercase' }}>Fee</span>
-                        <span style={{ fontSize: '0.9rem' }}>{formatLKR(c.Fee)} / {c.BillingType === 'MONTHLY' ? 'Mo' : 'Once'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Alert if Pending */}
-                  {c.PaymentStatus !== "PAID" && (
-                    <div style={{ 
-                      marginTop: '1rem', 
-                      padding: '12px 16px', 
-                      background: '#fffbeb', 
-                      borderRadius: '12px', 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      border: '1px solid #fef3c7'
-                    }}>
-                      <span style={{ color: '#d97706', fontSize: '0.85rem', fontWeight: 800 }}>Payment is Due</span>
-                      <button 
-                         className="pt-tab active" 
-                         style={{ padding: '6px 16px', fontSize: '0.75rem', background: '#d97706', color: 'white' }}
-                         onClick={(e) => handlePayNow(e, c)}
-                      >
-                        Pay Now
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Footer Action */}
-                  <div style={{ 
-                    marginTop: '1.25rem', 
-                    paddingTop: '0.75rem', 
-                    borderTop: '1px solid #f1f5f9', 
-                    display: 'flex', 
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span className="pt-booking-id" style={{ background: 'transparent', padding: 0 }}>Enrollment: #ENR-{c.EnrollmentID}</span>
-                    <button 
-                      onClick={() => handleLeaveClass(c.EnrollmentID)}
-                      style={{ 
-                        background: 'transparent', 
-                        border: 'none', 
-                        color: '#ef4444', 
-                        fontWeight: 700, 
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        transition: '0.2s'
-                      }}
-                      onMouseOver={(e) => e.target.style.background = '#fef2f2'}
-                      onMouseOut={(e) => e.target.style.background = 'transparent'}
-                    >
-                      Leave Class
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                      {/* FOOTER: LEAVE ACTION */}
+                      <Box className="pmc-card-footer" sx={{ mt: !isPaid ? 2.5 : 'auto' }}>
+                        <Button 
+                          onClick={() => handleLeaveClass(c.EnrollmentID)}
+                          className="pmc-leave-btn"
+                          fullWidth
+                          variant="outlined"
+                          sx={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                        >
+                          Leave Class
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
         )}
-      </div>
+      </Container>
 
       {/* Class Payment Modal */}
       {payClassData && (
@@ -259,6 +331,62 @@ export default function PlayerMyClasses() {
             onPaymentSuccess={fetchMyClasses}
           />
       )}
+
+      {/* COACH INFO POPUP */}
+      <Dialog 
+        open={coachModalOpen} 
+        onClose={() => setCoachModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          className: "pbc-payment-dialog"
+        }}
+      >
+        <DialogTitle className="pbc-dialog-title">
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Person sx={{ color: '#00ff88' }} />
+            {selectedCoach?.name}
+          </Box>
+          <IconButton
+              aria-label="close"
+              onClick={() => setCoachModalOpen(false)}
+              sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}
+          >
+              <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent className="pbc-dialog-content">
+          <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.5)', mb: 2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+            Professional Qualifications
+          </Typography>
+          {selectedCoach?.qualifications.length > 0 ? (
+            <List disablePadding>
+              {selectedCoach.qualifications.map((q, idx) => (
+                <ListItem key={idx} disableGutters sx={{ py: 1 }}>
+                  <ListItemIcon sx={{ minWidth: 32 }}>
+                    <Verified sx={{ color: '#00ff88', fontSize: 18 }} />
+                  </ListItemIcon>
+                  <ListItemText primary={q} primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500, color: 'white' }} />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, opacity: 0.5, py: 3, justifyContent: 'center' }}>
+              <Info sx={{ fontSize: 20 }} />
+              <Typography variant="body2" sx={{ color: 'white' }}>No listed qualifications yet.</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions className="pbc-dialog-actions" sx={{ p: 2 }}>
+          <Button 
+            onClick={() => setCoachModalOpen(false)} 
+            className="pbc-cancel-btn"
+            sx={{ fontWeight: 600 }}
+          >
+            Close Profile
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

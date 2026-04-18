@@ -42,12 +42,18 @@ export const AnalyticChart = ({ title, type, data, loading, dataKey = "value" })
               <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} dy={10} />
               <YAxis fontSize={10} axisLine={false} tickLine={false} />
               <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-              <Bar dataKey={dataKey} fill="var(--primary)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey={dataKey} radius={[4, 4, 0, 0]}>
+                {data?.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color || "var(--primary)"} />
+                ))}
+              </Bar>
             </BarChart>
           ) : (
             <PieChart>
               <Pie data={data} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                {data?.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                {data?.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
               </Pie>
               <Tooltip />
               <Legend verticalAlign="bottom" height={36} iconType="circle" />

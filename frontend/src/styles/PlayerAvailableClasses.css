@@ -1,60 +1,91 @@
-/* Player Available Classes - Clean Light Theme */
+/* Player Available Classes - ArenaPro Light Theme */
 
 .pac-portal-container {
   padding: 2rem 5%;
-  background: var(--player-bg);
+  background: var(--bg-body);
   min-height: calc(100vh - 72px);
+  animation: pbc-fade-in 0.4s ease-out;
+}
+
+.pac-title {
+  font-size: 2.2rem !important;
+  font-weight: 800 !important;
+  color: var(--primary) !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.pac-subtitle {
+  color: var(--text-muted) !important;
+  font-size: 1.1rem !important;
+  font-weight: 500 !important;
 }
 
 .heavy-frost-card {
-  background: white !important;
-  border: 1px solid #f1f5f9 !important;
-  border-radius: var(--player-radius) !important;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius-lg) !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: var(--player-shadow) !important;
+  box-shadow: var(--shadow-md) !important;
+  position: relative;
   overflow: hidden;
-  color: var(--player-text-main) !important;
 }
 
 .heavy-frost-card:hover {
   transform: translateY(-8px);
-  border-color: var(--player-primary) !important;
-  box-shadow: 0 12px 24px rgba(22, 163, 74, 0.08) !important; /* Greenish shadow */
+  border-color: var(--primary) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.pac-card-badge {
+  background: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(22, 163, 74, 0.1) !important;
 }
 
 .card-footer-flex {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f1f5f9;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--border-light);
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
 }
 
-/* Ensure Typography and other elements feel premium on white */
-.pac-portal-container h3, 
-.pac-portal-container h5,
-.pac-portal-container h6 {
-  font-family: 'Inter', sans-serif !important;
-  color: var(--player-text-main) !important;
-  font-weight: 800 !important;
-}
-
-.pac-portal-container .MuiTypography-body1,
-.pac-portal-container .MuiTypography-body2 {
-  color: var(--player-text-muted) !important;
-}
-
 .pac-enroll-btn {
-  background: var(--player-primary) !important;
+  background: var(--primary) !important;
   color: white !important;
   font-weight: 800 !important;
   border-radius: 12px !important;
-  padding: 8px 20px !important;
+  padding: 10px 24px !important;
   text-transform: none !important;
+  box-shadow: 0 4px 12px var(--primary-glow) !important;
 }
 
 .pac-enroll-btn:hover {
-  background: var(--player-primary-dark) !important;
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3) !important;
+  background: var(--primary-dark) !important;
+  transform: scale(1.02);
+}
+
+.pac-portal-container .MuiTypography-root {
+  font-family: var(--font-main) !important;
+}
+
+.pac-detail-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 8px !important;
+}
+
+.pac-detail-item .MuiSvgIcon-root {
+  color: var(--primary);
+  opacity: 0.7;
+}
+
+.pac-fee-text {
+  color: var(--text-main) !important;
+  font-weight: 800 !important;
+  font-size: 1.25rem !important;
 }

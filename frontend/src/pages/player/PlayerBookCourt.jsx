@@ -287,8 +287,47 @@ export default function PlayerBookCourt() {
 
   const handleTimeSlotToggle = (slotId) => {
     setSelectedTimeSlots(prev => {
-      if (prev.includes(slotId)) return prev.filter(id => id !== slotId);
-      return [...prev, slotId];
+      // If adding...
+      if (!prev.includes(slotId)) {
+        if (prev.length === 0) return [slotId];
+
+        // Ensure new slot is adjacent to current selection
+        const newStart = parseInt(slotId.split("-")[0]);
+        
+        const existingStarts = prev.map(id => parseInt(id.split("-")[0]));
+        const minStart = Math.min(...existingStarts);
+        const maxStart = Math.max(...existingStarts);
+
+        if (newStart === minStart - 1 || newStart === maxStart + 1) {
+          return [...prev, slotId];
+        } else {
+          alert("Please select contiguous time slots. You cannot leave gaps between your selected hours.");
+          return prev;
+        }
+      } 
+      
+      // If deselecting...
+      else {
+        const remaining = prev.filter(id => id !== slotId);
+        if (remaining.length <= 1) return remaining;
+
+        // Ensure the remaining set is still contiguous
+        const starts = remaining.map(id => parseInt(id.split("-")[0])).sort((a, b) => a - b);
+        let isContiguous = true;
+        for (let i = 0; i < starts.length - 1; i++) {
+          if (starts[i+1] !== starts[i] + 1) {
+            isContiguous = false;
+            break;
+          }
+        }
+
+        if (isContiguous) {
+          return remaining;
+        } else {
+          alert("Deselecting this slot would leave a gap. Please deselect from the ends of your selection first.");
+          return prev;
+        }
+      }
     });
   };
 
@@ -348,11 +387,10 @@ export default function PlayerBookCourt() {
       }
       
       // OTP Validated! Proceed based on pre-selected method
-      setOtpModalOpen(false);
       if (selectedPaymentMethod === 'ONLINE') {
-        handleOnlinePayment();
+        await handleOnlinePayment();
       } else {
-        handleBankTransferClick();
+        await handleBankTransferClick();
       }
 
     } catch (err) {
@@ -452,6 +490,7 @@ export default function PlayerBookCourt() {
 
       // 4. Trigger PayHere
       if (window.payhere) {
+        setOtpModalOpen(false);
         window.payhere.startPayment(payment);
       } else {
         alert("PayHere SDK not loaded. Please refresh the page.");
@@ -498,6 +537,8 @@ export default function PlayerBookCourt() {
         setCreatedBookingId(bookingId);
       }
 
+      setOtpModalOpen(false);
+      setPaymentModalOpen(true);
       setPaymentModalStep(2);
     } catch (err) {
       console.error(err);
@@ -665,62 +706,6 @@ export default function PlayerBookCourt() {
           </section>
 
 
-          {/* STEP 4: Select Payment Method */}
-          <section className="pbc-section glass-panel">
-            <h2 className="pbc-section-title">4. Select Payment Method</h2>
-            
-            {!selectedCourtId || selectedTimeSlots.length === 0 ? (
-              <div className="pbc-hint-box">Please select time slots first.</div>
-            ) : (
-              <>
-                <div className="pbc-payment-options" style={{ marginTop: 0 }}>
-                  <Card 
-                    className={`pbc-payment-card ${selectedPaymentMethod === 'ONLINE' ? 'selected-payment' : ''}`} 
-                    onClick={() => setSelectedPaymentMethod('ONLINE')}
-                    sx={{ bgcolor: selectedPaymentMethod === 'ONLINE' ? 'rgba(0, 255, 136, 0.1) !important' : 'rgba(255,255,255,0.03) !important' }}
-                  >
-                    <CreditCard className="pbc-payment-icon" />
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Pay Online</Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.6 }}>Instant confirmation via PayHere</Typography>
-                  </Card>
-
-                  <Card 
-                    className={`pbc-payment-card ${selectedPaymentMethod === 'BANK' ? 'selected-payment' : ''}`} 
-                    onClick={() => setSelectedPaymentMethod('BANK')}
-                    sx={{ bgcolor: selectedPaymentMethod === 'BANK' ? 'rgba(0, 255, 136, 0.1) !important' : 'rgba(255,255,255,0.03) !important' }}
-                  >
-                    <Receipt className="pbc-payment-icon" />
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>Bank Slip</Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.6 }}>Manual verification (2-4 hours)</Typography>
-                  </Card>
-                </div>
-
-                {selectedPaymentMethod === 'BANK' && (
-                  <Box sx={{ mt: 3, animation: 'pbc-fade-in 0.3s ease-out' }}>
-                    <Typography variant="body2" className="pbc-dialog-subtext" sx={{ mb: 1.5, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>
-                      Bank Destination Details
-                    </Typography>
-                    <Box className="pbc-bank-details-card" style={{ marginTop: 0 }}>
-                        <div className="bank-info-row" style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span className="info-label">Bank</span>
-                            <span className="info-value" style={{ fontWeight: 700 }}>{BANK_DETAILS.bankName}</span>
-                        </div>
-                        <div className="bank-info-row" style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span className="info-label">Acc Number</span>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <span className="info-value" style={{ color: '#00ff88', fontWeight: 800, fontSize: '1.25rem' }}>{BANK_DETAILS.accountNumber}</span>
-                              <button className="copy-btn" onClick={() => copyToClipboard(BANK_DETAILS.accountNumber)}>Copy</button>
-                            </Box>
-                        </div>
-                        <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.5 }}>
-                          * You will be asked to upload the deposit slip after identity verification.
-                        </Typography>
-                    </Box>
-                  </Box>
-                )}
-              </>
-            )}
-          </section>
 
 
         </div>
@@ -767,6 +752,72 @@ export default function PlayerBookCourt() {
               <div className="summary-total-amount">LKR {totalAmount.toLocaleString("en-LK")}</div>
             </div>
 
+            {/* PAYMENT METHOD SELECTION */}
+            {selectedTimeSlots.length > 0 && (
+              <div className="pbc-sidebar-payment-section">
+                <div className="pbc-sidebar-payment-title">Select Payment Method</div>
+                {!selectedPaymentMethod && (
+                  <Typography variant="caption" sx={{ color: 'var(--text-muted)', mb: 1.5, display: 'block', fontStyle: 'italic' }}>
+                    * Please select a payment method before confirming.
+                  </Typography>
+                )}
+                <div className="pbc-sidebar-payment-grid">
+                  <Card 
+                    className={`pbc-payment-card sidebar-mode ${selectedPaymentMethod === 'ONLINE' ? 'selected-payment' : ''}`} 
+                    onClick={() => setSelectedPaymentMethod('ONLINE')}
+                  >
+                    <CreditCard className="pbc-payment-icon" />
+                    <div>
+                      <Typography variant="h6" sx={{ fontWeight: 800 }}>Pay Online</Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.6 }}>Instant confirmation</Typography>
+                    </div>
+                  </Card>
+
+                  <Card 
+                    className={`pbc-payment-card sidebar-mode ${selectedPaymentMethod === 'BANK' ? 'selected-payment' : ''}`} 
+                    onClick={() => setSelectedPaymentMethod('BANK')}
+                  >
+                    <Receipt className="pbc-payment-icon" />
+                    <div>
+                      <Typography variant="h6" sx={{ fontWeight: 800 }}>Bank Slip</Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.6 }}>Manual verification</Typography>
+                    </div>
+                  </Card>
+                </div>
+
+                {selectedPaymentMethod === 'BANK' && (
+                  <Box sx={{ mt: 2, animation: 'pbc-fade-in 0.3s ease-out' }}>
+                    <Box className="pbc-bank-details-card" style={{ marginTop: 0, padding: '12px' }}>
+                        <div className="bank-info-row">
+                            <span className="info-label">Bank</span>
+                            <span className="info-value">{BANK_DETAILS.bankName}</span>
+                        </div>
+                        <div className="bank-info-row">
+                            <span className="info-label">Branch</span>
+                            <span className="info-value">{BANK_DETAILS.branch}</span>
+                        </div>
+                        <div className="bank-info-row">
+                            <span className="info-label">Owner</span>
+                            <span className="info-value">{BANK_DETAILS.accountName}</span>
+                        </div>
+                        <div className="bank-info-row">
+                            <span className="info-label">Acc No</span>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <span className="info-value">{BANK_DETAILS.accountNumber}</span>
+                              <button className="copy-btn" onClick={() => copyToClipboard(BANK_DETAILS.accountNumber)}>Copy</button>
+                            </Box>
+                        </div>
+                    </Box>
+
+                    <div className="pbc-expiry-notice">
+                       <span>⚠️</span>
+                       <span>Once confirmed, you have 10 minutes to complete the payment before your booking expires.</span>
+                    </div>
+                  </Box>
+                )}
+              </div>
+            )}
+
 
             <button
               className="pbc-confirm-btn"
@@ -802,7 +853,7 @@ export default function PlayerBookCourt() {
         <DialogContent className="pbc-dialog-content">
              <Box sx={{ mt: 2 }}>
                  <Typography variant="body1" className="pbc-dialog-subtext" sx={{ mb: 2, textAlign: 'center' }}>
-                     Please upload the deposit slip for <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> to confirm your booking.
+                     Please upload the deposit slip for <strong>LKR {totalAmount.toLocaleString("en-LK")}</strong> within 10 minutes of confirmation to finalize your booking.
                  </Typography>
                  
                   <Typography variant="body2" className="pbc-dialog-subtext" sx={{ mb: 1.5, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>Upload Transaction Slip</Typography>

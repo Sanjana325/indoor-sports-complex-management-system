@@ -7,11 +7,11 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   const location = useLocation();
 
   if (loading) {
-    return <div>Loading...</div>; // Or a nice spinner
+    return <div>Loading...</div>; 
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Force Change Password Enforcement

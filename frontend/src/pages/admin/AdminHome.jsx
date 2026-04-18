@@ -1,4 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell
+} from 'recharts';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -47,110 +51,243 @@ function sportLabelFromKey(k) {
 }
 
 export default function AdminHome() {
-  const [totals, setTotals] = useState({
-    users: 0,
-    bookings: 0,
-    payments: 0,
-    classes: 0
+  const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState("MONTH");
+  const [data, setData] = useState({
+    totals: {
+      users: 0,
+      bookings: 0,
+      revenue: 0,
+      pendingActions: 0,
+      classes: 0
+    },
+    charts: {
+      revenueTrend: [],
+      revenueBySport: [],
+      revenueByCourt: []
+    }
   });
+
+  const computeRange = (val) => {
+    const today = new Date();
+    const toISO = (d) => d.toISOString().split('T')[0];
+    
+    switch(val) {
+      case "TODAY": 
+        return { start: toISO(today), end: toISO(today), label: "Today" };
+      case "MONTH":
+        return { start: toISO(new Date(today.getFullYear(), today.getMonth(), 1)), end: toISO(today), label: "This Month" };
+      case "3_MONTHS":
+        const t3 = new Date(); t3.setMonth(today.getMonth() - 3);
+        return { start: toISO(t3), end: toISO(today), label: "Last 3 Months" };
+      case "YEAR":
+        const ty = new Date(); ty.setFullYear(today.getFullYear() - 1);
+        return { start: toISO(ty), end: toISO(today), label: "Last 1 Year" };
+      case "5_YEARS":
+        const t5 = new Date(); t5.setFullYear(today.getFullYear() - 5);
+        return { start: toISO(t5), end: toISO(today), label: "Last 5 Years" };
+      default:
+        return { start: toISO(new Date(today.getFullYear(), today.getMonth(), 1)), end: toISO(today), label: "This Month" };
+    }
+  };
+
+  const [activeRange, setActiveRange] = useState(() => computeRange("MONTH"));
 
   useEffect(() => {
     async function fetchStats() {
+      setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/admin/reports/dashboard-stats`, {
+        const res = await fetch(`${API_BASE}/api/admin/reports/dashboard-stats?start=${activeRange.start}&end=${activeRange.end}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const data = await res.json();
-        if (data.totals) {
-          setTotals(data.totals);
+        const d = await res.json();
+        if (d.totals) {
+          setData({
+            totals: d.totals,
+            charts: d.charts || { revenueTrend: [], revenueBySport: [], revenueByCourt: [] }
+          });
         }
       } catch (err) {
         console.error("Dashboard stats fetch failed:", err);
+      } finally {
+        setLoading(false);
       }
     }
     fetchStats();
-  }, []);
+  }, [activeRange]);
 
-  const [bookings] = useState([
-    {
-      id: "B-500001",
-      playerName: "Kavindi Silva",
-      court: "Badminton - A",
-      date: "2026-09-30",
-      time: "09:30-10:30",
-      status: "CONFIRMED"
-    },
-    {
-      id: "B-500002",
-      playerName: "Nuwan Perera",
-      court: "Cricket - A",
-      date: "2026-09-30",
-      time: "13:00-15:00",
-      status: "PENDING_PAYMENT"
-    },
-    {
-      id: "B-500003",
-      playerName: "Sahan Fernando",
-      court: "Futsal - A",
-      date: "2026-09-30",
-      time: "19:00-21:30",
-      status: "CONFIRMED"
-    }
-  ]);
+  const handleRangeChange = (val) => {
+    setRange(val);
+    setActiveRange(computeRange(val));
+  };
 
-  const [blockedSlots] = useState([
-    {
-      id: "BS-400001",
-      court: "Cricket - A",
-      date: "2026-09-30",
-      startTime: "11:00",
-      endTime: "12:30",
-      reason: "Maintenance"
-    }
-  ]);
-
-  const [classes] = useState([
-    {
-      id: "CL-300001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachName: "Sahan Fernando",
-      date: "2026-09-30",
-      startTime: "16:00",
-      endTime: "17:30"
-    }
-  ]);
-
-
+  const totals = data.totals;
+  const charts = data.charts;
 
   return (
     <div className="admin-content-inner">
-      <div className="flex-between mb-3">
-        <h2 className="page-title">Dashboard Overview</h2>
+      <div className="flex-between mb-4" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <h2 className="page-title">Management Overview</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Real-time business intelligence for ArenaPro Operations</p>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '8px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
+          {['TODAY', 'MONTH', '3_MONTHS', 'YEAR', '5_YEARS'].map((r) => (
+            <button 
+              key={r}
+              onClick={() => handleRangeChange(r)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: range === r ? 'var(--primary-gradient)' : 'transparent',
+                color: range === r ? 'white' : 'var(--text-muted)'
+              }}
+            >
+              {r.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="ah-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
-        <div className="arena-card">
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Users</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.users}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
+        <div className="arena-card dashboard-stat-card indigo-flat">
+           <span className="stat-label-simple">Total Bookings</span>
+           <h3 className="stat-value-simple">{loading ? "..." : totals.bookings}</h3>
         </div>
 
-        <div className="arena-card">
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Bookings</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.bookings}</div>
+        <div className="arena-card dashboard-stat-card green-flat">
+           <span className="stat-label-simple">Total Revenue</span>
+           <h3 className="stat-value-simple">{loading ? "..." : `LKR ${totals.revenue.toLocaleString()}`}</h3>
         </div>
 
-        <div className="arena-card">
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Payments</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.payments}</div>
-        </div>
-
-        <div className="arena-card">
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600, marginBottom: 'var(--space-05)' }}>Total Classes</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-dark)' }}>{totals.classes}</div>
+        <div className="arena-card dashboard-stat-card rose-flat">
+           <span className="stat-label-simple">Pending Actions</span>
+           <h3 className="stat-value-simple">{loading ? "..." : totals.pendingActions}</h3>
         </div>
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginBottom: '24px' }}>
+        <div className="arena-card" style={{ padding: '24px' }}>
+          <div className="flex-between mb-4">
+            <h4 style={{ fontSize: '1rem', fontWeight: 800 }}>Revenue Trend (LKR)</h4>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Daily performance overview</span>
+          </div>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={charts.revenueTrend}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rs ${value}`} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                  formatter={(value) => [`Rs ${parseFloat(value).toLocaleString()}`, 'Revenue']}
+                />
+                <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+        <div className="arena-card" style={{ padding: '24px' }}>
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '20px' }}>Revenue by Sport</h4>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer>
+              <BarChart data={charts.revenueBySport} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                <Tooltip 
+                  cursor={{fill: 'transparent'}}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                  formatter={(value) => [`Rs ${parseFloat(value).toLocaleString()}`, 'Revenue']}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                  {charts.revenueBySport.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color || '#6366f1'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="arena-card" style={{ padding: '24px' }}>
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '20px' }}>Revenue by Court</h4>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer>
+              <BarChart data={charts.revenueByCourt}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="name" 
+                  fontSize={10} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  angle={-45} 
+                  textAnchor="end"
+                  height={80}
+                  interval={0}
+                />
+                <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rs ${value}`} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                  formatter={(value) => [`Rs ${parseFloat(value).toLocaleString()}`, 'Revenue']}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={30}>
+                  {charts.revenueByCourt.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color || '#8b5cf6'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        .dashboard-stat-card {
+           padding: 32px;
+           display: flex;
+           flex-direction: column;
+           gap: 8px;
+           border: none !important;
+           border-radius: 20px !important;
+           transition: all 0.3s;
+        }
+        .dashboard-stat-card:hover { transform: scale(1.02); }
+        
+        .stat-label-simple {
+           font-size: 0.85rem;
+           font-weight: 700;
+           text-transform: uppercase;
+           letter-spacing: 0.05em;
+           opacity: 0.9;
+        }
+        .stat-value-simple {
+           font-size: 2.5rem;
+           font-weight: 900;
+           margin: 0;
+        }
+        .indigo-flat { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe !important; }
+        .indigo-flat .stat-value-simple { color: #3730a3; }
+        
+        .green-flat { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0 !important; }
+        .green-flat .stat-value-simple { color: #166534; }
+        
+        .rose-flat { background: #ffe4e6; color: #be123c; border: 1px solid #fbcfe8 !important; }
+        .rose-flat .stat-value-simple { color: #9f1239; }
+        
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .mb-4 { margin-bottom: 32px; }
+      `}</style>
     </div>
   );
 }

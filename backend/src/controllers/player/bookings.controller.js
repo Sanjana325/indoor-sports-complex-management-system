@@ -1,6 +1,7 @@
 const { pool } = require("../../config/db");
 
 exports.createBooking = async (req, res, next) => {
+    let connection;
     try {
         const { courtId, sportId, startDateTime, endDateTime } = req.body;
         const userId = req.user.UserID;
@@ -11,39 +12,55 @@ exports.createBooking = async (req, res, next) => {
 
         const start = new Date(startDateTime);
         const end = new Date(endDateTime);
+
+        if (start < new Date()) {
+            return res.status(400).json({ message: "Cannot book a court for a past date or time." });
+        }
+
         if (end <= start) {
             return res.status(400).json({ message: "End time must be after start time" });
         }
 
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 0. LOCK the court record to serialize all booking attempts for this specific court
+        // This prevents the Race Condition by making other concurrent requests for the same court wait.
+        // We select the ID just to hold the lock; the other requests will wait at this line.
+        
+        await connection.query("SELECT CourtID FROM court WHERE CourtID = ? FOR UPDATE", [courtId]);
+
         // 1. Check for overlapping bookings
-        const [bookings] = await pool.query(
+        const [bookings] = await connection.query(
             `SELECT BookingID FROM booking 
              WHERE CourtID = ? AND Status IN ('PENDING_PAYMENT', 'WAITING_VERIFICATION', 'CONFIRMED')
              AND (StartDateTime < ? AND EndDateTime > ?)`,
             [courtId, endDateTime, startDateTime]
         );
         if (bookings.length > 0) {
+            await connection.rollback();
             return res.status(409).json({ message: "Conflict: This court is already booked during this time." });
         }
 
         // 2. Check for overlapping blocked slots
-        const [blocked] = await pool.query(
+        const [blocked] = await connection.query(
             `SELECT BlockedSlotID FROM blockedslot
              WHERE CourtID = ?
              AND (StartDateTime < ? AND EndDateTime > ?)`,
             [courtId, endDateTime, startDateTime]
         );
         if (blocked.length > 0) {
+            await connection.rollback();
             return res.status(409).json({ message: "Conflict: This court is blocked for maintenance or a private event during this time." });
         }
 
         // 3. Check for overlapping classes
-        const dayOfWeek = start.getDay(); // 0=Sun, 1=Mon...
+        const dayOfWeek = start.getDay(); 
         const dateStr = startDateTime.split(' ')[0] || startDateTime.split('T')[0];
         const timeStart = start.toTimeString().slice(0, 5);
         const timeEnd = end.toTimeString().slice(0, 5);
 
-        const [classSlots] = await pool.query(
+        const [classSlots] = await connection.query(
             `SELECT c.ClassID
              FROM class c
              JOIN class_court cc ON c.ClassID = cc.ClassID
@@ -64,17 +81,22 @@ exports.createBooking = async (req, res, next) => {
             [dateStr, courtId, dateStr, dateStr, dayOfWeek, timeStart, timeEnd]
         );
         if (classSlots.length > 0) {
+            await connection.rollback();
             return res.status(409).json({ message: "Conflict: This court is occupied by a class during this time." });
         }
 
-        const [result] = await pool.query(
+        const [result] = await connection.query(
             "INSERT INTO booking (CourtID, SportID, UserID, StartDateTime, EndDateTime, Status) VALUES (?, ?, ?, ?, ?, 'PENDING_PAYMENT')",
             [courtId, sportId, userId, startDateTime, endDateTime]
         );
 
+        await connection.commit();
         res.status(201).json({ message: "Booking created", bookingId: result.insertId });
     } catch (err) {
+        if (connection) await connection.rollback();
         next(err);
+    } finally {
+        if (connection) connection.release();
     }
 };
 

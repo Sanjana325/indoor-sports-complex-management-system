@@ -69,14 +69,14 @@ export default function PlayerLayout() {
           </div>
 
           {isProfileOpen && (
-            <div className="sidebar-popup-menu" style={{ top: 'calc(100% + 12px)', right: 0, left: 'auto', width: '220px', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #f1f5f9' }}>
+            <div className="player-profile-dropdown">
                <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{user.firstName} {user.lastName}</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b' }}>{user.firstName} {user.lastName}</div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{user.email}</div>
                </div>
-              <Link to="/player/profile" className="sidebar-popup-item">Profile Settings</Link>
-              <Link to="/player/settings" className="sidebar-popup-item">Notification Prefs</Link>
-              <button onClick={handleLogout} className="sidebar-popup-item logout" style={{ borderTop: '1px solid #fef2f2' }}>Sign Out</button>
+              <Link to="/player/profile" className="player-dropdown-item">Profile Settings</Link>
+              <Link to="/player/settings" className="player-dropdown-item">Notification Prefs</Link>
+              <button onClick={handleLogout} className="player-dropdown-item logout">Sign Out</button>
             </div>
           )}
         </div>

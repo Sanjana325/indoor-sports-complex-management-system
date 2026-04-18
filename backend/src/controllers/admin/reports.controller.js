@@ -12,14 +12,113 @@ const formatHour = (h) => {
 // Get overview stats for the admin dashboard
 exports.getDashboardStats = async (req, res, next) => {
     try {
-        const [rows] = await pool.query(`
-            SELECT 
-                (SELECT COUNT(*) FROM useraccount WHERE Role != 'SUPER_ADMIN') as users,
-                (SELECT COUNT(*) FROM booking) as bookings,
-                (SELECT COUNT(*) FROM payment WHERE Status = 'VERIFIED') as payments,
-                (SELECT COUNT(*) FROM class WHERE Status = 'ACTIVE') as classes
-        `);
-        res.json({ totals: rows[0] });
+        const { start, end } = req.query;
+        let query, params;
+
+        if (start && end) {
+            const dateFilter = [`${start} 00:00:00`, `${end} 23:59:59`];
+            
+            // Basic Totals (Accrual Basis - based on Service Date)
+            const [totalsRows] = await pool.query(`
+                SELECT 
+                    (SELECT COUNT(*) FROM useraccount WHERE Role != 'SUPER_ADMIN') as users,
+                    (SELECT COUNT(*) FROM booking WHERE StartDateTime >= ? AND StartDateTime <= ? AND Status IN ('CONFIRMED', 'CANCELLED')) as bookings,
+                    ((SELECT COALESCE(SUM(p.Amount), 0) FROM payment p 
+                      JOIN bookingpayment bp ON p.PaymentID = bp.PaymentID 
+                      JOIN booking b ON bp.BookingID = b.BookingID
+                      WHERE p.Status = 'VERIFIED' AND b.StartDateTime >= ? AND b.StartDateTime <= ?)
+                     + 
+                     (SELECT COALESCE(SUM(p.Amount), 0) FROM payment p
+                      JOIN enrollmentmonthpayment emp ON p.PaymentID = emp.PaymentID
+                      JOIN enrollmentmonth em ON emp.EnrollmentMonthID = em.EnrollmentMonthID
+                      WHERE p.Status = 'VERIFIED' AND em.PeriodMonth >= ? AND em.PeriodMonth <= ?)) as revenue,
+                    (SELECT COUNT(*) FROM payment WHERE Status = 'PENDING' AND PaidAt >= ? AND PaidAt <= ?) as pendingActions,
+                    (SELECT COUNT(*) FROM class WHERE Status = 'ACTIVE') as classes
+            `, [dateFilter[0], dateFilter[1], ...dateFilter, ...dateFilter, ...dateFilter]);
+
+            // Revenue Trend (Scheduled Revenue)
+            const [trendRows] = await pool.query(`
+                SELECT date, SUM(amount) as total FROM (
+                    SELECT DATE_FORMAT(b.StartDateTime, '%Y-%m-%d') as date, p.Amount as amount
+                    FROM payment p JOIN bookingpayment bp ON p.PaymentID = bp.PaymentID JOIN booking b ON bp.BookingID = b.BookingID
+                    WHERE p.Status = 'VERIFIED' AND b.StartDateTime >= ? AND b.StartDateTime <= ?
+                    UNION ALL
+                    SELECT DATE_FORMAT(em.PeriodMonth, '%Y-%m-%d') as date, p.Amount as amount
+                    FROM payment p JOIN enrollmentmonthpayment emp ON p.PaymentID = emp.PaymentID JOIN enrollmentmonth em ON emp.EnrollmentMonthID = em.EnrollmentMonthID
+                    WHERE p.Status = 'VERIFIED' AND em.PeriodMonth >= ? AND em.PeriodMonth <= ?
+                ) as combined GROUP BY date ORDER BY date ASC
+            `, [...dateFilter, ...dateFilter]);
+
+            // Revenue by Sport (Accrual Basis)
+            const [sportRows] = await pool.query(`
+                SELECT s.SportName as name, s.ColorCode as color, COALESCE(SUM(combined.amount), 0) as value FROM sport s
+                LEFT JOIN (
+                    SELECT b.SportID, p.Amount as amount
+                    FROM payment p
+                    JOIN bookingpayment bp ON p.PaymentID = bp.PaymentID
+                    JOIN booking b ON bp.BookingID = b.BookingID
+                    WHERE p.Status = 'VERIFIED' AND b.StartDateTime >= ? AND b.StartDateTime <= ?
+                    UNION ALL
+                    SELECT cl.SportID, p.Amount as amount
+                    FROM payment p
+                    JOIN enrollmentmonthpayment emp ON p.PaymentID = emp.PaymentID
+                    JOIN enrollmentmonth em ON emp.EnrollmentMonthID = em.EnrollmentMonthID
+                    JOIN enrollment e ON em.EnrollmentID = e.EnrollmentID
+                    JOIN class cl ON e.ClassID = cl.ClassID
+                    WHERE p.Status = 'VERIFIED' AND em.PeriodMonth >= ? AND em.PeriodMonth <= ?
+                ) as combined ON s.SportID = combined.SportID
+                GROUP BY s.SportName, s.ColorCode
+            `, [...dateFilter, ...dateFilter]);
+
+            // Revenue by Court (Unified - Bookings & Classes)
+            const [courtRows] = await pool.query(`
+                SELECT c.CourtName as name, COALESCE(SUM(combined.amount), 0) as value,
+                (SELECT s.ColorCode FROM court_sport cs JOIN sport s ON cs.SportID = s.SportID WHERE cs.CourtID = c.CourtID LIMIT 1) as color
+                FROM court c
+                LEFT JOIN (
+                    SELECT b.CourtID, p.Amount as amount
+                    FROM payment p
+                    JOIN bookingpayment bp ON p.PaymentID = bp.PaymentID
+                    JOIN booking b ON bp.BookingID = b.BookingID
+                    WHERE p.Status = 'VERIFIED' AND b.StartDateTime >= ? AND b.StartDateTime <= ?
+                    UNION ALL
+                    SELECT cc.CourtID, p.Amount as amount
+                    FROM payment p
+                    JOIN enrollmentmonthpayment emp ON p.PaymentID = emp.PaymentID
+                    JOIN enrollmentmonth em ON emp.EnrollmentMonthID = em.EnrollmentMonthID
+                    JOIN enrollment e ON em.EnrollmentID = e.EnrollmentID
+                    JOIN class cl ON e.ClassID = cl.ClassID
+                    JOIN class_court cc ON cl.ClassID = cc.ClassID
+                    WHERE p.Status = 'VERIFIED' AND em.PeriodMonth >= ? AND em.PeriodMonth <= ?
+                ) as combined ON c.CourtID = combined.CourtID
+                GROUP BY c.CourtName, c.CourtID
+            `, [...dateFilter, ...dateFilter]);
+
+            const totals = totalsRows[0];
+            totals.revenue = parseFloat(totals.revenue || 0);
+
+            res.json({ 
+                totals,
+                charts: {
+                    revenueTrend: trendRows,
+                    revenueBySport: sportRows,
+                    revenueByCourt: courtRows
+                }
+            });
+        } else {
+            // Fallback for global stats if needed
+            const [rows] = await pool.query(`
+                SELECT 
+                    (SELECT COUNT(*) FROM useraccount WHERE Role != 'SUPER_ADMIN') as users,
+                    (SELECT COUNT(*) FROM booking WHERE Status IN ('CONFIRMED', 'CANCELLED')) as bookings,
+                    (SELECT SUM(Amount) FROM payment WHERE Status = 'VERIFIED') as revenue,
+                    (SELECT COUNT(*) FROM payment WHERE Status = 'PENDING') as pendingActions,
+                    (SELECT COUNT(*) FROM class WHERE Status = 'ACTIVE') as classes
+            `);
+            const totals = rows[0];
+            totals.revenue = parseFloat(totals.revenue || 0);
+            res.json({ totals, charts: { revenueTrend: [], revenueBySport: [], revenueByCourt: [] } });
+        }
     } catch (err) {
         next(err);
     }
@@ -62,12 +161,23 @@ exports.getBookingsReport = async (req, res, next) => {
 
         // 4. Fetch Bookings By Sport (Chart)
         const [sportRows] = await pool.query(`
-            SELECT s.SportName as name, COUNT(*) as value
+            SELECT s.SportName as name, s.ColorCode as color, COUNT(*) as value
             FROM booking b
             JOIN sport s ON b.SportID = s.SportID
             WHERE b.StartDateTime >= ? AND b.StartDateTime <= ?
-            GROUP BY s.SportName
+            GROUP BY s.SportName, s.ColorCode
         `, dateFilter);
+
+        // 5. Fetch KPIs (Aggregation)
+        const [kpiRows] = await pool.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN Status = 'CONFIRMED' THEN 1 END) as confirmed,
+                COUNT(CASE WHEN Status = 'CANCELLED' THEN 1 END) as cancelled
+            FROM booking
+            WHERE StartDateTime >= ? AND StartDateTime <= ?
+        `, dateFilter);
+        const kpis = kpiRows[0];
 
         const formatted = rows.map(r => ({
             id: `B-${String(r.id).padStart(6, '0')}`,
@@ -79,12 +189,12 @@ exports.getBookingsReport = async (req, res, next) => {
             sport: r.SportName
         }));
 
-        res.json({ 
+            res.json({ 
             reports: formatted,
             kpis: {
-                totalBookings: rows.length,
-                confirmedBookings: rows.filter(r => r.Status === 'CONFIRMED').length,
-                cancelledBookings: rows.filter(r => r.Status === 'CANCELLED').length,
+                totalBookings: kpis.total,
+                confirmedBookings: kpis.confirmed,
+                cancelledBookings: kpis.cancelled,
                 peakBookingHour: peakRows.length > 0 ? formatHour(peakRows[0].hour) : "N/A"
             },
             charts: {
@@ -136,15 +246,24 @@ exports.getPaymentsReport = async (req, res, next) => {
             status: r.Status
         }));
 
-        const totalRevenue = rows.filter(r => r.Status === 'VERIFIED').reduce((sum, r) => sum + parseFloat(r.amount), 0);
+        const [kpiRows] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN Status = 'VERIFIED' THEN Amount ELSE 0 END), 0) as totalRevenue,
+                COUNT(CASE WHEN Status = 'VERIFIED' THEN 1 END) as verified,
+                COUNT(CASE WHEN Status = 'PENDING' THEN 1 END) as pending,
+                COUNT(CASE WHEN Status = 'REJECTED' THEN 1 END) as rejected
+            FROM payment
+            WHERE PaidAt >= ? AND PaidAt <= ?
+        `, dateFilter);
+        const kpis = kpiRows[0];
 
         res.json({ 
             reports: formatted,
             kpis: {
-                totalRevenue: totalRevenue,
-                verifiedPayments: rows.filter(r => r.Status === 'VERIFIED').length,
-                pendingPayments: rows.filter(r => r.Status === 'PENDING').length,
-                rejectedPayments: rows.filter(r => r.Status === 'REJECTED').length
+                totalRevenue: parseFloat(kpis.totalRevenue),
+                verifiedPayments: kpis.verified,
+                pendingPayments: kpis.pending,
+                rejectedPayments: kpis.rejected
             },
             charts: {
                 revenueOverTime: revenueRows,
@@ -163,7 +282,7 @@ exports.getAttendanceReport = async (req, res, next) => {
         const dateFilter = [`${start} 00:00:00`, `${end} 23:59:59`];
 
         const [rows] = await pool.query(`
-            SELECT a.AttendanceID as id, cl.ClassName, a.MarkedAt as date, 
+            SELECT a.AttendanceID as id, cl.Title as ClassName, a.MarkedAt as date, 
                    CONCAT(u.FirstName, ' ', u.LastName) as student, a.Status 
             FROM attendance a 
             LEFT JOIN enrollment e ON a.EnrollmentID = e.EnrollmentID 
@@ -175,13 +294,14 @@ exports.getAttendanceReport = async (req, res, next) => {
         `, dateFilter);
 
         const [classStats] = await pool.query(`
-            SELECT cl.ClassName as name,
+            SELECT cl.Title as name, s.ColorCode as color,
                    ROUND((COUNT(CASE WHEN a.Status='PRESENT' THEN 1 END) / COUNT(*)) * 100, 1) as value
             FROM attendance a
             LEFT JOIN classsession cs ON a.SessionID = cs.SessionID
             LEFT JOIN class cl ON cs.ClassID = cl.ClassID
+            LEFT JOIN sport s ON cl.SportID = s.SportID
             WHERE a.MarkedAt >= ? AND a.MarkedAt <= ?
-            GROUP BY cl.ClassName
+            GROUP BY cl.Title, s.ColorCode
         `, [`${start} 00:00:00`, `${end} 23:59:59`]);
 
         const formatted = rows.map(r => ({
@@ -192,17 +312,27 @@ exports.getAttendanceReport = async (req, res, next) => {
             status: r.Status
         }));
 
-        const totalPresent = rows.filter(r => r.Status === 'PRESENT').length;
-        const totalAbsent = rows.filter(r => r.Status === 'ABSENT').length;
-        const avgRate = rows.length > 0 ? ((totalPresent / rows.length) * 100).toFixed(1) : 0;
+        // Aggregated KPIs for Attendance
+        const [kpiRows] = await pool.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN Status = 'PRESENT' THEN 1 END) as present,
+                COUNT(CASE WHEN Status = 'ABSENT' THEN 1 END) as absent,
+                COUNT(DISTINCT CONCAT(SessionID, DATE(MarkedAt))) as uniqueSessions
+            FROM attendance
+            WHERE MarkedAt >= ? AND MarkedAt <= ?
+        `, dateFilter);
+        
+        const kpis = kpiRows[0];
+        const avgRate = kpis.total > 0 ? ((kpis.present / kpis.total) * 100).toFixed(1) : 0;
 
         res.json({ 
             reports: formatted,
             kpis: {
-                totalSessions: new Set(rows.map(r => (r.ClassName || 'N/A') + (r.date || 'N/A'))).size,
+                totalSessions: kpis.uniqueSessions,
                 averageAttendanceRate: `${avgRate}%`,
-                totalPresent,
-                totalAbsent
+                totalPresent: kpis.present,
+                totalAbsent: kpis.absent
             },
             charts: {
                 attendancePerClass: classStats
@@ -221,7 +351,7 @@ exports.getEnrollmentsReport = async (req, res, next) => {
 
         const [rows] = await pool.query(`
             SELECT e.EnrollmentID as id, CONCAT(u.FirstName, ' ', u.LastName) as player, 
-                   cl.ClassName, e.EnrolledAt as dateEnrolled, e.Status 
+                   cl.Title as ClassName, e.EnrolledAt as dateEnrolled, e.Status 
             FROM enrollment e 
             LEFT JOIN useraccount u ON e.UserID = u.UserID 
             LEFT JOIN class cl ON e.ClassID = cl.ClassID 
@@ -230,11 +360,12 @@ exports.getEnrollmentsReport = async (req, res, next) => {
         `, dateFilter);
 
         const [popularRows] = await pool.query(`
-            SELECT cl.ClassName as name, COUNT(*) as value
-            FROM enrollment e
-            JOIN class cl ON e.ClassID = cl.ClassID
-            WHERE e.EnrolledAt >= ? AND e.EnrolledAt <= ?
-            GROUP BY cl.ClassName ORDER BY value DESC
+            SELECT cl.Title as name, s.ColorCode as color, COUNT(e.EnrollmentID) as value
+            FROM class cl
+            JOIN sport s ON cl.SportID = s.SportID
+            LEFT JOIN enrollment e ON cl.ClassID = e.ClassID AND e.EnrolledAt >= ? AND e.EnrolledAt <= ?
+            WHERE cl.Status = 'ACTIVE'
+            GROUP BY cl.Title, s.ColorCode ORDER BY value DESC
         `, dateFilter);
 
         const [dailyRows] = await pool.query(`
@@ -252,12 +383,22 @@ exports.getEnrollmentsReport = async (req, res, next) => {
             status: r.Status
         }));
 
+        const [kpiRows] = await pool.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN Status = 'ENROLLED' THEN 1 END) as active,
+                COUNT(CASE WHEN Status = 'CANCELLED' THEN 1 END) as cancelled
+            FROM enrollment
+            WHERE EnrolledAt >= ? AND EnrolledAt <= ?
+        `, dateFilter);
+        const kpis = kpiRows[0];
+
         res.json({ 
             reports: formatted,
             kpis: {
-                totalEnrollments: rows.length,
-                activeEnrollments: rows.filter(r => r.Status === 'ENROLLED').length,
-                cancelledEnrollments: rows.filter(r => r.Status === 'CANCELLED').length,
+                totalEnrollments: kpis.total,
+                activeEnrollments: kpis.active,
+                cancelledEnrollments: kpis.cancelled,
                 mostPopularClass: popularRows.length > 0 ? popularRows[0].name : "N/A"
             },
             charts: {

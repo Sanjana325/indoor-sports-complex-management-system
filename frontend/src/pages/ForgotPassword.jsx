@@ -80,7 +80,7 @@ export default function ForgotPassword() {
         </button>
 
         <p className="register-text">
-          Back to <Link to="/">Login</Link>
+          Back to <Link to="/login">Login</Link>
         </p>
       </form>
     </div>

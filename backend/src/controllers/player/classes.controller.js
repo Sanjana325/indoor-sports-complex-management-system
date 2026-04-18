@@ -88,7 +88,8 @@ exports.getMyClasses = async (req, res, next) => {
                     GROUP_CONCAT(DISTINCT crt.CourtName) AS CourtNames,
                     MAX(sch.StartTime) AS StartTime, MAX(sch.EndTime) AS EndTime, MAX(sch.ScheduleType) AS ScheduleType,
                     GROUP_CONCAT(DISTINCT csd.Weekday) AS Weekdays,
-                    em.Status AS PaymentStatus, em.PeriodMonth, em.EnrollmentMonthID
+                    em.Status AS PaymentStatus, em.PeriodMonth, em.EnrollmentMonthID,
+                    GROUP_CONCAT(DISTINCT q.QualificationName) AS CoachQualifications
              FROM enrollment e
              JOIN class c ON e.ClassID = c.ClassID
              LEFT JOIN sport s ON c.SportID = s.SportID
@@ -98,6 +99,8 @@ exports.getMyClasses = async (req, res, next) => {
              LEFT JOIN court crt ON cc.CourtID = crt.CourtID
              LEFT JOIN classschedule sch ON c.ClassID = sch.ClassID
              LEFT JOIN classscheduleday csd ON sch.ScheduleID = csd.ScheduleID
+             LEFT JOIN coachqualification cq ON co.CoachID = cq.CoachID
+             LEFT JOIN qualification q ON cq.QualificationID = q.QualificationID
              LEFT JOIN (
                  SELECT EnrollmentID, Status, PeriodMonth, EnrollmentMonthID
                  FROM enrollmentmonth em1

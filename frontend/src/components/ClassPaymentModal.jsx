@@ -102,105 +102,114 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: '#1a1a1a', color: '#fff', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' } }}>
-      <DialogTitle sx={{ borderBottom: '1px solid rgba(255,255,255,0.1)', pb: 2 }}>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth 
+      PaperProps={{ 
+        className: "pbc-payment-dialog"
+      }}
+    >
+      <DialogTitle className="pbc-dialog-title">
         Enrollment Payment: {classData?.Title}
-        <IconButton aria-label="close" onClick={onClose} sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}><CloseIcon /></IconButton>
+        <IconButton 
+          aria-label="close" 
+          onClick={onClose} 
+          sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}
+        >
+          <CloseIcon />
+        </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ py: 3 }}>
+      <DialogContent className="pbc-dialog-content">
         {step === 1 ? (
           <>
-            <Typography variant="body1" sx={{ mb: 3, opacity: 0.8 }}>
-              To complete your enrollment, please pay the first 4-week fee of <strong>LKR {Number(classData?.Fee).toLocaleString()}</strong>.
+            <Typography variant="body1" className="pbc-dialog-subtext" sx={{ mb: 4 }}>
+              To complete your enrollment, please pay the first 4-weeks fee of <strong>LKR {Number(classData?.Fee).toLocaleString()}</strong>.
             </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <Card sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }, textAlign: 'center' }} onClick={handleOnlinePayment}>
-                <CreditCard sx={{ fontSize: 40, color: '#00e676', mb: 1 }} />
-                <Typography variant="h6">Online Pay</Typography>
-                <Typography variant="caption" sx={{ opacity: 0.5 }}>Instant Activation</Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2.5 }}>
+              <Card 
+                className="pbc-method-card" 
+                onClick={handleOnlinePayment}
+              >
+                <CreditCard className="pbc-method-icon" sx={{ color: '#00ff88' }} />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>Online Pay</Typography>
+                <Typography variant="caption" sx={{ opacity: 0.6 }}>Instant Activation</Typography>
               </Card>
-              <Card sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }, textAlign: 'center' }} onClick={() => setStep(2)}>
-                <Receipt sx={{ fontSize: 40, color: '#40c4ff', mb: 1 }} />
-                <Typography variant="h6">Bank Slip</Typography>
-                <Typography variant="caption" sx={{ opacity: 0.5 }}>Manual Verification</Typography>
+              <Card 
+                className="pbc-method-card" 
+                onClick={() => setStep(2)}
+              >
+                <Receipt className="pbc-method-icon" sx={{ color: '#40c4ff' }} />
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>Bank Slip</Typography>
+                <Typography variant="caption" sx={{ opacity: 0.6 }}>Manual Verification</Typography>
               </Card>
             </Box>
           </>
         ) : (
           <Box sx={{ mt: 1 }}>
-            <Typography variant="body1" sx={{ mb: 2, opacity: 0.9 }}>
+            <Typography variant="body1" className="pbc-dialog-subtext" sx={{ mb: 3 }}>
                 Deposit <strong>LKR {Number(classData?.Fee).toLocaleString()}</strong> to the following account:
             </Typography>
             
-            <Box sx={{ 
-                p: 2.5, 
-                bgcolor: 'rgba(255,255,255,0.03)', 
-                borderRadius: 3, 
-                mb: 3, 
-                border: '1px solid rgba(255,255,255,0.1)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1
-            }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="caption" sx={{ opacity: 0.5 }}>Bank</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{BANK_DETAILS.bankName}</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="caption" sx={{ opacity: 0.5 }}>Branch</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{BANK_DETAILS.branch}</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="caption" sx={{ opacity: 0.5 }}>Acc Name</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{BANK_DETAILS.accountName}</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, pt: 1, borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
-                <Typography variant="caption" sx={{ opacity: 0.5 }}>Acc Number</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#00e676', letterSpacing: 1 }}>{BANK_DETAILS.accountNumber}</Typography>
-              </Box>
+            <Box className="pbc-bank-card" sx={{ mb: 4 }}>
+              <div className="pbc-bank-row">
+                <span className="pbc-bank-label">Bank</span>
+                <span className="pbc-bank-value">{BANK_DETAILS.bankName}</span>
+              </div>
+              <div className="pbc-bank-row">
+                <span className="pbc-bank-label">Branch</span>
+                <span className="pbc-bank-value">{BANK_DETAILS.branch}</span>
+              </div>
+              <div className="pbc-bank-row">
+                <span className="pbc-bank-label">Owner</span>
+                <span className="pbc-bank-value">{BANK_DETAILS.accountName}</span>
+              </div>
+              <div className="pbc-bank-row pbc-bank-acc-row">
+                <span className="pbc-bank-label">Acc Number</span>
+                <span className="pbc-bank-value pbc-acc-no">{BANK_DETAILS.accountNumber}</span>
+              </div>
             </Box>
 
-            <Typography variant="caption" sx={{ display: 'block', mb: 1, opacity: 0.7, fontWeight: 600 }}>Upload Slip (JPG, PNG, PDF):</Typography>
-            <Box sx={{ 
-                p: 2, 
-                border: '1px dashed rgba(255,255,255,0.2)', 
-                borderRadius: 2, 
-                mb: 3,
-                '&:hover': { borderColor: '#40c4ff', bgcolor: 'rgba(64,196,255,0.05)' }
-            }}>
+            <Typography variant="body2" className="pbc-dialog-subtext" sx={{ mb: 1.5, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>Upload Transaction Slip</Typography>
+            <div className="file-upload-zone" onClick={() => document.getElementById('slip-input-class').click()}>
+                <Receipt sx={{ fontSize: '2rem', mb: 1, color: 'rgba(255,255,255,0.3)' }} />
+                <Typography variant="body2" sx={{ color: slipFile ? '#00ff88' : 'rgba(255,255,255,0.5)' }}>
+                    {slipFile ? slipFile.name : "Click to select or drag and drop slip"}
+                </Typography>
                 <input 
+                    id="slip-input-class"
                     type="file" 
                     accept="image/*,application/pdf" 
                     onChange={(e) => setSlipFile(e.target.files[0])} 
-                    style={{ color: '#888', width: '100%', cursor: 'pointer' }} 
+                    style={{ display: 'none' }} 
                 />
-            </Box>
+            </div>
 
-            <Button 
-                variant="contained" 
-                fullWidth 
-                sx={{ 
-                    bgcolor: '#40c4ff', 
-                    color: '#000', 
-                    fontWeight: 800,
-                    py: 1.2,
-                    borderRadius: 2,
-                    boxShadow: '0 4px 15px rgba(64,196,255,0.3)',
-                    '&:hover': { bgcolor: '#00b0ff' }
-                }} 
-                onClick={handleBankSlipSubmit} 
-                disabled={!slipFile || uploading}
-            >
-              {uploading ? "Uploading..." : "Submit Slip"}
-            </Button>
-            <Button fullWidth onClick={() => setStep(1)} sx={{ mt: 1.5, color: 'rgba(255,255,255,0.4)', textTransform: 'none' }}>
-                Back to Payment Options
-            </Button>
+            <Box sx={{ mt: 3 }}>
+                <Button 
+                    variant="contained" 
+                    fullWidth 
+                    className="pbc-submit-slip-btn"
+                    onClick={handleBankSlipSubmit} 
+                    disabled={!slipFile || uploading}
+                >
+                {uploading ? "Uploading..." : "Submit Enrollment Slip"}
+                </Button>
+                
+                <Button 
+                    fullWidth 
+                    onClick={() => setStep(1)} 
+                    sx={{ mt: 2, color: 'rgba(255,255,255,0.4)', textTransform: 'none', fontWeight: 600 }}
+                >
+                    Back to Payment Options
+                </Button>
+            </Box>
           </Box>
         )}
       </DialogContent>
-      <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <Button onClick={onClose} sx={{ color: 'rgba(255,255,255,0.7)' }}>Cancel</Button>
+      <DialogActions className="pbc-dialog-actions" sx={{ p: 2 }}>
+        <Button onClick={onClose} className="pbc-cancel-btn">Cancel</Button>
       </DialogActions>
     </Dialog>
   );

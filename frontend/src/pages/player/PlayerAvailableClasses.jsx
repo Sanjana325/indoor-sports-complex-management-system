@@ -16,12 +16,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   Divider
 } from "@mui/material";
+import CloseIcon from '@mui/icons-material/Close';
 import { 
   SportsCricket, 
   SportsTennis, 
@@ -144,32 +146,20 @@ export default function PlayerAvailableClasses() {
     <div className="pac-portal-container">
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* HEADER SECTION */}
-        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
-            <Typography variant="h3" sx={{ 
-              fontWeight: 800, 
-              color: '#fff', 
-              mb: 1,
-              textShadow: '0 4px 12px rgba(0,0,0,0.3)'
-            }}>
+            <Typography variant="h3" className="pac-title">
               Available Classes
             </Typography>
-            <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 400 }}>
+            <Typography variant="h6" className="pac-subtitle">
               Join a class to level up your skills with expert coaching.
             </Typography>
           </Box>
           <Button 
             startIcon={<ArrowBack />} 
             onClick={() => navigate("/player")}
-            sx={{ 
-              color: '#fff', 
-              borderColor: 'rgba(255,255,255,0.3)',
-              textTransform: 'none',
-              borderRadius: '12px',
-              px: 3,
-              '&:hover': { borderColor: '#fff' }
-            }}
-            variant="outlined"
+            className="pbc-back-btn"
+            sx={{ textTransform: 'none', px: 3 }}
           >
             Dashboard
           </Button>
@@ -178,31 +168,31 @@ export default function PlayerAvailableClasses() {
         {/* LOADING STATE */}
         {loading ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10 }}>
-            <CircularProgress sx={{ color: '#00e676', mb: 2 }} />
-            <Typography sx={{ color: '#fff', opacity: 0.8 }}>Searching for open classes...</Typography>
+            <CircularProgress sx={{ color: 'var(--primary)', mb: 2 }} />
+            <Typography sx={{ color: 'var(--text-muted)' }}>Searching for open classes...</Typography>
           </Box>
         ) : error ? (
           /* ERROR STATE */
-          <Box sx={{ textAlign: 'center', py: 10, bgcolor: 'rgba(255,0,0,0.1)', borderRadius: '16px' }}>
-            <Typography variant="h6" sx={{ color: '#ff5252' }}>{error}</Typography>
-            <Button onClick={fetchAvailableClasses} sx={{ mt: 2, color: '#fff' }}>Try Again</Button>
+          <Box sx={{ textAlign: 'center', py: 10, bgcolor: 'rgba(239, 68, 68, 0.05)', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+            <Typography variant="h6" sx={{ color: '#ef4444', fontWeight: 700 }}>{error}</Typography>
+            <Button onClick={fetchAvailableClasses} sx={{ mt: 2, color: 'var(--text-main)', fontWeight: 600 }}>Try Again</Button>
           </Box>
         ) : classes.length === 0 ? (
           /* EMPTY STATE */
           <Box sx={{ 
             textAlign: 'center', 
             py: 12, 
-            bgcolor: 'rgba(255,255,255,0.05)', 
+            bgcolor: 'var(--bg-surface)', 
             borderRadius: '24px',
-            border: '1px dashed rgba(255,255,255,0.1)'
+            border: '1px dashed var(--border-light)'
           }}>
-            <EventNote sx={{ fontSize: 64, color: 'rgba(255,255,255,0.2)', mb: 2 }} />
-            <Typography variant="h5" sx={{ color: '#fff', mb: 1 }}>No classes available right now</Typography>
-            <Typography sx={{ color: 'rgba(255,255,255,0.5)' }}>All current classes are full or completed. Check back soon!</Typography>
+            <EventNote sx={{ fontSize: 64, color: 'var(--text-muted)', opacity: 0.2, mb: 2 }} />
+            <Typography variant="h5" sx={{ color: 'var(--text-main)', mb: 1, fontWeight: 800 }}>No classes available right now</Typography>
+            <Typography sx={{ color: 'var(--text-muted)' }}>All current classes are full or completed. Check back soon!</Typography>
           </Box>
         ) : (
           /* CLASSES GRID */
-          <Grid container spacing={4}>
+          <Grid container spacing={3}>
             {classes.map((cls) => {
               const IconComp = ICON_MAP[cls.SportName] || DEFAULT_ICON;
               return (
@@ -212,93 +202,79 @@ export default function PlayerAvailableClasses() {
                       {/* HEADER: Sport Badge */}
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Avatar sx={{ bgcolor: 'rgba(0, 230, 118, 0.15)', color: '#00e676', width: 44, height: 44 }}>
+                          <Avatar sx={{ bgcolor: 'var(--primary-light)', color: 'var(--primary)', width: 44, height: 44, border: '1px solid rgba(22, 163, 74, 0.1)' }}>
                             <IconComp />
                           </Avatar>
-                          <Typography variant="subtitle2" sx={{ color: '#00e676', fontWeight: 700, letterSpacing: 1.2 }}>
+                          <Typography variant="subtitle2" sx={{ color: 'var(--primary)', fontWeight: 800, letterSpacing: 0.5 }}>
                             {cls.SportName.toUpperCase()}
                           </Typography>
                         </Box>
                         <Chip 
                           label={`${cls.EnrolledCount}/${cls.Capacity}`} 
                           size="small"
-                          sx={{ 
-                            bgcolor: 'rgba(255,255,255,0.1)', 
-                            color: '#fff', 
-                            fontWeight: 600,
-                            border: '1px solid rgba(255,255,255,0.2)'
-                          }}
+                          className="pac-card-badge"
                         />
                       </Box>
 
                       {/* TITLE */}
-                      <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, mb: 1.5, lineHeight: 1.2 }}>
+                      <Typography variant="h5" sx={{ color: 'var(--text-main)', fontWeight: 800, mb: 2, lineHeight: 1.3 }}>
                         {cls.Title}
                       </Typography>
 
                       {/* DETAILS */}
-                      <Box sx={{ mb: 'auto' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
-                          <Person sx={{ fontSize: 18, color: '#40c4ff' }} />
-                          <Typography variant="body2" sx={{ color: '#fff' }}>
-                            Coach: <strong>{cls.CoachFirstName} {cls.CoachLastName}</strong>
+                      <Box sx={{ mb: 4 }}>
+                        <div className="pac-detail-item">
+                          <Person sx={{ fontSize: 20 }} />
+                          <Typography variant="body2" sx={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                            Coach <strong>{cls.CoachFirstName} {cls.CoachLastName}</strong>
                             <Link 
                               component="button"
                               onClick={() => handleSeeMoreCoach(cls)}
                               sx={{ 
                                 ml: 1, 
-                                color: '#00e676', 
+                                color: 'var(--primary)', 
                                 fontSize: '0.75rem', 
-                                fontWeight: 600,
+                                fontWeight: 700,
                                 textDecoration: 'none',
-                                verticalAlign: 'middle',
                                 '&:hover': { textDecoration: 'underline' }
                               }}
                             >
-                              (See More)
+                              (View Profile)
                             </Link>
                           </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
-                          <EventNote sx={{ fontSize: 18, color: '#40c4ff' }} />
-                          <Typography variant="body2" sx={{ color: '#fff' }}>
-                            Schedule: <strong>{formatSchedule(cls)}</strong>
+                        </div>
+                        <div className="pac-detail-item">
+                          <EventNote sx={{ fontSize: 20 }} />
+                          <Typography variant="body2" sx={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                            {formatSchedule(cls)}
                           </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, opacity: 0.8 }}>
-                          <Place sx={{ fontSize: 18, color: '#40c4ff' }} />
-                          <Typography variant="body2" sx={{ color: '#fff' }}>
-                            Court: <strong>{cls.CourtNames || "TBA"}</strong>
+                        </div>
+                        <div className="pac-detail-item">
+                          <Place sx={{ fontSize: 20 }} />
+                          <Typography variant="body2" sx={{ color: 'var(--text-main)', fontWeight: 500 }}>
+                            {cls.CourtNames || "Arena Court"}
                           </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, opacity: 0.8 }}>
-                          <Group sx={{ fontSize: 18, color: '#40c4ff' }} />
-                          <Typography variant="body2" sx={{ color: '#fff' }}>
-                            {cls.Capacity - cls.EnrolledCount} Slots Remaining
+                        </div>
+                        <div className="pac-detail-item" style={{ opacity: 0.8 }}>
+                          <Group sx={{ fontSize: 20 }} />
+                          <Typography variant="body2" sx={{ color: 'var(--primary-dark)', fontWeight: 700 }}>
+                            {cls.Capacity - cls.EnrolledCount} Slots Available
                           </Typography>
-                        </Box>
+                        </div>
                       </Box>
 
                       {/* FOOTER: FEE & ACTION */}
                       <Box className="card-footer-flex">
                         <Box>
-                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', display: 'block' }}>Fee</Typography>
-                          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700 }}>
-                            LKR {Number(cls.Fee).toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 400, opacity: 0.7 }}>/ {cls.BillingType === 'MONTHLY' ? 'Mo' : 'Once'}</span>
-                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>Fee</Typography>
+                          <div className="pac-fee-text">
+                            LKR {Number(cls.Fee).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 500, opacity: 0.6 }}>/{cls.BillingType === 'MONTHLY' ? 'mo' : 'once'}</span>
+                          </div>
                         </Box>
                         <Button 
                           variant="contained" 
                           onClick={() => handleEnrollClick(cls.ClassID)}
-                          sx={{ 
-                            bgcolor: '#00e676', 
-                            color: '#000', 
-                            fontWeight: 700,
-                            borderRadius: '10px',
-                            px: 3,
-                            '&:hover': { bgcolor: '#00c853' },
-                            textTransform: 'none'
-                          }}
+                          className="pac-enroll-btn"
                         >
                           Enroll Now
                         </Button>
@@ -315,56 +291,54 @@ export default function PlayerAvailableClasses() {
         <Dialog 
           open={isModalOpen} 
           onClose={() => setIsModalOpen(false)}
+          maxWidth="xs"
+          fullWidth
           PaperProps={{
-            sx: {
-              bgcolor: '#1a1a1a',
-              color: '#fff',
-              borderRadius: '16px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              minWidth: { xs: '90%', sm: '400px' }
-            }
+            className: "pbc-payment-dialog"
           }}
         >
-          <DialogTitle sx={{ 
-            pb: 1, 
-            fontWeight: 700, 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1.5,
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-            mb: 1
-          }}>
-            <Person sx={{ color: '#00e676' }} />
-            {selectedCoach?.name}
+          <DialogTitle className="pbc-dialog-title">
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Person sx={{ color: '#00ff88' }} />
+              {selectedCoach?.name}
+            </Box>
+            <IconButton
+                aria-label="close"
+                onClick={() => setIsModalOpen(false)}
+                sx={{ position: 'absolute', right: 8, top: 8, color: 'white' }}
+            >
+                <CloseIcon />
+            </IconButton>
           </DialogTitle>
-          <DialogContent sx={{ py: 3 }}>
-            <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.5)', mb: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+          <DialogContent className="pbc-dialog-content">
+            <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.5)', mb: 2, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
               Professional Qualifications
             </Typography>
             {selectedCoach?.qualifications.length > 0 ? (
               <List disablePadding>
                 {selectedCoach.qualifications.map((q, idx) => (
-                  <ListItem key={idx} disableGutters sx={{ py: 0.5 }}>
+                  <ListItem key={idx} disableGutters sx={{ py: 1 }}>
                     <ListItemIcon sx={{ minWidth: 32 }}>
-                      <Verified sx={{ color: '#00e676', fontSize: 18 }} />
+                      <Verified sx={{ color: '#00ff88', fontSize: 18 }} />
                     </ListItemIcon>
-                    <ListItemText primary={q} primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500 }} />
+                    <ListItemText primary={q} primaryTypographyProps={{ fontSize: '0.95rem', fontWeight: 500, color: 'white' }} />
                   </ListItem>
                 ))}
               </List>
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, opacity: 0.5, py: 2 }}>
-                <Info sx={{ fontSize: 18 }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, opacity: 0.5, py: 3, justifyContent: 'center' }}>
+                <Info sx={{ fontSize: 20 }} />
                 <Typography variant="body2">No listed qualifications yet.</Typography>
               </Box>
             )}
           </DialogContent>
-          <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <DialogActions className="pbc-dialog-actions" sx={{ p: 2 }}>
             <Button 
               onClick={() => setIsModalOpen(false)} 
-              sx={{ color: 'rgba(255,255,255,0.7)', textTransform: 'none', fontWeight: 600 }}
+              className="pbc-cancel-btn"
+              sx={{ fontWeight: 600 }}
             >
-              Close
+              Close Profile
             </Button>
           </DialogActions>
         </Dialog>

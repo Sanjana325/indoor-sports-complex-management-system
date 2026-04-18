@@ -237,7 +237,7 @@ export default function Register() {
         </button>
 
         <p className="reg-link">
-          Already have an account? <Link to="/">Sign in</Link>
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </div>
     </div>

@@ -8,6 +8,12 @@ const initCronJobs = () => {
         await processRecurringPayments();
     });
 
+    // Run every 1 minute to check for booking expirations
+    cron.schedule("* * * * *", async () => {
+        console.log("[Cron] Running booking expiration check...");
+        await processBookingExpirations();
+    });
+
     // Run every 5 minutes
     cron.schedule("*/5 * * * *", async () => {
         console.log("[Cron] Running 1-hour booking & class session reminder checks...");
@@ -213,4 +219,24 @@ const processClassSessionReminders = async () => {
     }
 };
 
-module.exports = { initCronJobs, processRecurringPayments, processBookingReminders, processClassSessionReminders };
+async function processBookingExpirations() {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        const [result] = await connection.query(
+            `UPDATE booking 
+             SET Status = 'EXPIRED' 
+             WHERE Status = 'PENDING_PAYMENT' 
+             AND CreatedAt < NOW() - INTERVAL 10 MINUTE`
+        );
+        if (result.affectedRows > 0) {
+            console.log(`[Cron] Expired ${result.affectedRows} unpaid bookings.`);
+        }
+    } catch (err) {
+        console.error("[Cron] Error expiring bookings:", err.message);
+    } finally {
+        if (connection) connection.release();
+    }
+}
+
+module.exports = { initCronJobs, processRecurringPayments, processBookingReminders, processClassSessionReminders, processBookingExpirations };

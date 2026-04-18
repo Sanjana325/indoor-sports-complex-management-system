@@ -27,6 +27,7 @@
   color: var(--player-text-main);
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
+  padding-top: 64px; /* Matches navbar height for fixed layout */
 }
 
 /* The home page wrapper ensures no white bleed between hero and stadium */
@@ -44,8 +45,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 5% 0 0;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  width: 100%;
   z-index: 1001;
   box-shadow: 0 2px 10px rgba(0,0,0,0.04);
 }
@@ -660,6 +663,62 @@
   color: var(--player-primary);
   text-transform: uppercase;
   letter-spacing: 0.8px;
+}
+
+/* =====================
+   PROFILE DROPDOWN
+   ===================== */
+.player-profile-dropdown {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  width: 240px;
+  background: #ffffff !important; /* Solid white */
+  border: 1px solid #e2e8f0;
+  border-radius: 18px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  z-index: 9999 !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: pbc-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.player-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 12px 18px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b !important; /* Dark slate text */
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.player-dropdown-item:hover {
+  background: #f1f5f9;
+  color: #16a34a !important; /* Primary green */
+  padding-left: 22px;
+}
+
+.player-dropdown-item.logout {
+  color: #ef4444 !important;
+  border-top: 1px solid #f1f5f9;
+  font-weight: 800;
+}
+
+.player-dropdown-item.logout:hover {
+  background: #fff1f2;
+  color: #b91c1c !important;
+}
+
+@keyframes pbc-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* =====================
