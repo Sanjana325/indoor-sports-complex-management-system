@@ -2,7 +2,8 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 
-const CHART_COLORS = ['#16a34a', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0'];
+const CHART_COLORS = ['#16a34a', '#86efac', '#065f46', '#34d399', '#022c22'];
+const MIXED_COLORS = ['#16a34a', '#facc15', '#065f46', '#eab308', '#34d399'];
 
 export const AnalyticChart = ({ title, type, data, loading, dataKey = "value" }) => {
   if (loading) {
@@ -26,6 +27,7 @@ export const AnalyticChart = ({ title, type, data, loading, dataKey = "value" })
               <YAxis fontSize={10} axisLine={false} tickLine={false} />
               <Tooltip 
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                itemStyle={{ color: 'var(--text-main)' }}
               />
               <Line 
                 type="monotone" 
@@ -41,22 +43,32 @@ export const AnalyticChart = ({ title, type, data, loading, dataKey = "value" })
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} dy={10} />
               <YAxis fontSize={10} axisLine={false} tickLine={false} />
-              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} itemStyle={{ color: 'var(--text-main)' }} />
               <Bar dataKey={dataKey} radius={[4, 4, 0, 0]}>
                 {data?.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color || "var(--primary)"} />
+                  <Cell key={`cell-${index}`} fill={entry.color || MIXED_COLORS[index % MIXED_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
-          ) : (
+          ) : type === 'donut' ? (
             <PieChart>
               <Pie data={data} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                 {data?.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              <Tooltip itemStyle={{ color: 'var(--text-main)' }} />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span style={{ color: 'var(--text-main)' }}>{value}</span>} />
+            </PieChart>
+          ) : (
+            <PieChart>
+              <Pie data={data} innerRadius={0} outerRadius={80} paddingAngle={2} dataKey="value">
+                {data?.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip itemStyle={{ color: 'var(--text-main)' }} />
+              <Legend verticalAlign="bottom" height={36} iconType="circle" formatter={(value) => <span style={{ color: 'var(--text-main)' }}>{value}</span>} />
             </PieChart>
           )}
         </ResponsiveContainer>

@@ -46,6 +46,15 @@ export default function CancelledSessions() {
           <h1 className="page-title">Cancelled Sessions</h1>
           <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>View and track all class sessions that have been cancelled.</p>
         </div>
+        <button 
+          className="btn btn-secondary" 
+          onClick={fetchCancelledSessions} 
+          disabled={loading}
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Sync Latest
+        </button>
       </div>
 
       <div className="arena-table-container">

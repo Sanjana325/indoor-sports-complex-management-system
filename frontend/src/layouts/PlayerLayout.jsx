@@ -62,8 +62,8 @@ export default function PlayerLayout() {
           <div className="user-chip-trigger">
             <div className="user-chip-avatar">{initials}</div>
             <div className="user-chip-info">
-              <span className="user-chip-name">{user.firstName}</span>
-              <span className="user-chip-status">Active Member</span>
+              <span className="user-chip-name">{user.firstName} {user.lastName}</span>
+              <span className="user-chip-status">Player</span>
             </div>
             <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginLeft: '4px' }}>▾</span>
           </div>
@@ -75,7 +75,7 @@ export default function PlayerLayout() {
                   <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{user.email}</div>
                </div>
               <Link to="/player/profile" className="player-dropdown-item">Profile Settings</Link>
-              <Link to="/player/settings" className="player-dropdown-item">Notification Prefs</Link>
+
               <button onClick={handleLogout} className="player-dropdown-item logout">Sign Out</button>
             </div>
           )}

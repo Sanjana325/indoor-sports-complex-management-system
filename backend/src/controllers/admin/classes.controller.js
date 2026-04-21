@@ -368,7 +368,8 @@ exports.getClasses = async (req, res, next) => {
                 c.Status as status,
                 GROUP_CONCAT(DISTINCT cd.Weekday) as days,
                 GROUP_CONCAT(DISTINCT ct.CourtName ORDER BY ct.CourtName SEPARATOR ', ') as courtNames,
-                GROUP_CONCAT(DISTINCT ct.CourtID) as courtIds
+                GROUP_CONCAT(DISTINCT ct.CourtID) as courtIds,
+                (SELECT COUNT(*) FROM enrollment e WHERE e.ClassID = c.ClassID AND e.Status = 'ENROLLED') AS enrolledCount
             FROM class c
             JOIN sport s ON c.SportID = s.SportID
             JOIN coach co ON c.CoachID = co.CoachID
@@ -385,6 +386,9 @@ exports.getClasses = async (req, res, next) => {
         const dayMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const mapped = classes.map(c => ({
             ...c,
+            id: `CLS-${String(c.id).padStart(6, '0')}`,
+            rawId: c.id,
+            coachIdStr: `COA-${String(c.coachId).padStart(6, '0')}`,
             // Keep days as an array of numbers (0-6) for frontend logic
             days: c.days ? c.days.split(',').map(Number) : [],
             courtName: c.courtNames, // For UI table
@@ -569,6 +573,9 @@ exports.updateClass = async (req, res, next) => {
         if (!billingType || !scheduleType) return res.status(400).json({ message: "Schedule type is required" });
         if (!startDate && !oneTimeDate) return res.status(400).json({ message: "Start date is required" });
         if (!startTime || !endTime) return res.status(400).json({ message: "Start and End times are required" });
+        if (!Array.isArray(courtIds) || courtIds.length === 0) {
+            return res.status(400).json({ message: "At least one Arena Court must be assigned to the class." });
+        }
 
         const [existing] = await conn.query(`
             SELECT c.*, sch.ScheduleID, sch.ScheduleType, sch.OneTimeDate, sch.StartTime, sch.EndTime,
@@ -625,8 +632,10 @@ exports.updateClass = async (req, res, next) => {
 
         // 2. Update Courts
         await conn.query("DELETE FROM class_court WHERE ClassID = ?", [classId]);
-        const classCourtVals = courtIds.map(cid => [classId, cid]);
-        await conn.query("INSERT INTO class_court (ClassID, CourtID) VALUES ?", [classCourtVals]);
+        if (courtIds && courtIds.length > 0) {
+            const classCourtVals = courtIds.map(cid => [classId, cid]);
+            await conn.query("INSERT INTO class_court (ClassID, CourtID) VALUES ?", [classCourtVals]);
+        }
 
         // 3. Update Schedule
         const scheduleId = current.ScheduleID;
@@ -745,7 +754,8 @@ exports.listSessions = async (req, res, next) => {
             FROM classsession cs
             JOIN class c ON cs.ClassID = c.ClassID
             JOIN sport s ON c.SportID = s.SportID
-            JOIN useraccount u ON c.CoachID = u.UserID
+            JOIN coach co ON c.CoachID = co.CoachID
+            JOIN useraccount u ON co.UserID = u.UserID
             ORDER BY cs.SessionDate ASC, cs.StartTime ASC
         `);
 
@@ -763,7 +773,8 @@ exports.listSessions = async (req, res, next) => {
             const titlePrefix = isCancelled ? '[CANCELLED] ' : '';
 
             return {
-                id: `CS-${s.id}`,
+                id: `SES-${String(s.id).padStart(6, '0')}`,
+                rawId: s.id,
                 title: `${titlePrefix}${s.title} (${s.sportName})`,
                 start: startStr,
                 end: endStr,
@@ -807,7 +818,12 @@ exports.getRecentCancellations = async (req, res, next) => {
             ORDER BY cs.SessionDate ASC, cs.StartTime ASC
             LIMIT 5
         `);
-        res.json({ cancellations });
+        const mapped = cancellations.map(c => ({
+            ...c,
+            id: `SES-${String(c.id).padStart(6, '0')}`,
+            rawId: c.id
+        }));
+        res.json({ cancellations: mapped });
     } catch (err) {
         next(err);
     }
@@ -830,8 +846,9 @@ exports.getCancelledSessionsHistory = async (req, res, next) => {
                 cs.SessionID as id,
                 c.Title as className,
                 DATE_FORMAT(cs.SessionDate, '%Y-%m-%d') as date,
-                DATE_FORMAT(cs.StartTime, '%H:%I %p') as startTime,
-                DATE_FORMAT(cs.EndTime, '%H:%I %p') as endTime,
+                DATE_FORMAT(cs.StartTime, '%H:%i') as startTime,
+                DATE_FORMAT(cs.EndTime, '%H:%i') as endTime,
+                co.CoachID as coachId,
                 u.FirstName as coachFirst,
                 u.LastName as coachLast,
                 s.SportName as sport,
@@ -844,7 +861,13 @@ exports.getCancelledSessionsHistory = async (req, res, next) => {
             WHERE cs.Status = 'CANCELLED'
             ORDER BY cs.SessionDate DESC, cs.StartTime DESC
         `);
-        res.json({ history });
+        const mapped = history.map(h => ({
+            ...h,
+            id: `SES-${String(h.id).padStart(6, '0')}`,
+            rawId: h.id,
+            coachIdStr: `COA-${String(h.coachId).padStart(6, '0')}`
+        }));
+        res.json({ history: mapped });
     } catch (err) {
         next(err);
     }

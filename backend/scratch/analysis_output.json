@@ -1,0 +1,575 @@
+[
+  {
+    "file": "auth.controller.js",
+    "exports": [
+      "register",
+      "login",
+      "getMe",
+      "changePassword",
+      "forgotPassword",
+      "resetPassword"
+    ],
+    "imports": [
+      {
+        "variable": "crypto",
+        "path": "crypto"
+      },
+      {
+        "variable": "userModel",
+        "path": "../models/user.model"
+      },
+      {
+        "variable": "{ hashPassword, verifyPassword }",
+        "path": "../utils/password"
+      },
+      {
+        "variable": "{ signToken }",
+        "path": "../utils/jwt"
+      },
+      {
+        "variable": "{ pool }",
+        "path": "../config/db"
+      },
+      {
+        "variable": "{ sendPasswordResetEmail, sendWelcomeEmail }",
+        "path": "../services/email.service"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [],
+      "path": []
+    }
+  },
+  {
+    "file": "health.controller.js",
+    "exports": [
+      "checkHealth"
+    ],
+    "imports": [
+      {
+        "variable": "{ testDbConnection }",
+        "path": "../config/db"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [],
+      "path": []
+    }
+  },
+  {
+    "file": "admin\\attendance.controller.js",
+    "exports": [
+      "getClassesForAttendance",
+      "getSessionAttendance",
+      "markAttendance"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [
+        "sessionId",
+        "marks"
+      ],
+      "query": [
+        "classId",
+        "sessionDate"
+      ],
+      "path": []
+    }
+  },
+  {
+    "file": "admin\\blockedSlots.controller.js",
+    "exports": [
+      "listBlockedSlots",
+      "createBlockedSlot",
+      "updateBlockedSlot",
+      "deleteBlockedSlot"
+    ],
+    "imports": [
+      {
+        "variable": "blockedSlotModel",
+        "path": "../../models/blockedSlot.model"
+      }
+    ],
+    "params": {
+      "body": [
+        "courtId",
+        "startDateTime",
+        "endDateTime",
+        "reason"
+      ],
+      "query": [
+        "search"
+      ],
+      "path": [
+        "id"
+      ]
+    }
+  },
+  {
+    "file": "admin\\bookings.controller.js",
+    "exports": [
+      "listBookings",
+      "cancelBooking"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [],
+      "path": [
+        "id"
+      ]
+    }
+  },
+  {
+    "file": "admin\\classes.controller.js",
+    "exports": [
+      "getAvailableCourts",
+      "getCoaches",
+      "getClasses",
+      "createClass",
+      "updateClass",
+      "deactivateClass",
+      "activateClass",
+      "listSessions",
+      "getRecentCancellations",
+      "acknowledgeCancellation",
+      "getCancelledSessionsHistory"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [
+        "title",
+        "sportId",
+        "coachId",
+        "courtIds",
+        "capacity",
+        "fee",
+        "billingType",
+        "scheduleType",
+        "startDate",
+        "oneTimeDate",
+        "startTime",
+        "endTime",
+        "weekdays"
+      ],
+      "query": [
+        "sportId",
+        "scheduleType",
+        "startTime",
+        "endTime",
+        "weekdays",
+        "oneTimeDate",
+        "startDate",
+        "excludeClassId"
+      ],
+      "path": [
+        "classId",
+        "sessionId"
+      ]
+    }
+  },
+  {
+    "file": "admin\\courts.controller.js",
+    "exports": [
+      "listCourts",
+      "createCourt",
+      "updateCourt",
+      "deleteCourt"
+    ],
+    "imports": [
+      {
+        "variable": "courtModel",
+        "path": "../../models/court.model"
+      },
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [
+        "name",
+        "capacity",
+        "pricePerHour",
+        "sportIds"
+      ],
+      "query": [
+        "search"
+      ],
+      "path": [
+        "courtId"
+      ]
+    }
+  },
+  {
+    "file": "admin\\enrollments.controller.js",
+    "exports": [
+      "listEnrollments",
+      "cancelEnrollment"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [],
+      "path": [
+        "id"
+      ]
+    }
+  },
+  {
+    "file": "admin\\payments.controller.js",
+    "exports": [
+      "getPendingCount",
+      "listPayments",
+      "verifyPayment",
+      "rejectPayment"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      },
+      {
+        "variable": "emailService",
+        "path": "../../services/email.service"
+      },
+      {
+        "variable": "emailService",
+        "path": "../../services/email.service"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [],
+      "path": [
+        "id"
+      ]
+    }
+  },
+  {
+    "file": "admin\\qualifications.controller.js",
+    "exports": [
+      "listQualifications",
+      "createQualification"
+    ],
+    "imports": [
+      {
+        "variable": "coachModel",
+        "path": "../../models/coach.model"
+      }
+    ],
+    "params": {
+      "body": [
+        "qualificationName"
+      ],
+      "query": [
+        "search"
+      ],
+      "path": []
+    }
+  },
+  {
+    "file": "admin\\reports.controller.js",
+    "exports": [
+      "getDashboardStats",
+      "getBookingsReport",
+      "getPaymentsReport",
+      "getAttendanceReport",
+      "getEnrollmentsReport"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [
+        "start",
+        "end"
+      ],
+      "path": []
+    }
+  },
+  {
+    "file": "admin\\sports.controller.js",
+    "exports": [
+      "listSports",
+      "createSport",
+      "deleteSport",
+      "updateSport"
+    ],
+    "imports": [
+      {
+        "variable": "sportModel",
+        "path": "../../models/sport.model"
+      }
+    ],
+    "params": {
+      "body": [
+        "sportName",
+        "colorCode",
+        "isBookable"
+      ],
+      "query": [
+        "search"
+      ],
+      "path": [
+        "sportId"
+      ]
+    }
+  },
+  {
+    "file": "admin\\users.controller.js",
+    "exports": [
+      "listUsers",
+      "createUser",
+      "updateUser",
+      "disableUser",
+      "enableUser",
+      "deleteUser"
+    ],
+    "imports": [
+      {
+        "variable": "userModel",
+        "path": "../../models/user.model"
+      },
+      {
+        "variable": "coachModel",
+        "path": "../../models/coach.model"
+      },
+      {
+        "variable": "{ hashPassword }",
+        "path": "../../utils/password"
+      },
+      {
+        "variable": "{ generateTempPassword }",
+        "path": "../../utils/randomPassword"
+      },
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      },
+      {
+        "variable": "{ sendAccountCreatedEmail }",
+        "path": "../../services/email.service"
+      }
+    ],
+    "params": {
+      "body": [
+        "firstName",
+        "lastName",
+        "email",
+        "phoneNumber",
+        "role"
+      ],
+      "query": [],
+      "path": [
+        "userId"
+      ]
+    }
+  },
+  {
+    "file": "coach\\coach.controller.js",
+    "exports": [
+      "getMyClasses",
+      "getSessionsForDate",
+      "cancelSession",
+      "getCalendarData",
+      "getCancelledSessions",
+      "getEnrolledStudents",
+      "getSessionAttendance"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      },
+      {
+        "variable": "coachModel",
+        "path": "../../models/coach.model"
+      },
+      {
+        "variable": "emailService",
+        "path": "../../services/email.service"
+      }
+    ],
+    "params": {
+      "body": [
+        "sessionId",
+        "reason"
+      ],
+      "query": [
+        "date"
+      ],
+      "path": [
+        "classId",
+        "sessionId"
+      ]
+    }
+  },
+  {
+    "file": "player\\bookings.controller.js",
+    "exports": [
+      "createBooking",
+      "getMyBookings",
+      "cancelBooking"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [
+        "courtId",
+        "sportId",
+        "startDateTime",
+        "endDateTime"
+      ],
+      "query": [],
+      "path": [
+        "id"
+      ]
+    }
+  },
+  {
+    "file": "player\\classes.controller.js",
+    "exports": [
+      "getAvailableClasses",
+      "enrollInClass",
+      "getMyClasses",
+      "leaveClass"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [],
+      "path": [
+        "id"
+      ]
+    }
+  },
+  {
+    "file": "player\\courts.controller.js",
+    "exports": [
+      "getCourtsBySport",
+      "getCourtAvailability"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [
+        "sportId",
+        "date"
+      ],
+      "path": [
+        "courtId"
+      ]
+    }
+  },
+  {
+    "file": "player\\otp.controller.js",
+    "exports": [
+      "requestBookingOtp",
+      "verifyBookingOtp"
+    ],
+    "imports": [
+      {
+        "variable": "{ saveOTP, verifyAndConsumeOTP }",
+        "path": "../../models/otp.model"
+      },
+      {
+        "variable": "emailService",
+        "path": "../../services/email.service"
+      },
+      {
+        "variable": "{ findById }",
+        "path": "../../models/user.model"
+      }
+    ],
+    "params": {
+      "body": [
+        "otpCode"
+      ],
+      "query": [],
+      "path": []
+    }
+  },
+  {
+    "file": "player\\payments.controller.js",
+    "exports": [
+      "getMyPayments",
+      "initiateBookingPayment",
+      "initiateEnrollmentPayment",
+      "handlePayHereNotify",
+      "uploadBankSlip"
+    ],
+    "imports": [
+      {
+        "variable": "paymentService",
+        "path": "../../services/payment.service"
+      }
+    ],
+    "params": {
+      "body": [
+        "bookingId",
+        "classId",
+        "type"
+      ],
+      "query": [],
+      "path": []
+    }
+  },
+  {
+    "file": "player\\sports.controller.js",
+    "exports": [
+      "getActiveSports"
+    ],
+    "imports": [
+      {
+        "variable": "{ pool }",
+        "path": "../../config/db"
+      }
+    ],
+    "params": {
+      "body": [],
+      "query": [],
+      "path": []
+    }
+  }
+]

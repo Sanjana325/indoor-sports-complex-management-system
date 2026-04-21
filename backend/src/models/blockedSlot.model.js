@@ -5,16 +5,16 @@ async function listBlockedSlots(search = "", conn = pool) {
     const [rows] = await conn.query(
         `
     SELECT 
-        bs.BlockedSlotID,
-        bs.CourtID,
-        c.CourtName,
-        bs.StartDateTime,
-        bs.EndDateTime,
-        bs.Reason,
-        bs.CreatedBy,
-        u.FirstName AS CreatedByFirstName,
-        u.LastName AS CreatedByLastName,
-        bs.CreatedAt
+        bs.BlockedSlotID AS blockedSlotId,
+        bs.CourtID AS courtId,
+        c.CourtName AS courtName,
+        bs.StartDateTime AS startDateTime,
+        bs.EndDateTime AS endDateTime,
+        bs.Reason AS reason,
+        bs.CreatedBy AS createdBy,
+        u.FirstName AS createdByFirstName,
+        u.LastName AS createdByLastName,
+        bs.CreatedAt AS createdAt
     FROM blockedslot bs
     JOIN court c ON bs.CourtID = c.CourtID
     JOIN useraccount u ON bs.CreatedBy = u.UserID

@@ -46,10 +46,10 @@ export default function BlockedSlots() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return blockedSlots;
-    return blockedSlots.filter(b => `${b.CourtName} ${b.Reason}`.toLowerCase().includes(q));
+    return blockedSlots.filter(b => `${b.courtName} ${b.reason}`.toLowerCase().includes(q));
   }, [blockedSlots, search]);
 
-  const sorted = useMemo(() => [...filtered].sort((a, b) => new Date(b.CreatedAt) - new Date(a.CreatedAt)), [filtered]);
+  const sorted = useMemo(() => [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), [filtered]);
 
   function resetForm() {
     setCourtId(courts.length > 0 ? courts[0].CourtID : ""); setDate(""); setStartTime(""); setEndTime(""); setReason(""); setEditingId(null);
@@ -57,10 +57,10 @@ export default function BlockedSlots() {
 
   function openAddModal() { setMode("ADD"); resetForm(); setIsModalOpen(true); }
   function openEditModal(item) {
-    setMode("EDIT"); setEditingId(item.BlockedSlotID); setCourtId(item.CourtID);
-    const start = new Date(item.StartDateTime); const end = new Date(item.EndDateTime);
+    setMode("EDIT"); setEditingId(item.rawId); setCourtId(item.courtId);
+    const start = new Date(item.startDateTime); const end = new Date(item.endDateTime);
     setDate(start.toISOString().split('T')[0]); setStartTime(start.toTimeString().slice(0, 5)); setEndTime(end.toTimeString().slice(0, 5));
-    setReason(item.Reason); setIsModalOpen(true);
+    setReason(item.reason); setIsModalOpen(true);
   }
 
   async function handleRemove(id) {
@@ -105,14 +105,16 @@ export default function BlockedSlots() {
       <div className="arena-table-container">
         <table className="arena-table">
           <thead>
-            <tr>
-              <th>Arena / Court</th>
-              <th>Date</th>
-              <th>Time Range</th>
-              <th>Reason</th>
-              <th>Created By</th>
-              <th style={{ textAlign: "right" }}>Actions</th>
-            </tr>
+              <tr>
+                <th>Slot ID</th>
+                <th>Court ID</th>
+                <th>Arena / Court</th>
+                <th>Date</th>
+                <th>Time Range</th>
+                <th>Reason</th>
+                <th>Created By</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
           </thead>
           <tbody>
             {loading ? (
@@ -121,23 +123,26 @@ export default function BlockedSlots() {
               <tr><td colSpan="6" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No active blockages.</td></tr>
             ) : (
               sorted.map((b) => (
-                <tr key={b.BlockedSlotID}>
-                  <td style={{ fontWeight: 700 }}>{b.CourtName}</td>
-                  <td style={{ fontWeight: 600 }}>{new Date(b.StartDateTime).toISOString().split('T')[0]}</td>
+                <tr key={b.id}>
+                  <td><span className="table-id">{b.id}</span></td>
+                  <td><span className="table-id" style={{ opacity: 0.9 }}>{b.courtIdStr}</span></td>
+                  <td style={{ fontWeight: 700 }}>{b.courtName}</td>
+                  <td style={{ fontWeight: 600 }}>{new Date(b.startDateTime).toISOString().split('T')[0]}</td>
                   <td>
                     <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--primary-dark)" }}>
-                      {new Date(b.StartDateTime).toTimeString().slice(0, 5)} - {new Date(b.EndDateTime).toTimeString().slice(0, 5)}
+                      {new Date(b.startDateTime).toTimeString().slice(0, 5)} - {new Date(b.endDateTime).toTimeString().slice(0, 5)}
                     </div>
                   </td>
-                  <td><div style={{ fontStyle: "italic", fontSize: "0.875rem" }}>{b.Reason}</div></td>
+                  <td><div style={{ fontStyle: "italic", fontSize: "0.875rem" }}>{b.reason}</div></td>
                   <td>
-                    <div style={{ fontSize: "0.8rem" }}>{b.CreatedByFirstName} {b.CreatedByLastName}</div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{new Date(b.CreatedAt).toLocaleDateString()}</div>
+                    <div style={{ fontWeight: 700 }}>{b.createdByFirstName} {b.createdByLastName}</div>
+                    <div style={{ marginTop: "4px" }}><span className="table-id" style={{ fontSize: '0.65rem', opacity: 0.8 }}>{b.adminIdStr}</span></div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "4px" }}>{new Date(b.createdAt).toLocaleDateString()}</div>
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                       <button className="btn btn-edit" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(b)}>Edit</button>
-                      <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemove(b.BlockedSlotID)}>Remove</button>
+                      <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemove(b.rawId)}>Remove</button>
                     </div>
                   </td>
                 </tr>
@@ -155,7 +160,7 @@ export default function BlockedSlots() {
               <div className="form-group">
                 <label className="form-label">Target Court</label>
                 <select className="form-input" value={courtId} onChange={(e) => setCourtId(e.target.value)} disabled={submitting}>
-                  {courts.map((c) => <option key={c.CourtID} value={c.CourtID}>{c.CourtName}</option>)}
+                  {courts.map((c) => <option key={c.id || c.CourtID} value={c.rawId || c.CourtID}>{c.name || c.CourtName}</option>)}
                 </select>
               </div>
               <div className="form-group">

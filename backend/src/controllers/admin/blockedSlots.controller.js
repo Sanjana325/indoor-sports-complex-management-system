@@ -4,7 +4,14 @@ exports.listBlockedSlots = async (req, res, next) => {
     try {
         const search = req.query.search || "";
         const slots = await blockedSlotModel.listBlockedSlots(search);
-        res.json({ slots });
+        const mapped = slots.map(s => ({
+            ...s,
+            id: `BLK-${String(s.blockedSlotId).padStart(6, '0')}`,
+            rawId: s.blockedSlotId,
+            courtIdStr: `CRT-${String(s.courtId).padStart(6, '0')}`,
+            adminIdStr: `ADM-${String(s.createdBy).padStart(6, '0')}`
+        }));
+        res.json({ slots: mapped });
     } catch (err) {
         next(err);
     }
@@ -27,6 +34,10 @@ exports.createBlockedSlot = async (req, res, next) => {
 
         if (end <= start) {
             return res.status(400).json({ message: "End time must be after start time" });
+        }
+
+        if (start < new Date()) {
+            return res.status(400).json({ message: "Cannot block court time in the past." });
         }
 
         const blockedSlotId = await blockedSlotModel.createBlockedSlot({
@@ -55,6 +66,10 @@ exports.updateBlockedSlot = async (req, res, next) => {
 
         if (start && end && end <= start) {
             return res.status(400).json({ message: "End time must be after start time" });
+        }
+
+        if (start && start < new Date()) {
+            return res.status(400).json({ message: "Cannot move court blockage into the past." });
         }
 
         const success = await blockedSlotModel.updateBlockedSlot(id, {

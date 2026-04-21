@@ -1,77 +1,88 @@
 import { useAnalytics } from "../../../hooks/useAnalytics";
-import { AnalyticHeader, AnalyticFilters, KPIStatsGrid, InsightPanel } from "../../../components/admin/analytics/AnalyticsSuite";
+import { AnalyticHeader, AnalyticFilters, KPIStatsGrid } from "../../../components/admin/analytics/AnalyticsSuite";
 import { AnalyticChart, AnalyticTable } from "../../../components/admin/analytics/AnalyticsDataViews";
 
 export default function PaymentsReportPage() {
   const { loading, data, activeRange, controls } = useAnalytics("payments");
 
-  const insights = [
-    `Total Revenue for this period: LKR ${data.kpis.totalRevenue?.toLocaleString()}.`,
-    `Successfully processed ${data.kpis.verifiedPayments || 0} verified transactions.`
-  ];
+
 
   return (
     <div className="admin-content-inner">
       <AnalyticHeader 
         title="Financial Analytics" 
-        subtitle={`Audit Period: ${activeRange.label}`}
-        onExportCSV={() => console.log("CSV Export")}
+        subtitle={`Audit Period: ${activeRange.start} to ${activeRange.end} (${activeRange.label})`}
         onExportPDF={() => window.print()}
       />
 
-      <AnalyticFilters controls={controls} />
+      <AnalyticFilters controls={controls} hasCategoryFilter={true} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2.8fr 1.2fr', gap: '20px', alignItems: 'start' }}>
-        <div>
-          <KPIStatsGrid kpis={data.kpis} loading={loading} />
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', marginBottom: '24px' }}>
-            <AnalyticChart 
-              title="Revenue Growth" 
-              type="line" 
-              data={data.charts.revenueOverTime} 
-              loading={loading} 
-              dataKey="total"
-            />
-            <AnalyticChart 
-              title="Payment Source Distribution" 
-              type="pie" 
-              data={data.charts.paymentMethodSplit} 
-              loading={loading} 
-            />
-          </div>
-
-          <AnalyticTable 
-            headers={["ID", "Name", "Amount", "Date", "Status"]}
-            rows={data.reports}
-            loading={loading}
-            rowRenderer={(row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td>
-                <td>{row.name}</td>
-                <td style={{ fontWeight: 700 }}>LKR {row.amount.toLocaleString()}</td>
-                <td>{row.date}</td>
-                <td>
-                  <span className={`status-pill ${row.status === "VERIFIED" || row.status === "COMPLETED" ? "success" : "danger"}`}>
-                    {row.status}
-                  </span>
-                </td>
-              </tr>
-            )}
+      <div style={{ marginBottom: '24px' }}>
+        <KPIStatsGrid kpis={data.kpis} loading={loading} />
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr)', gap: '20px', marginBottom: '24px' }}>
+          <AnalyticChart 
+            title="Revenue Growth" 
+            type="line" 
+            data={data.charts.revenueOverTime} 
+            loading={loading} 
+            dataKey="total"
+          />
+          <AnalyticChart 
+            title="Revenue Breakdown" 
+            type="pie" 
+            data={data.charts.revenuePredictability} 
+            loading={loading} 
+          />
+          <AnalyticChart 
+            title="Payment Source" 
+            type="donut" 
+            data={data.charts.paymentMethodSplit} 
+            loading={loading} 
           />
         </div>
-
-        <div className="no-print">
-          <InsightPanel insights={insights} loading={loading} />
-          
-          <div className="arena-card no-print" style={{ background: 'var(--bg-main)', border: '1px dashed var(--primary-light)' }}>
-             <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '10px' }}>💰 Financial Tip</h3>
-             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-               Verify payments regularly to maintain an accurate cash-flow audit. "Verified" status indicates funds have been cleared.
-             </p>
-          </div>
+        
+        <div style={{ marginBottom: '24px' }}>
+          <AnalyticChart 
+            title="Revenue By Court" 
+            type="bar" 
+            data={data.charts.revenueByCourt} 
+            loading={loading} 
+            dataKey="value"
+          />
         </div>
       </div>
+
+      <AnalyticTable 
+        headers={["PAYMENT ID", "PAYER DETAILS", "CATEGORY", "AMOUNT", "DATE & TIME", "VERIFIED", "METHOD", "STATUS"]}
+        rows={data.reports}
+        loading={loading}
+        rowRenderer={(row) => (
+          <tr key={row.id}>
+            <td><span className="table-id">{row.id}</span></td>
+            <td>
+              <div style={{ fontWeight: 600 }}>{row.name}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{row.phone}</div>
+            </td>
+            <td>{row.category}</td>
+            <td style={{ fontWeight: 700 }}>LKR {row.amount.toLocaleString()}</td>
+            <td>
+              <div style={{ fontWeight: 600 }}>{row.date}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{row.time}</div>
+            </td>
+            <td>{row.verified}</td>
+            <td>{row.method}</td>
+            <td>
+              <span className={`status-pill ${
+                row.status === "VERIFIED" ? "success" : 
+                row.status === "REJECTED" ? "danger" : "warning"
+              }`}>
+                {row.status}
+              </span>
+            </td>
+          </tr>
+        )}
+      />
     </div>
   );
 }

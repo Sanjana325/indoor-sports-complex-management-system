@@ -113,13 +113,13 @@ export default function ClassManagement() {
   }
 
   function openAddModal() { setMode("ADD"); resetForm(); if (sportsList.length > 0) setSport(sportsList[0].SportName); setIsModalOpen(true); }
-  function openEditModal(item) { setMode("EDIT"); setEditingId(item.id); setSport(item.sport); setClassName(item.className); setCoachId(String(item.coachId)); setCourtIds(item.courtIds || []); setCapacity(String(item.capacity)); setFee(String(item.fee || "")); setScheduleType(item.scheduleType || "WEEKLY"); setDays(item.days || []); setOneTimeDate(item.oneTimeDate || ""); setStartDate(item.startDate?.split('T')[0] || ""); setStartTime(item.startTime || ""); setEndTime(item.endTime || ""); setIsModalOpen(true); }
+  function openEditModal(item) { setMode("EDIT"); setEditingId(item.rawId); setSport(item.sport); setClassName(item.className); setCoachId(String(item.coachId)); setCourtIds(item.courtIds || []); setCapacity(String(item.capacity)); setFee(String(item.fee || "")); setScheduleType(item.scheduleType || "WEEKLY"); setDays(item.days || []); setOneTimeDate(item.oneTimeDate || ""); setStartDate(item.startDate?.split('T')[0] || ""); setStartTime(item.startTime || ""); setEndTime(item.endTime || ""); setIsModalOpen(true); }
 
   async function handleToggleStatus(item) {
     const isDeactivating = item.status !== "DEACTIVATED";
     if (!window.confirm(`Are you sure you want to ${isDeactivating ? "deactivate" : "activate"} this class?`)) return;
     try {
-      const res = await api.patch(`/api/admin/classes/${item.id}/${isDeactivating ? "deactivate" : "activate"}`);
+      const res = await api.patch(`/api/admin/classes/${item.rawId}/${isDeactivating ? "deactivate" : "activate"}`);
       if (res.status === 200) fetchInitialData();
     } catch (err) { console.error(err); }
   }
@@ -164,30 +164,33 @@ export default function ClassManagement() {
             <table className="arena-table">
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Class Name</th>
                   <th>Coach</th>
                   <th>Arena Courts</th>
                   <th>Schedule Pattern</th>
                   <th>Timeline</th>
-                  <th>Capacity</th>
+                  <th>Capacity (E/T)</th>
+                  <th>Class Fee</th>
                   {localStorage.getItem("role") === "ADMIN" && <th style={{ textAlign: "right" }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {loadingInitial ? (
-                  <tr><td colSpan="7" style={{ textAlign: "center", padding: "2rem" }}>Analyzing educational framework...</td></tr>
+                  <tr><td colSpan="9" style={{ textAlign: "center", padding: "2rem" }}>Analyzing educational framework...</td></tr>
                 ) : filteredClasses.length === 0 ? (
-                  <tr><td colSpan="7" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No class records match your search.</td></tr>
+                  <tr><td colSpan="9" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No class records match your search.</td></tr>
                 ) : (
                   filteredClasses.map(c => (
                     <tr key={c.id} style={{ opacity: c.status === "DEACTIVATED" ? 0.6 : 1 }}>
+                      <td><span className="table-id">{c.id}</span></td>
                       <td>
                         <div style={{ fontWeight: 800, fontSize: "1rem" }}>{c.className}</div>
                         <div className="status-pill info" style={{ marginTop: "4px" }}>{c.sport}</div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 700 }}>{c.coachName}</div>
-                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>ID: C-{String(c.coachId).padStart(3, '0')}</div>
+                        <div style={{ marginTop: "4px" }}><span className="table-id" style={{ fontSize: '0.7rem', opacity: 0.8 }}>{c.coachIdStr}</span></div>
                       </td>
                       <td>
                         <div style={{ fontSize: "0.85rem", color: "var(--text-main)", fontWeight: 600 }}>{c.courtName || "Unassigned"}</div>
@@ -212,8 +215,18 @@ export default function ClassManagement() {
                         <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{durationLabel(c.startTime, c.endTime)}</div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 800 }}>{c.capacity}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>LKR {c.fee?.toLocaleString()}</div>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                          <span style={{ fontWeight: 800, fontSize: "1.1rem", color: c.enrolledCount >= c.capacity ? "var(--danger)" : "var(--success)" }}>
+                            {c.enrolledCount || 0}
+                          </span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>/</span>
+                          <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>{c.capacity}</span>
+                        </div>
+                        <div style={{ fontSize: "0.6rem", textTransform: "uppercase", color: "var(--text-muted)", marginTop: "2px" }}>Spots Filled</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: "var(--primary-dark)" }}>LKR {c.fee?.toLocaleString()}</div>
+                        <div style={{ fontSize: "0.6rem", textTransform: "uppercase", color: "var(--text-muted)" }}>Per Cycle</div>
                       </td>
                       {localStorage.getItem("role") === "ADMIN" && (
                         <td>
@@ -250,14 +263,22 @@ export default function ClassManagement() {
                   <tr key={h.id}>
                     <td style={{ fontWeight: 700 }}>{h.date}</td>
                     <td>
-                      <div style={{ fontWeight: 800 }}>{h.className}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                        <span className="table-id" style={{ fontSize: '0.7rem', opacity: 0.8 }}>{h.id}</span>
+                        <div style={{ fontWeight: 800 }}>{h.className}</div>
+                      </div>
                       <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{h.startTime} - {h.endTime}</div>
                     </td>
                     <td><span className="status-pill info">{h.sport}</span></td>
                     <td>
-                      <span className={`status-pill ${h.IsAcknowledged ? "success" : "danger"}`}>{h.IsAcknowledged ? "Verified" : "Pending Action"}</span>
+                      <div style={{ fontWeight: 700 }}>{h.coachFirst} {h.coachLast}</div>
+                      <div style={{ marginTop: "4px" }}><span className="table-id" style={{ fontSize: '0.7rem' }}>{h.coachIdStr}</span></div>
                     </td>
-                    <td style={{ textAlign: "right", fontSize: "0.85rem", color: "var(--text-muted)" }}>{h.coachFirst} {h.coachLast}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <span className={`status-pill ${h.IsAcknowledged ? "success" : "danger"}`} style={{ fontSize: "0.65rem" }}>
+                        {h.IsAcknowledged ? "Verified" : "Pending"}
+                      </span>
+                    </td>
                   </tr>
                 ))
               )}

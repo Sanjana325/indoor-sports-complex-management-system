@@ -48,7 +48,7 @@ export default function Attendance() {
             setSession(data.session); setStudents(data.students || []);
             const existing = {};
             (data.students || []).forEach((s) => {
-              if (s.status === "PRESENT" || s.status === "ABSENT") existing[s.enrollmentId] = s.status;
+              if (s.status === "PRESENT" || s.status === "ABSENT") existing[s.rawEnrollmentId] = s.status;
             });
             setMarks(existing); setNoSession(false);
           }
@@ -65,8 +65,8 @@ export default function Attendance() {
     return students.filter((s) => (q ? s.name.toLowerCase().includes(q) : true));
   }, [students, nameSearch, canShowStudents]);
 
-  const mark = (enrollmentId, status) => {
-    setMarks((prev) => ({ ...prev, [enrollmentId]: status }));
+  const mark = (rawEnrollmentId, status) => {
+    setMarks((prev) => ({ ...prev, [rawEnrollmentId]: status }));
     setSuccessMsg("");
   };
 
@@ -79,7 +79,7 @@ export default function Attendance() {
     if (!session) return;
     const marksArray = Object.entries(marks)
       .filter(([, status]) => status === "PRESENT" || status === "ABSENT")
-      .map(([enrollmentId, status]) => ({ enrollmentId: Number(enrollmentId), status }));
+      .map(([rawEnrollmentId, status]) => ({ enrollmentId: Number(rawEnrollmentId), status }));
 
     if (marksArray.length === 0) {
       alert("Please mark at least one student."); return;
@@ -145,6 +145,7 @@ export default function Attendance() {
           <table className="arena-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Student Profile</th>
                 <th style={{ textAlign: "center" }}>Current Status</th>
                 <th style={{ textAlign: "right" }}>Mark Attendance</th>
@@ -152,18 +153,19 @@ export default function Attendance() {
             </thead>
             <tbody>
               {loadingStudents ? (
-                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing enrollment data...</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing enrollment data...</td></tr>
               ) : noSession ? (
-                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No session scheduled for this date.</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No session scheduled for this date.</td></tr>
               ) : !selectedClassId || !selectedDate ? (
-                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>Select parameters to view students.</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>Select parameters to view students.</td></tr>
               ) : session && students.length === 0 ? (
-                <tr><td colSpan="3" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No participants enrolled in this class.</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No participants enrolled in this class.</td></tr>
               ) : (
                 filteredStudents.map((s) => {
-                  const status = marks[s.enrollmentId] || "NOT_MARKED";
+                  const status = marks[s.rawEnrollmentId] || "NOT_MARKED";
                   return (
-                    <tr key={s.enrollmentId}>
+                    <tr key={s.rawEnrollmentId}>
+                      <td><span className="table-id" style={{ fontSize: '0.75rem' }}>{s.enrollmentId}</span></td>
                       <td style={{ fontWeight: 700 }}>{s.name}</td>
                       <td style={{ textAlign: "center" }}>
                         <span className={`status-pill ${status === "PRESENT" ? "success" : status === "ABSENT" ? "danger" : ""}`}>
@@ -175,13 +177,13 @@ export default function Attendance() {
                           <button 
                             className={`btn ${status === "PRESENT" ? "btn-primary" : "btn-secondary"}`} 
                             style={{ padding: "4px 12px", fontSize: "0.8rem" }} 
-                            onClick={() => mark(s.enrollmentId, "PRESENT")}
+                            onClick={() => mark(s.rawEnrollmentId, "PRESENT")}
                             disabled={saving}
                           >Present</button>
                           <button 
                             className={`btn ${status === "ABSENT" ? "btn-danger" : "btn-secondary"}`} 
                             style={{ padding: "4px 12px", fontSize: "0.8rem" }} 
-                            onClick={() => mark(s.enrollmentId, "ABSENT")}
+                            onClick={() => mark(s.rawEnrollmentId, "ABSENT")}
                             disabled={saving}
                           >Absent</button>
                         </div>
@@ -195,5 +197,6 @@ export default function Attendance() {
         </div>
       </div>
     </div>
+
   );
 }

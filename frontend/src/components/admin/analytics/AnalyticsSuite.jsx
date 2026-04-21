@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-export const AnalyticHeader = ({ title, subtitle, onExportCSV, onExportPDF }) => {
+export const AnalyticHeader = ({ title, subtitle, onExportPDF }) => {
   const navigate = useNavigate();
   return (
     <div className="flex-between mb-4 analytic-header">
@@ -15,19 +15,18 @@ export const AnalyticHeader = ({ title, subtitle, onExportCSV, onExportPDF }) =>
         <h2 className="page-title" style={{ margin: 0 }}>{title}</h2>
         {subtitle && <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{subtitle}</p>}
       </div>
-      <div className="flex-between no-print" style={{ gap: '10px' }}>
-        <button className="btn btn-secondary" onClick={onExportCSV}>
-          Export CSV
-        </button>
-        <button className="btn btn-primary" onClick={onExportPDF}>
-          Export as PDF
-        </button>
+      <div style={{ display: 'flex', gap: '12px' }}>
+        {onExportPDF && (
+          <button className="btn btn-primary" onClick={onExportPDF}>
+            Export as PDF
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-export const AnalyticFilters = ({ controls }) => {
+export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, hasTargetClassFilter, metadata }) => {
   return (
     <div className="arena-card mb-4 no-print" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
       <div className="flex-between" style={{ gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
@@ -60,6 +59,53 @@ export const AnalyticFilters = ({ controls }) => {
             onChange={(e) => controls.setCustomRange({ ...controls.customRange, end: e.target.value })} 
           />
         </div>
+        
+        {hasMethodFilter && (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <select 
+              className="form-input" 
+              style={{ minWidth: '160px' }} 
+              value={controls.methodOptions} 
+              onChange={(e) => controls.setMethodOptions(e.target.value)}
+            >
+              <option value="ALL">All Methods</option>
+              <option value="ONLINE">Online</option>
+              <option value="BANK_SLIP">Bank Transfer</option>
+            </select>
+          </div>
+        )}
+        
+        {hasCategoryFilter && (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <select 
+              className="form-input" 
+              style={{ minWidth: '160px' }} 
+              value={controls.categoryOptions} 
+              onChange={(e) => controls.setCategoryOptions(e.target.value)}
+            >
+              <option value="ALL">All Categories</option>
+              <option value="CLASSES">Classes</option>
+              <option value="BOOKINGS">Bookings</option>
+            </select>
+          </div>
+        )}
+
+        {hasTargetClassFilter && metadata?.classes && (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <select 
+              className="form-input" 
+              style={{ minWidth: '160px' }} 
+              value={controls.classIdOptions} 
+              onChange={(e) => controls.setClassIdOptions(e.target.value)}
+            >
+              <option value="ALL">All Classes</option>
+              {metadata.classes.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <button 
           className="btn btn-secondary" 
           style={{ background: 'var(--primary)', color: 'white', border: 'none' }}
@@ -81,7 +127,7 @@ export const KPIStatsGrid = ({ kpis, loading }) => {
 
   if (loading) {
      return (
-       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: '24px' }}>
+       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: '24px' }}>
          {[1,2,3,4].map(i => (
            <div key={i} className="arena-card skeleton-card" style={{ height: '90px' }}>
              <div className="loading-shimmer" style={{ height: '12px', width: '60%', marginBottom: '12px' }} />
@@ -93,7 +139,7 @@ export const KPIStatsGrid = ({ kpis, loading }) => {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: '24px' }} className="kpi-grid no-print">
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: '24px' }} className="kpi-grid no-print">
       {Object.entries(kpis).map(([key, val]) => (
         <div key={key} className="arena-card" style={{ position: 'relative', overflow: 'hidden', padding: '20px' }}>
           <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 800, marginBottom: '6px' }}>{formatKey(key)}</div>

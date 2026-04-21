@@ -42,6 +42,14 @@ function formatTimeRange(startIso, endIso) {
   return `${formatTime(s)} - ${formatTime(e)}`;
 }
 
+function formatFullTimestamp(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${dateStr} at ${timeStr}`;
+}
+
 function isSameOrAfter(a, b) {
   return a.getTime() >= b.getTime();
 }
@@ -87,7 +95,9 @@ export default function PlayerMyBookings() {
               timeDuration: formatTimeRange(b.StartDateTime, b.EndDateTime),
               bookingStatus: displayStatus,
               rawStatus: rawStatus,
-              rawStartTime: b.StartDateTime
+              rawStartTime: b.StartDateTime,
+              createdAt: b.CreatedAt,
+              confirmedAt: b.ConfirmedAt
             };
           });
           setRows(formatted);
@@ -112,7 +122,8 @@ export default function PlayerMyBookings() {
 
       return { 
         ...r, 
-        _dateKey: dateKey, 
+        _dateKey: dateKey,
+        _createdAtKey: new Date(r.createdAt),
         _isConfirmed: isConfirmed, 
         _isPending: isPending, 
         _isCancelled: isCancelled 
@@ -124,9 +135,9 @@ export default function PlayerMyBookings() {
     const cancelled = withMeta.filter((x) => x._isCancelled);
 
     function sorter(a, b) {
-      const d1 = a._dateKey.getTime();
-      const d2 = b._dateKey.getTime();
-      return sortOrder === "NEWEST" ? d2 - d1 : d1 - d2;
+      const t1 = a._createdAtKey.getTime();
+      const t2 = b._createdAtKey.getTime();
+      return sortOrder === "NEWEST" ? t2 - t1 : t1 - t2;
     }
 
     return {
@@ -251,6 +262,20 @@ export default function PlayerMyBookings() {
                       <EventNote sx={{ fontSize: '1rem', color: 'var(--pt-primary)' }} />
                       <span className="pt-booking-id">#{r.bookingId}</span>
                     </div>
+                  </div>
+
+                  {/* TIMESTAMPS */}
+                  <div className="pt-booking-timestamps" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                    <div className="pt-meta-group" style={{ opacity: 0.7 }}>
+                      <Schedule sx={{ fontSize: '0.85rem' }} />
+                      <span style={{ fontSize: '0.75rem' }}>Booked on {formatFullTimestamp(r.createdAt)}</span>
+                    </div>
+                    {r.confirmedAt && r.rawStatus === 'CONFIRMED' && (
+                      <div className="pt-meta-group" style={{ opacity: 0.9, color: '#16a34a', marginTop: '4px' }}>
+                        <CheckCircle sx={{ fontSize: '0.85rem' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Confirmed on {formatFullTimestamp(r.confirmedAt)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

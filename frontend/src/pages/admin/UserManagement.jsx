@@ -14,16 +14,10 @@ function splitQualificationsToList(q) {
   return parts.length ? parts : [""];
 }
 
-function displayUserId(userId) {
-  const n = Number(userId);
-  if (!Number.isFinite(n)) return String(userId || "-");
-  return `U-${String(n).padStart(6, "0")}`;
-}
-
 function mapDbUserToUi(u) {
   return {
-    userId: u.UserID,
-    idDisplay: displayUserId(u.UserID),
+    userId: u.rawId || u.UserID,
+    idDisplay: u.id || `USR-${String(u.UserID).padStart(6, '0')}`,
     role: u.Role,
     firstName: u.FirstName || "",
     lastName: u.LastName || "",
@@ -244,7 +238,7 @@ export default function UserManagement() {
               ]}
               renderRow={(u) => (
                 <tr key={u.userId}>
-                  <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{u.idDisplay}</td>
+                  <td><span className="table-id">{u.idDisplay}</span></td>
                   <td>
                     <div style={{ fontWeight: 700 }}>{u.firstName} {u.lastName}</div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>

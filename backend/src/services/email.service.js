@@ -619,6 +619,68 @@ async function sendPaymentRejectionEmail({ toEmail, toName, targetName, amount, 
   });
 }
 
+async function sendEnrollmentCancelledEmail({ toEmail, toName, className, reason }) {
+  if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
+
+  const transporter = getTransporter();
+  const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
+  const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
+
+  const subject = `Enrollment Update: ${className}`;
+  const safeName = typeof toName === "string" ? toName.trim() : "Player";
+
+  const adminContactEmail = process.env.ADMIN_CONTACT_EMAIL || fromEmail;
+  const adminContactPhone = process.env.ADMIN_CONTACT_PHONE || "+94 11 234 5678";
+
+  const text =
+    `Hello ${safeName},\n\n` +
+    `We are writing to inform you that your enrollment for the class '${className}' has been CANCELLED by the administration.\n\n` +
+    `Reason for Cancellation: ${reason}\n\n` +
+    `If you have any questions regarding this action, please contact our administration office:\n` +
+    `- Email: ${adminContactEmail}\n` +
+    `- Phone: ${adminContactPhone}\n\n` +
+    `Best regards,\n` +
+    `The ArenaPro Team`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+      <div style="background: #000; color: #fff; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="margin: 0; font-size: 24px;">Enrollment Cancelled</h1>
+      </div>
+      <div style="padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <p>Hi <strong>${safeName}</strong>,</p>
+        <p>This email is to notify you that your enrollment in <strong>${className}</strong> has been cancelled by the administration.</p>
+        
+        <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #ef4444;">
+          <h3 style="margin-top: 0; color: #b91c1c;">Cancellation Details</h3>
+          <p style="margin: 0 0 8px;"><strong>Class:</strong> ${className}</p>
+          <p style="margin: 0 0 8px;"><strong>Reason:</strong> ${reason}</p>
+          <p style="margin: 0; color: #dc2626; font-weight: bold;">Status: VOIDED</p>
+        </div>
+        
+        <p>If you believe this was done in error or would like to discuss this decision, please contact our administration office:</p>
+        <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0 0 8px;"><strong>Email:</strong> ${adminContactEmail}</p>
+          <p style="margin: 0;"><strong>Phone:</strong> ${adminContactPhone}</p>
+        </div>
+        
+        <p style="margin-top: 32px; color:#888; font-size: 14px;">
+          Best regards,<br>
+          <strong>The ArenaPro Team</strong>
+        </p>
+      </div>
+    </div>
+  `;
+
+  return await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to: `"${safeName}" <${toEmail}>`,
+    subject,
+    text,
+    html
+  });
+}
+
 module.exports = {
   sendPasswordResetEmail,
   sendWelcomeEmail,
@@ -630,5 +692,6 @@ module.exports = {
   sendCourtBookingReminder,
   sendClassSessionReminder,
   sendCoachClassSessionReminder,
-  sendPaymentRejectionEmail
+  sendPaymentRejectionEmail,
+  sendEnrollmentCancelledEmail
 };

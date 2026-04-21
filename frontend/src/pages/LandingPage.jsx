@@ -18,11 +18,11 @@ import '../styles/LandingPage.css';
 export default function LandingPage() {
   const sports = [
     { name: 'Badminton', img: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800' },
-    { name: 'Basketball', img: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&q=80&w=800' },
     { name: 'Cricket', img: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80&w=800' },
-    { name: 'Table Tennis', img: 'https://images.unsplash.com/photo-1534158914592-062992fbe900?auto=format&fit=crop&q=80&w=800' },
     { name: 'Football', img: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=800' },
-    { name: 'Tennis', img: 'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&q=80&w=800' }
+    { name: 'Karate', img: 'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=800' },
+    { name: 'Chess', img: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&q=80&w=800' },
+    { name: 'Dancing', img: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&q=80&w=800' }
   ];
 
   return (
@@ -32,14 +32,14 @@ export default function LandingPage() {
         <Link to="/" className="lp-brand">Arena<span>Pro</span></Link>
         <div className="lp-nav-actions">
           <Link to="/login" className="lp-btn-login">Sign In</Link>
-          <Link to="/register" className="lp-btn-register">Join Now</Link>
+          <Link to="/register" className="lp-btn-register">Sign Up</Link>
         </div>
       </nav>
 
       {/* Hero Section */}
       <header className="lp-hero">
         <div className="lp-hero-content">
-          <span className="lp-hero-tag">Elite Performance Hub</span>
+          <span className="lp-hero-tag">Elite Sports arena</span>
           <h1 className="lp-hero-title">Elevate Your Game at ArenaPro</h1>
           <p className="lp-hero-subtitle">
             Experience world-class courts, expert coaching, and a professional sporting community in the heart of Kuliyapitiya. Your journey to excellence starts here.
@@ -48,8 +48,8 @@ export default function LandingPage() {
             <Link to="/register" className="lp-btn-register" style={{ fontSize: '1.1rem', padding: '15px 40px' }}>
               Book Your Session
             </Link>
-            <Link to="/player/available-classes" className="lp-btn-login" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Join a Class <ArrowForward fontSize="small" />
+            <Link to="/login" className="lp-btn-login" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Sign in to book <ArrowForward fontSize="small" />
             </Link>
           </div>
         </div>
@@ -126,7 +126,7 @@ export default function LandingPage() {
           <div className="lp-contact-info">
             <h2 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '2rem' }}>Get in Touch</h2>
             <p style={{ fontSize: '1.2rem', color: '#64748b', marginBottom: '3rem' }}>
-              Have questions about our facilities or classes? Drop us a message or visit our complex.
+              Have questions about our facilities or classes? Visit our complex or give us a call.
             </p>
             
             <div className="lp-info-item">
@@ -154,23 +154,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <form className="lp-contact-form" onSubmit={(e) => e.preventDefault()}>
-            <div className="lp-form-group">
-              <label>Full Name</label>
-              <input type="text" className="lp-form-input" placeholder="Enter your name" />
-            </div>
-            <div className="lp-form-group">
-              <label>Email Address</label>
-              <input type="email" className="lp-form-input" placeholder="Enter your email" />
-            </div>
-            <div className="lp-form-group">
-              <label>Message</label>
-              <textarea className="lp-form-input" rows="4" placeholder="How can we help you?"></textarea>
-            </div>
-            <button className="lp-btn-register" style={{ width: '100%', border: 'none', cursor: 'pointer' }}>
-              Send Message
-            </button>
-          </form>
+
         </div>
       </section>
 
@@ -194,9 +178,11 @@ export default function LandingPage() {
             <h4>Our Sports</h4>
             <ul>
               <li><a href="#">Badminton</a></li>
-              <li><a href="#">Basketball</a></li>
               <li><a href="#">Cricket</a></li>
-              <li><a href="#">Table Tennis</a></li>
+              <li><a href="#">Football</a></li>
+              <li><a href="#">Karate</a></li>
+              <li><a href="#">Chess</a></li>
+              <li><a href="#">Dancing</a></li>
             </ul>
           </div>
         </div>

@@ -85,6 +85,11 @@ export default function PlayerBookCourt() {
   const [slipFile, setSlipFile] = useState(null);
   const [uploadingSlip, setUploadingSlip] = useState(false);
 
+  // 🔥 RESET booking ID if selections change to prevent stale ID errors
+  useEffect(() => {
+    setCreatedBookingId(null);
+  }, [selectedSportId, selectedCourtId, selectedDate, selectedTimeSlots]);
+
   // OTP Modal State
   const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [otpCode, setOtpCode] = useState("");
@@ -273,7 +278,7 @@ export default function PlayerBookCourt() {
     return TIME_SLOTS.map(slot => ({
       ...slot,
       available: !isSlotBlocked(slot.id)
-    })).filter(slot => slot.available);
+    }));
   }, [selectedDate, availability, selectedCourtId]);
 
 
@@ -470,8 +475,8 @@ export default function PlayerBookCourt() {
       const payment = {
         sandbox: true,
         merchant_id: payData.merchant_id,
-        return_url: window.location.origin + "/player/bookings",
-        cancel_url: window.location.origin + "/player/bookings",
+        return_url: window.location.origin + "/player/my-bookings",
+        cancel_url: window.location.origin + "/player/book-court",
         notify_url: import.meta.env.VITE_PAYHERE_NOTIFY_URL,
         order_id: payData.order_id,
         items: payData.items,
@@ -540,6 +545,9 @@ export default function PlayerBookCourt() {
       setOtpModalOpen(false);
       setPaymentModalOpen(true);
       setPaymentModalStep(2);
+      
+      // Update state for the submission handler
+      setCreatedBookingId(bookingId);
     } catch (err) {
       console.error(err);
       alert("Error preparing bank transfer booking.");
@@ -566,6 +574,11 @@ export default function PlayerBookCourt() {
         body: formData
       });
 
+      if (res.status === 401) {
+        alert("Your session has expired. Please log in again.");
+        return;
+      }
+
       const data = await res.json();
       if (!res.ok) {
         alert(data.message || "Failed to upload bank slip.");
@@ -574,7 +587,7 @@ export default function PlayerBookCourt() {
 
       alert("Bank slip uploaded successfully! It is pending admin verification.");
       setPaymentModalOpen(false);
-      navigate("/player/my-payments", { replace: true });
+      navigate("/player/my-bookings", { replace: true });
     } catch (err) {
       console.error("Upload error:", err);
       alert("An error occurred during slip upload.");
@@ -600,7 +613,10 @@ export default function PlayerBookCourt() {
 
           {/* STEP 1: Select Sport */}
           <section className="pbc-section glass-panel">
-            <h2 className="pbc-section-title">1. Select Sport</h2>
+            <h2 className="pbc-section-title">
+              <span className="pbc-step-badge">1</span>
+              Select Sport
+            </h2>
             {apiError && <div className="pbc-error-inline"><ErrorOutline fontSize="small" /> {apiError}</div>}
 
             {loadingSports ? (
@@ -629,7 +645,10 @@ export default function PlayerBookCourt() {
 
           {/* STEP 2: Date & Space */}
           <section className="pbc-section glass-panel">
-            <h2 className="pbc-section-title">2. Select Date & Space</h2>
+            <h2 className="pbc-section-title">
+              <span className="pbc-step-badge">2</span>
+              Select Date & Space
+            </h2>
 
             {!selectedSportId ? (
               <div className="pbc-hint-box">Please select a sport first.</div>
@@ -673,7 +692,10 @@ export default function PlayerBookCourt() {
 
           {/* STEP 3: Available Time Slots */}
           <section className="pbc-section glass-panel">
-            <h2 className="pbc-section-title">3. Available Time Slots</h2>
+            <h2 className="pbc-section-title">
+              <span className="pbc-step-badge">3</span>
+              Available Time Slots
+            </h2>
 
             {!selectedCourtId ? (
               <div className="pbc-hint-box">Please select a court and date to view time slots.</div>
@@ -686,16 +708,21 @@ export default function PlayerBookCourt() {
                 ) : (
                   dynamicTimeSlots.map(slot => {
                     const isSelected = selectedTimeSlots.includes(slot.id);
+                    const isAvailable = slot.available;
+                    
                     return (
                       <button
                         key={slot.id}
-                        className={`pbc-slot-card available ${isSelected ? "selected" : ""}`}
-                        onClick={() => handleTimeSlotToggle(slot.id)}
+                        className={`pbc-slot-card ${isAvailable ? "available" : "booked"} ${isSelected ? "selected" : ""}`}
+                        onClick={() => isAvailable && handleTimeSlotToggle(slot.id)}
+                        disabled={!isAvailable}
                       >
                         <div className="slot-time">{slot.label}</div>
                         <div className="slot-price-badge">
                           <span className="slot-price">LKR {Number(selectedCourt?.PricePerHour || 0).toLocaleString("en-LK")}</span>
-                          <span className="slot-badge">AVAILABLE</span>
+                          <span className={`slot-badge ${isAvailable ? "" : "booked"}`}>
+                            {isAvailable ? "AVAILABLE" : "BOOKED"}
+                          </span>
                         </div>
                       </button>
                     );

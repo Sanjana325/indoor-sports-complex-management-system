@@ -63,7 +63,8 @@ export default function Courts() {
       const data = await res.json();
       const rows = data.courts || [];
       setCourts(rows.map(r => ({
-        id: r.CourtID,
+        id: r.id,
+        rawId: r.rawId,
         sportsList: String(r.Sports || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean),
         sportsText: String(r.Sports || ""),
         name: r.CourtName,
@@ -91,7 +92,7 @@ export default function Courts() {
 
   const openAddModal = () => { setMode("ADD"); resetForm(); setIsModalOpen(true); };
   const openEditModal = (court) => {
-    setMode("EDIT"); setEditingId(court.id); setSelectedSports(court.sportsList || []);
+    setMode("EDIT"); setEditingId(court.rawId); setSelectedSports(court.sportsList || []);
     setName(court.name || ""); setCapacity(String(court.capacity ?? ""));
     setPricePerHour(String(court.pricePerHour ?? "")); setIsModalOpen(true);
   };
@@ -168,7 +169,7 @@ export default function Courts() {
             <tbody>
               {filteredCourts.map(c => (
                 <tr key={c.id}>
-                  <td style={{ fontWeight: 600, color: "var(--text-muted)" }}>{c.id}</td>
+                  <td><span className="table-id">{c.id}</span></td>
                   <td style={{ fontWeight: 700 }}>{c.name}</td>
                   <td>
                     <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>

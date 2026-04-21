@@ -108,9 +108,9 @@ function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onRej
         ]}
         renderRow={(p) => (
           <tr key={p.id}>
-            <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{p.id}</td>
-            {showBookingId && <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>#{p.bookingId || "N/A"}</td>}
-            {showEnrollmentId && <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>E-{String(p.enrollmentId || "000").padStart(3, '0')}</td>}
+            <td><span className="table-id">{p.id}</span></td>
+            {showBookingId && <td><span className="table-id" style={{ opacity: 0.8, fontSize: '0.75rem' }}>{p.bookingId || "N/A"}</span></td>}
+            {showEnrollmentId && <td><span className="table-id" style={{ opacity: 0.8, fontSize: '0.75rem' }}>{p.enrollmentId || "N/A"}</span></td>}
             <td><div style={{ fontWeight: 700 }}>{p.name}</div></td>
             <td>{p.method}</td>
             <td style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "0.85rem" }}>LKR {Number(p.amount).toLocaleString()}</td>

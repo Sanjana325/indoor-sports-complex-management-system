@@ -29,11 +29,11 @@ exports.listPayments = async (req, res, next) => {
         console.log("FIRST ROW OUT:", rows[0]);
 
         const payments = rows.map(r => ({
-            id: `PAY${String(r.PaymentID).padStart(3, '0')}`,
+            id: `PAY-${String(r.PaymentID).padStart(6, '0')}`,
             paymentIdStr: String(r.PaymentID),
             name: `${r.FirstName} ${r.LastName}`,
-            bookingId: r.BookingID || null,
-            enrollmentId: r.EnrollmentID || null,
+            bookingId: r.BookingID ? `BKG-${String(r.BookingID).padStart(6, '0')}` : null,
+            enrollmentId: r.EnrollmentID ? `ENR-${String(r.EnrollmentID).padStart(6, '0')}` : null,
             type: r.BookingPaymentID ? "Court Booking" : "Class Fee",
             method: r.Method === 'BANK_SLIP' ? "Bank Slip" : "Online",
             amount: Number(r.Amount),

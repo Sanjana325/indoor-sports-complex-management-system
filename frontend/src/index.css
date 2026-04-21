@@ -216,6 +216,21 @@ h1, h2, h3, h4, h5, h6 {
 .mt-2 { margin-top: var(--space-2); }
 .px-3 { padding-left: var(--space-3); padding-right: var(--space-3); }
 
+.table-id {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: var(--bg-main);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  white-space: nowrap;
+  display: inline-block;
+  letter-spacing: 0.5px;
+}
+
+
 .page-title {
   font-size: 1.875rem;
   font-weight: 800;
@@ -744,6 +759,12 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-main) !important;
 }
 
+.blocked-calendar-event .fc-event-title,
+.blocked-calendar-event .fc-event-time,
+.blocked-calendar-event .fc-list-event-title {
+  color: #dc2626 !important;
+}
+
 .fc-col-header-cell-cushion {
   font-weight: 700 !important;
   text-transform: uppercase;
@@ -922,6 +943,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* --- PROFESSIONAL PRINT & PDF EXPORT --- */
 @media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
   .admin-sidebar, 
   .floating-notif-container, 
   .no-print, 
@@ -929,11 +955,8 @@ h1, h2, h3, h4, h5, h6 {
   .btn-back, 
   .form-input, 
   select, 
-  .kpis,
-  .kpi-grid, 
   .chart-container, 
   .insight-panel, 
-  .analytics-info-tip,
   .sidebar-footer,
   aside,
   header,
@@ -948,9 +971,12 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden !important;
   }
 
-  /* 2. Reset Layout to Document View */
-  .admin-layout {
+  /* Reset Layout to Document View */
+  .admin-layout,
+  body {
     display: block !important;
+    background: white !important;
+    color: black !important;
   }
 
   .admin-main {
@@ -970,26 +996,52 @@ h1, h2, h3, h4, h5, h6 {
     max-width: 100% !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 10mm !important; /* Reduced margin */
+    padding: 10mm !important;
   }
 
-  /* 2.1 Collapse all Grids/Flex containers to save space */
+  /* Force grids containing the table or charts to yield blocks, ensuring full width utilization */
   div[style*="display: grid"],
   div[style*="display: flex"],
-  .arena-dashboard-grid,
   .profile-grid {
     display: block !important;
     gap: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
   }
 
-  /* 3. Focus on Title & Table */
-  .page-title {
-    font-size: 24pt !important;
-    -webkit-text-fill-color: #16a34a !important; /* Force color in print */
-    color: #16a34a !important;
+  /* Allow KPI Grid to print elegantly */
+  .kpi-grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 15px !important;
+    margin-bottom: 25px !important;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+  }
+
+  .kpi-grid > .arena-card {
+    flex: 1 1 200px !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    padding: 10px !important;
+    break-inside: avoid;
+    margin-right: 10px;
+  }
+
+  /* Focus on Title & Table */
+  .analytic-header {
     margin-bottom: 30px !important;
+    border-bottom: 2px solid #16a34a;
+    padding-bottom: 10px;
+    display: block !important;
+  }
+
+  .page-title {
+    font-size: 20pt !important;
+    -webkit-text-fill-color: #16a34a !important; 
+    color: #16a34a !important;
+    margin-bottom: 5px !important;
     display: block !important;
   }
 
@@ -997,24 +1049,42 @@ h1, h2, h3, h4, h5, h6 {
     border: 1px solid #ddd !important;
     box-shadow: none !important;
     width: 100% !important;
-    margin-top: 20px !important;
+    margin-top: 15px !important;
+    break-inside: auto;
+  }
+
+  .arena-table {
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+  }
+
+  .arena-table tr {
+    break-inside: avoid;
+    break-after: auto;
   }
 
   .arena-table th {
     background: #f8fafc !important;
     border-bottom: 2px solid #333 !important;
-    color: #000 !important;
+    color: #1e293b !important;
+    padding: 8px !important;
+    font-size: 9pt !important;
+    font-weight: 800 !important;
   }
 
   .arena-table td {
     border-bottom: 1px solid #eee !important;
-    color: #000 !important;
+    color: #1e293b !important;
+    padding: 8px !important;
+    font-size: 8.5pt !important;
   }
 
-  /* 4. Utilities for Print */
-  body {
-    background: white !important;
-    color: black !important;
+  .status-pill {
+    border: 1px solid #94a3b8 !important;
+    background: transparent !important;
+    color: #1e293b !important;
+    padding: 2px 6px !important;
   }
 
   .arena-card {
@@ -1024,3 +1094,4 @@ h1, h2, h3, h4, h5, h6 {
     margin: 0 !important;
   }
 }
+

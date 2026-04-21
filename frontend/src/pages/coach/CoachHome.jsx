@@ -138,7 +138,7 @@ export default function CoachHome() {
           }}
           events={events}
           eventClick={handleEventClick}
-          height="700px"
+          height="800px"
           eventTimeFormat={{
             hour: "2-digit",
             minute: "2-digit",
@@ -146,7 +146,7 @@ export default function CoachHome() {
             hour12: false,
           }}
           slotMinTime="06:00:00"
-          slotMaxTime="23:00:00"
+          slotMaxTime="24:00:00"
           allDaySlot={false}
           dayMaxEvents={true}
           nowIndicator={true}

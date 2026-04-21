@@ -20,4 +20,6 @@ router.post("/auth/forgot-password", authController.forgotPassword);
 
 router.post("/auth/reset-password", authController.resetPassword);
 
+router.put("/auth/profile", requireAuth, authController.updateProfile);
+
 module.exports = router;

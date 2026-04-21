@@ -105,12 +105,15 @@ exports.getMyBookings = async (req, res, next) => {
         const userId = req.user.UserID;
         const [rows] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
-                    c.CourtName, s.SportName
+                    c.CourtName, s.SportName,
+                    p.VerifiedAt AS ConfirmedAt
              FROM booking b
              JOIN court c ON b.CourtID = c.CourtID
              JOIN sport s ON b.SportID = s.SportID
+             LEFT JOIN bookingpayment bp ON b.BookingID = bp.BookingID
+             LEFT JOIN payment p ON bp.PaymentID = p.PaymentID
              WHERE b.UserID = ?
-             ORDER BY b.StartDateTime DESC`,
+             ORDER BY b.CreatedAt DESC`,
             [userId]
         );
         res.json({ bookings: rows });

@@ -209,12 +209,7 @@ export default function PlayerAvailableClasses() {
                             {cls.SportName.toUpperCase()}
                           </Typography>
                         </Box>
-                        <Chip 
-                          label={`${cls.EnrolledCount}/${cls.Capacity}`} 
-                          size="small"
-                          className="pac-card-badge"
-                        />
-                      </Box>
+                        </Box>
 
                       {/* TITLE */}
                       <Typography variant="h5" sx={{ color: 'var(--text-main)', fontWeight: 800, mb: 2, lineHeight: 1.3 }}>
@@ -253,12 +248,6 @@ export default function PlayerAvailableClasses() {
                           <Place sx={{ fontSize: 20 }} />
                           <Typography variant="body2" sx={{ color: 'var(--text-main)', fontWeight: 500 }}>
                             {cls.CourtNames || "Arena Court"}
-                          </Typography>
-                        </div>
-                        <div className="pac-detail-item" style={{ opacity: 0.8 }}>
-                          <Group sx={{ fontSize: 20 }} />
-                          <Typography variant="body2" sx={{ color: 'var(--primary-dark)', fontWeight: 700 }}>
-                            {cls.Capacity - cls.EnrolledCount} Slots Available
                           </Typography>
                         </div>
                       </Box>

@@ -46,7 +46,12 @@ function buildCoachQualificationsPayload(body) {
 exports.listUsers = async (req, res, next) => {
     try {
         const rows = await userModel.listAllForAdmin();
-        res.json({ users: rows });
+        const mapped = rows.map(r => ({
+            ...r,
+            id: `USR-${String(r.UserID).padStart(6, '0')}`,
+            rawId: r.UserID
+        }));
+        res.json({ users: mapped });
     } catch (err) {
         next(err);
     }

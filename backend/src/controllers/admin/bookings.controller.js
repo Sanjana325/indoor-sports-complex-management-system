@@ -5,7 +5,7 @@ exports.listBookings = async (req, res, next) => {
     try {
         const [rows] = await pool.query(
             `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
-                    c.CourtName, c.PricePerHour, u.FirstName, u.LastName, u.PhoneNumber, 
+                    c.CourtName, c.PricePerHour, u.FirstName, u.LastName, u.PhoneNumber, u.Email,
                     s.SportName, s.ColorCode,
                     p.PaymentID, p.Method as PaymentMethod
              FROM booking b
@@ -34,9 +34,10 @@ exports.listBookings = async (req, res, next) => {
             const timeStr = `${startH}:${startM} - ${endH}:${endM}`;
 
             return {
-                id: `B-${String(r.BookingID).padStart(6, '0')}`,
+                id: `BKG-${String(r.BookingID).padStart(6, '0')}`,
                 rawId: r.BookingID,
                 playerName: `${r.FirstName} ${r.LastName}`,
+                playerEmail: r.Email,
                 court: r.CourtName,
                 date: dateStr,
                 time: timeStr,
@@ -48,7 +49,7 @@ exports.listBookings = async (req, res, next) => {
                 pricePerHour: r.PricePerHour,
                 startRaw: r.StartDateTime,
                 endRaw: r.EndDateTime,
-                paymentId: r.PaymentID ? `PAY${String(r.PaymentID).padStart(3, '0')}` : "-",
+                paymentId: r.PaymentID ? `PAY-${String(r.PaymentID).padStart(6, '0')}` : "-",
                 paymentMethod: r.PaymentID ? (r.PaymentMethod === 'BANK_SLIP' ? "Bank Slip" : "Online") : "-"
             };
         });

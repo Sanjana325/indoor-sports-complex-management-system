@@ -7,7 +7,9 @@
   width: 100%;
   animation: pbc-fade-in 0.4s ease-out;
   color: var(--player-text-main);
-  padding: 2rem 5%;
+  padding: 2.5rem 5%;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: calc(100vh - 64px);
 }
 
 @keyframes pbc-fade-in {
@@ -23,12 +25,11 @@
 }
 
 .pbc-title-glass {
-  font-size: 2.2rem;
-  font-weight: 800;
+  font-size: 2.25rem;
+  font-weight: 900;
   margin: 0;
-  color: var(--player-primary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  color: var(--player-navy);
+  letter-spacing: -1px;
 }
 
 .pbc-back-btn {
@@ -74,19 +75,43 @@
 .pbc-section {
   background: white;
   border-radius: var(--player-radius);
-  padding: 2rem;
-  box-shadow: var(--player-shadow);
+  padding: 2.5rem;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.04), 0 10px 20px -10px rgba(0, 0, 0, 0.04);
   border: 1px solid #f1f5f9;
+  border-top: 5px solid var(--player-primary);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pbc-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
 }
 
 .pbc-section-title {
-  font-size: 1.25rem;
-  font-weight: 800;
-  margin-bottom: 2rem;
-  color: var(--player-text-main);
+  font-size: 1.35rem;
+  font-weight: 900;
+  margin-bottom: 2.5rem;
+  color: var(--player-navy);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+  letter-spacing: -0.5px;
+}
+
+.pbc-step-badge {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--player-primary) 0%, var(--player-primary-dark) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
 }
 
 /* STEP 1: SPORTS */
@@ -103,11 +128,12 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  background: #f8fafc;
-  border: 2px solid #f1f5f9;
-  border-radius: 16px;
+  background: white;
+  border: 1px solid #eef2f6;
+  border-radius: 20px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
 .sport-icon {
@@ -204,6 +230,23 @@
   box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1) !important;
 }
 
+.pbc-slot-card.booked {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  cursor: not-allowed !important;
+  opacity: 0.8;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+.pbc-slot-card.booked .slot-time {
+  color: var(--text-muted) !important;
+}
+
+.pbc-slot-card.booked .slot-price {
+  color: #94a3b8 !important;
+}
+
 .slot-time {
   font-size: 1rem !important;
   font-weight: 800 !important;
@@ -240,15 +283,41 @@
   box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
 }
 
+.slot-badge.booked {
+  background: #ef4444 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
+}
+
 .pbc-slot-card.selected .slot-badge {
   background: var(--primary-dark) !important;
 }
 
 /* SIDEBAR SUMMARY */
+.pbc-summary-card {
+  background: white;
+  border-radius: var(--player-radius);
+  padding: 2rem;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f1f5f9;
+  position: relative;
+  overflow: hidden;
+}
+
+.pbc-summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle at top right, rgba(22, 163, 74, 0.05), transparent);
+  pointer-events: none;
+}
+
 .summary-title {
-  font-weight: 800;
-  font-size: 1.25rem;
-  margin-bottom: 1.5rem;
+  font-weight: 900;
+  font-size: 1.35rem;
+  margin-bottom: 1.75rem;
+  color: var(--player-navy);
+  letter-spacing: -0.5px;
 }
 
 .summary-row {

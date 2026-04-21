@@ -212,6 +212,29 @@ exports.login = async (req, res, next) => {
 
         const token = signToken({ userId: user.UserID, role: user.Role });
 
+        let specializations = "";
+        let qualifications = "";
+        
+        if (user.Role === "COACH") {
+            const [coachRows] = await pool.query(
+                `SELECT 
+                    GROUP_CONCAT(DISTINCT s.SportName ORDER BY s.SportName SEPARATOR ', ') AS Specializations,
+                    GROUP_CONCAT(DISTINCT q.QualificationName ORDER BY q.QualificationName SEPARATOR ', ') AS Qualifications
+                 FROM Coach c
+                 LEFT JOIN CoachQualification cq ON cq.CoachID = c.CoachID
+                 LEFT JOIN Qualification q ON q.QualificationID = cq.QualificationID
+                 LEFT JOIN CoachSport cs ON cs.CoachID = c.CoachID
+                 LEFT JOIN Sport s ON s.SportID = cs.SportID
+                 WHERE c.UserID = ?
+                 GROUP BY c.UserID`,
+                [user.UserID]
+            );
+            if (coachRows.length > 0) {
+                specializations = coachRows[0].Specializations || "";
+                qualifications = coachRows[0].Qualifications || "";
+            }
+        }
+
         res.json({
             token,
             mustChangePassword: Boolean(user.MustChangePassword),
@@ -220,7 +243,10 @@ exports.login = async (req, res, next) => {
                 firstName: user.FirstName,
                 lastName: user.LastName,
                 email: user.Email,
-                role: user.Role
+                phoneNumber: user.PhoneNumber,
+                role: user.Role,
+                specialization: specializations,
+                qualifications: qualifications
             }
         });
     } catch (err) {
@@ -377,6 +403,45 @@ exports.resetPassword = async (req, res, next) => {
         await userModel.markPasswordResetTokenUsed(row.ResetID);
 
         res.json({ message: "Password reset successful" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+exports.updateProfile = async (req, res, next) => {
+    try {
+        const userId = req.user.UserID;
+        const body = req.body || {};
+        
+        const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
+        const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
+        const phoneNumber = typeof body.phoneNumber === "string" ? body.phoneNumber.trim() : "";
+
+        if (!firstName || !lastName) {
+            return res.status(400).json({ message: "First name and last name are required" });
+        }
+
+        const currentUser = await userModel.findById(userId);
+        if (!currentUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        await userModel.updateUserById(userId, {
+            firstName,
+            lastName,
+            phoneNumber,
+            email: currentUser.Email,
+            role: currentUser.Role
+        });
+
+        res.json({
+            message: "Profile updated successfully",
+            user: {
+                firstName,
+                lastName,
+                phoneNumber
+            }
+        });
     } catch (err) {
         next(err);
     }

@@ -138,7 +138,7 @@ export default function Register() {
       localStorage.setItem("role", user.role);
 
       setSuccess("Registration successful. Redirecting...");
-      navigate("/player");
+      window.location.href = "/player";
     } catch (err) {
       setError("Cannot connect to backend. Make sure the server is running.");
     } finally {

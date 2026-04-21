@@ -1,4 +1,5 @@
 const { pool } = require("../../config/db");
+const emailService = require("../../services/email.service");
 
 // Get all enrollments for admin
 exports.listEnrollments = async (req, res, next) => {
@@ -61,16 +62,40 @@ exports.listEnrollments = async (req, res, next) => {
 exports.cancelEnrollment = async (req, res, next) => {
     try {
         const enrollmentId = req.params.id;
+        const { reason } = req.body;
 
-        const [enrRes] = await pool.query("SELECT * FROM enrollment WHERE EnrollmentID = ?", [enrollmentId]);
+        // 1. Fetch student and class details for the email
+        const [enrRes] = await pool.query(`
+            SELECT 
+                u.Email, 
+                u.FirstName, 
+                u.LastName,
+                c.Title as ClassName
+            FROM enrollment e
+            JOIN useraccount u ON e.UserID = u.UserID
+            JOIN class c ON e.ClassID = c.ClassID
+            WHERE e.EnrollmentID = ?
+        `, [enrollmentId]);
+
         if (enrRes.length === 0) {
             return res.status(404).json({ message: "Enrollment not found" });
         }
+
+        const student = enrRes[0];
         
+        // 2. Perform the cancellation
         await pool.query(
             "UPDATE enrollment SET Status = 'CANCELLED' WHERE EnrollmentID = ?",
             [enrollmentId]
         );
+
+        // 3. Send the notification email asynchronously
+        emailService.sendEnrollmentCancelledEmail({
+            toEmail: student.Email,
+            toName: `${student.FirstName} ${student.LastName}`,
+            className: student.ClassName,
+            reason: reason || "Administrative decision"
+        }).catch(err => console.error("Failed to send cancellation email:", err));
 
         res.json({ message: "Enrollment cancelled successfully" });
     } catch (err) {

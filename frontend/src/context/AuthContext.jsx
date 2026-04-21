@@ -19,7 +19,10 @@ export const AuthProvider = ({ children }) => {
         firstName: localStorage.getItem("firstName"),
         lastName: localStorage.getItem("lastName"),
         email: localStorage.getItem("email"),
+        phone: localStorage.getItem("phone"),
         userId: localStorage.getItem("userId"),
+        specialization: localStorage.getItem("specialization") || "",
+        qualifications: localStorage.getItem("qualifications") || "",
         mustChangePassword: localStorage.getItem("mustChangePassword") === "true"
       });
     }
@@ -40,7 +43,10 @@ export const AuthProvider = ({ children }) => {
       firstName: data.user.firstName,
       lastName: data.user.lastName,
       email: data.user.email || email,
+      phone: data.user.phoneNumber || "",
       userId: String(data.user.userId || ""),
+      specialization: data.user.specialization || "",
+      qualifications: data.user.qualifications || "",
       mustChangePassword: Boolean(data.mustChangePassword)
     };
 
@@ -50,7 +56,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("firstName", userData.firstName || "");
     localStorage.setItem("lastName", userData.lastName || "");
     localStorage.setItem("email", userData.email);
+    localStorage.setItem("phone", userData.phone || "");
     localStorage.setItem("role", userData.role);
+    localStorage.setItem("specialization", userData.specialization || "");
+    localStorage.setItem("qualifications", userData.qualifications || "");
     localStorage.setItem("mustChangePassword", userData.mustChangePassword ? "true" : "false");
 
     setUser(userData);
@@ -70,6 +79,7 @@ export const AuthProvider = ({ children }) => {
       if (updates.firstName !== undefined) localStorage.setItem("firstName", updates.firstName || "");
       if (updates.lastName !== undefined) localStorage.setItem("lastName", updates.lastName || "");
       if (updates.email !== undefined) localStorage.setItem("email", updates.email || "");
+      if (updates.phone !== undefined) localStorage.setItem("phone", updates.phone || "");
       if (updates.role !== undefined) localStorage.setItem("role", updates.role || "");
       if (updates.mustChangePassword !== undefined) {
         localStorage.setItem("mustChangePassword", updates.mustChangePassword ? "true" : "false");

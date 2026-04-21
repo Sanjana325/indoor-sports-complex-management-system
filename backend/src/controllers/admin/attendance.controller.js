@@ -84,7 +84,8 @@ exports.getSessionAttendance = async (req, res, next) => {
         );
 
         const studentList = students.map(s => ({
-            enrollmentId: s.EnrollmentID,
+            enrollmentId: `ENR-${String(s.EnrollmentID).padStart(6, '0')}`,
+            rawEnrollmentId: s.EnrollmentID,
             userId: s.UserID,
             name: `${s.FirstName} ${s.LastName}`,
             status: s.AttendanceStatus,

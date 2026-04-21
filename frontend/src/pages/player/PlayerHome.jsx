@@ -9,7 +9,6 @@ import {
   CreditCard,
   Schedule,
   TrendingUp,
-  NotificationsActive,
   SportsTennis,
   School
 } from "@mui/icons-material";
@@ -65,11 +64,10 @@ export default function PlayerHome() {
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const todaySessions = bookings.filter(b => b.Date?.split('T')[0] === today).length;
-    const activeClassesCount = classes.filter(c => c.EnrollmentStatus === 'ENROLLED').length;
-    const pendingActions = payments.filter(p => p.Status === 'PENDING' && p.Method === 'BANK_SLIP' && !p.SlipPath).length;
+    const activeClassesCount = classes ? classes.length : 0;
     
-    return { todaySessions, activeClassesCount, pendingActions };
-  }, [bookings, classes, payments]);
+    return { todaySessions, activeClassesCount };
+  }, [bookings, classes]);
 
   const maxOffset = Math.max(0, (sports.length - 1) * CARD_WIDTH);
   const slidePrev = () => setOffset(prev => Math.max(prev - CARD_WIDTH, 0));
@@ -105,15 +103,7 @@ export default function PlayerHome() {
               <span className="stat-value">{stats.todaySessions}</span>
             </div>
           </div>
-          <div className="stat-card-micro">
-            <div className="stat-icon-wrap" style={{ background: 'rgba(225, 29, 72, 0.2)', color: '#fb7185' }}>
-              <NotificationsActive fontSize="small" className={stats.pendingActions > 0 ? "pt-pulse" : ""} />
-            </div>
-            <div className="stat-info-wrap">
-              <span className="stat-label">Pending Actions</span>
-              <span className="stat-value">{stats.pendingActions}</span>
-            </div>
-          </div>
+
         </div>
       </section>
 

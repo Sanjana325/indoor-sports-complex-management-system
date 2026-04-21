@@ -11,6 +11,12 @@ export function useAnalytics(type) {
   const [preset, setPreset] = useState("MONTH");
   const [rangeMode, setRangeMode] = useState("PRESET");
   const [customRange, setCustomRange] = useState({ start: "", end: "" });
+  const [methodOptions, setMethodOptions] = useState("ALL");
+  const [activeMethod, setActiveMethod] = useState("ALL");
+  const [categoryOptions, setCategoryOptions] = useState("ALL");
+  const [activeCategory, setActiveCategory] = useState("ALL");
+  const [classIdOptions, setClassIdOptions] = useState("ALL");
+  const [activeClassId, setActiveClassId] = useState("ALL");
   
   const [data, setData] = useState({
     reports: [],
@@ -52,18 +58,19 @@ export function useAnalytics(type) {
 
   const [activeRange, setActiveRange] = useState(() => computePresetRange("MONTH"));
 
-  const fetchData = useCallback(async (range) => {
+  const fetchData = useCallback(async (range, method, category, classId) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/reports/${type}?start=${range.start}&end=${range.end}`, {
+      const res = await fetch(`${API_BASE}/api/admin/reports/${type}?start=${range.start}&end=${range.end}&method=${method}&category=${category}&classId=${classId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const json = await res.json();
       setData({
         reports: json.reports || [],
         kpis: json.kpis || {},
-        charts: json.charts || {}
+        charts: json.charts || {},
+        metadata: json.metadata || {}
       });
     } catch (err) {
       console.error(`[Analytics Hook] Fetch failed for ${type}:`, err);
@@ -74,8 +81,8 @@ export function useAnalytics(type) {
 
   // Initial load
   useEffect(() => {
-    fetchData(activeRange);
-  }, [fetchData, activeRange]);
+    fetchData(activeRange, activeMethod, activeCategory, activeClassId);
+  }, [fetchData, activeRange, activeMethod, activeCategory, activeClassId]);
 
   const updateRange = () => {
     let range;
@@ -86,6 +93,9 @@ export function useAnalytics(type) {
       range = computePresetRange(preset);
     }
     setActiveRange(range);
+    setActiveMethod(methodOptions);
+    setActiveCategory(categoryOptions);
+    setActiveClassId(classIdOptions);
   };
 
   return {
@@ -102,6 +112,12 @@ export function useAnalytics(type) {
       },
       customRange,
       setCustomRange: (val) => { setCustomRange(val); setRangeMode("CUSTOM"); },
+      methodOptions,
+      setMethodOptions,
+      categoryOptions,
+      setCategoryOptions,
+      classIdOptions,
+      setClassIdOptions,
       updateRange
     }
   };

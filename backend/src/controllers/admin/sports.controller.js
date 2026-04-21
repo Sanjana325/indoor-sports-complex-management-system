@@ -4,7 +4,12 @@ exports.listSports = async (req, res, next) => {
     try {
         const search = String(req.query.search || "").trim();
         const rows = await sportModel.listSports(search);
-        res.json({ sports: rows });
+        const mapped = rows.map(r => ({
+            ...r,
+            id: `SPT-${String(r.SportID).padStart(6, '0')}`,
+            rawId: r.SportID
+        }));
+        res.json({ sports: mapped });
     } catch (err) {
         next(err);
     }

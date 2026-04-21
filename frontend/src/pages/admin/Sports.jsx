@@ -101,8 +101,8 @@ export default function Sports() {
                             <tr><td colSpan="5" style={{ textAlign: "center", padding: "2rem" }}>No sports detected.</td></tr>
                         ) : (
                             sports.map(s => (
-                                <tr key={s.SportID}>
-                                    <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>S-{String(s.SportID).padStart(3, '0')}</td>
+                                <tr key={s.id}>
+                                    <td><span className="table-id">{s.id}</span></td>
                                     <td style={{ fontWeight: 700, fontSize: "1rem" }}>{String(s.SportName || "").toUpperCase()}</td>
                                     <td>
                                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>

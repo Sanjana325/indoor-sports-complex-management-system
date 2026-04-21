@@ -103,9 +103,10 @@ export default function Bookings() {
             ) : (
               filtered.map(b => (
                 <tr key={b.id}>
-                  <td style={{ fontWeight: 600, color: "var(--text-muted)", fontSize: "0.8rem" }}>{b.id}</td>
+                  <td><span className="table-id">{b.id}</span></td>
                   <td>
                     <div style={{ fontWeight: 700 }}>{b.playerName}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>{b.playerEmail}</div>
                   </td>
                   <td>
                     <div style={{ fontWeight: 600 }}>{b.court}</div>
@@ -121,7 +122,11 @@ export default function Bookings() {
                     <div style={{ fontSize: "0.8rem" }}>{formatBookedDate(b.createdAt)}</div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{formatBookedTime(b.createdAt)}</div>
                   </td>
-                  <td style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)" }}>{b.paymentId}</td>
+                  <td>
+                     {b.paymentId !== "-" ? (
+                        <span className="table-id" style={{ opacity: 0.8, fontSize: '0.75rem' }}>{b.paymentId}</span>
+                     ) : "-"}
+                   </td>
                   <td style={{ fontSize: "0.85rem" }}>
                     {b.paymentMethod !== "-" ? (
                       <span className="status-pill" style={{ background: "var(--bg-main)", color: "var(--text-main)", fontSize: "0.7rem" }}>

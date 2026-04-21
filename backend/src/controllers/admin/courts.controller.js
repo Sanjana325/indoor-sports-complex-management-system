@@ -11,7 +11,12 @@ exports.listCourts = async (req, res, next) => {
     try {
         const search = String(req.query.search || "").trim();
         const rows = await courtModel.listCourts(search);
-        res.json({ courts: rows });
+        const mapped = rows.map(r => ({
+            ...r,
+            id: `CRT-${String(r.CourtID).padStart(6, '0')}`,
+            rawId: r.CourtID
+        }));
+        res.json({ courts: mapped });
     } catch (err) {
         next(err);
     }

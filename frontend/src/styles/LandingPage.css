@@ -207,6 +207,20 @@
   padding: 100px 8%;
 }
 
+#about {
+  background: 
+    linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(6, 78, 59, 0.85) 100%),
+    url('/stadium-bg.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed; /* Parallax effect */
+  color: white;
+}
+
+#about .lp-section-title {
+  color: white;
+}
+
 .lp-section-title {
   font-size: 3rem;
   font-weight: 900;
@@ -217,7 +231,7 @@
 
 .lp-about-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 2rem;
 }
 
@@ -226,14 +240,28 @@
   padding: 3rem 2rem;
   border-radius: 24px;
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-  transition: all 0.3s;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid #f1f5f9;
+}
+
+#about .lp-feature-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
 .lp-feature-card:hover {
   transform: translateY(-10px);
   box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1);
   border-color: var(--lp-primary);
+}
+
+#about .lp-feature-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(22, 163, 74, 0.6);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .lp-feature-icon {
@@ -255,9 +283,17 @@
   margin-bottom: 1rem;
 }
 
+#about .lp-feature-name {
+  color: white;
+}
+
 .lp-feature-desc {
   color: #64748b;
   line-height: 1.6;
+}
+
+#about .lp-feature-desc {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Sports Gallery */
@@ -309,10 +345,10 @@
 
 /* Contact Section */
 .lp-contact-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 4rem;
-  align-items: start;
+  display: flex;
+  justify-content: center;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .lp-contact-info h3 {
@@ -438,4 +474,5 @@
   .lp-hero-title { font-size: 2.8rem; }
   .lp-hero { padding: 0 5%; }
   .lp-section { padding: 60px 5%; }
+  .lp-about-grid { grid-template-columns: 1fr; }
 }

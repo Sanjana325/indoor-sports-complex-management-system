@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CancelClassModal from "../../components/CancelClassModal";
 
 function formatDays(days) {
@@ -92,7 +93,6 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
                   <div key={s.id} className="arena-list-item">
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ fontWeight: 600 }}>{s.FirstName} {s.LastName}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.Email} • {s.PhoneNumber}</span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Enrolled: {new Date(s.EnrolledAt).toLocaleDateString()}</span>
                     </div>
                   </div>
@@ -111,6 +111,7 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
 }
 
 export default function MyClasses() {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -151,8 +152,7 @@ export default function MyClasses() {
     }
   };
 
-  // cancelled sessions (UI-only)
-  const [cancelledSessions, setCancelledSessions] = useState([]);
+  // cancelled sessions state removed for persistent history flow
   const [isCancelOpen, setIsCancelOpen] = useState(false);
 
   // The backend already filters classes by CoachID, so we don't need to filter by name here.
@@ -182,11 +182,9 @@ export default function MyClasses() {
 
       const data = await res.json();
       if (res.ok) {
-        setCancelledSessions((prev) => [{ ...payload, createdAt: new Date().toISOString() }, ...prev]);
         setIsCancelOpen(false);
-        alert("Class session cancelled successfully.");
-        // Refresh classes to update enrollment counts if needed (though session status doesn't affect main class data here)
-        fetchMyClasses();
+        alert("Class session cancelled successfully. Redirecting to cancellation history...");
+        navigate("/coach/cancelled-sessions");
       } else {
         alert(data.message || "Failed to cancel session");
       }
@@ -288,18 +286,7 @@ export default function MyClasses() {
         </table>
       </div>
 
-      {cancelledSessions.length > 0 && (
-        <div className="mc-cancel-log">
-          <div className="mc-cancel-log-title">Recently Cancelled Sessions (UI-only)</div>
-          <ul className="mc-cancel-log-list">
-            {cancelledSessions.slice(0, 4).map((x) => (
-              <li key={x.sessionId}>
-                <strong>{x.dateISO}</strong> — {x.classId}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+
 
       {isCancelOpen && (
         <CancelClassModal

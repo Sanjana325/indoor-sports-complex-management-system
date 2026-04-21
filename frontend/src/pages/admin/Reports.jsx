@@ -10,7 +10,7 @@ const REPORTS = [
   },
   { 
     key: "PAYMENTS", 
-    title: "Payments Report", 
+    title: "Financial Report", 
     desc: "Financial summary with payment status breakdown", 
     icon: "dollar",
     path: "/admin/reports/payments"
@@ -51,7 +51,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "var(--space-2)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--space-2)" }}>
         {REPORTS.map((r) => (
           <div key={r.key} className="arena-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "flex-start", marginBottom: 'var(--space-2)' }}>
@@ -62,19 +62,21 @@ export default function Reports() {
               </div>
             </div>
             <button 
-              className="btn btn-secondary mt-auto" 
-              style={{ width: "100%" }} 
+              className="btn mt-auto" 
+              style={{ 
+                width: "100%", 
+                background: "var(--primary-gradient)", 
+                color: "white", 
+                border: "none",
+                fontWeight: 600,
+                boxShadow: "0 4px 6px -1px rgba(22, 163, 74, 0.2)"
+              }} 
               onClick={() => navigate(r.path)}
             >
               Open Analytics Dashboard
             </button>
           </div>
         ))}
-      </div>
-      
-      <div className="arena-card mt-4" style={{ background: 'var(--bg-main)', border: '1px dashed var(--primary-light)' }}>
-         <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary-dark)', marginBottom: '10px' }}>💡 Pro Tip</h3>
-         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Each report dashboard now supports real-time filtering, interactive trend charts, and PDF/CSV exports for professional record keeping.</p>
       </div>
     </div>
   );
