@@ -10,7 +10,6 @@ import {
   Card, Box, Typography, Button, IconButton
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import { BANK_DETAILS } from "../../utils/constants";
 import "../../styles/PlayerBookCourt.css";
 
 
@@ -98,6 +97,23 @@ export default function PlayerBookCourt() {
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
+  const [bankDetails, setBankDetails] = useState(null);
+
+  // fetches official bank account details from the centralized backend config
+  useEffect(() => {
+    async function fetchBankDetails() {
+      try {
+        const res = await fetch(`${API_BASE}/api/config/bank-details`);
+        const data = await res.json();
+        if (data.success) {
+          setBankDetails(data.bankDetails);
+        }
+      } catch (err) {
+        console.error("Failed to load bank details from server", err);
+      }
+    }
+    fetchBankDetails();
+  }, []);
 
   useEffect(() => {
     let interval;
@@ -248,10 +264,7 @@ export default function PlayerBookCourt() {
     const slotStart = new Date(`${selectedDate}T${String(startH).padStart(2, "0")}:00:00`);
     const slotEnd = new Date(`${selectedDate}T${String(startH + 1).padStart(2, "0")}:00:00`);
 
-    // Check if slot has already passed
-    if (slotStart < new Date()) {
-        return true;
-    }
+    // Check bookings
 
     // Check bookings
     const hasBooking = availability.bookings.some(b => {
@@ -276,7 +289,18 @@ export default function PlayerBookCourt() {
 
 
   const dynamicTimeSlots = useMemo(() => {
-    return TIME_SLOTS.map(slot => ({
+    const isToday = selectedDate === todayISO();
+    const now = new Date();
+
+    return TIME_SLOTS.filter(slot => {
+      // automatically hide slots that have already started if viewing today's schedule
+      if (isToday) {
+        const [startH] = slot.id.split("-").map(Number);
+        const slotStart = new Date(`${selectedDate}T${String(startH).padStart(2, "0")}:00:00`);
+        if (slotStart < now) return false;
+      }
+      return true;
+    }).map(slot => ({
       ...slot,
       available: !isSlotBlocked(slot.id)
     }));
@@ -823,21 +847,23 @@ export default function PlayerBookCourt() {
                     <Box className="pbc-bank-details-card" style={{ marginTop: 0, padding: '12px' }}>
                         <div className="bank-info-row">
                             <span className="info-label">Bank</span>
-                            <span className="info-value">{BANK_DETAILS.bankName}</span>
+                            <span className="info-value">{bankDetails?.bankName || "Loading..."}</span>
                         </div>
                         <div className="bank-info-row">
                             <span className="info-label">Branch</span>
-                            <span className="info-value">{BANK_DETAILS.branch}</span>
+                            <span className="info-value">{bankDetails?.branch || "Loading..."}</span>
                         </div>
                         <div className="bank-info-row">
                             <span className="info-label">Owner</span>
-                            <span className="info-value">{BANK_DETAILS.accountName}</span>
+                            <span className="info-value">{bankDetails?.accountName || "Loading..."}</span>
                         </div>
                         <div className="bank-info-row">
                             <span className="info-label">Acc No</span>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <span className="info-value">{BANK_DETAILS.accountNumber}</span>
-                              <button className="copy-btn" onClick={() => copyToClipboard(BANK_DETAILS.accountNumber)}>Copy</button>
+                              <span className="info-value">{bankDetails?.accountNumber || "Loading..."}</span>
+                              {bankDetails && (
+                                <button className="copy-btn" onClick={() => copyToClipboard(bankDetails.accountNumber)}>Copy</button>
+                              )}
                             </Box>
                         </div>
                     </Box>

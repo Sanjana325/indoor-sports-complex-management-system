@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Card, Box, Typography, Button, IconButton
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { CreditCard, Receipt } from "@mui/icons-material";
-import { BANK_DETAILS } from "../utils/constants";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -14,6 +13,23 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
   const [step, setStep] = useState(1);
   const [slipFile, setSlipFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [bankDetails, setBankDetails] = useState(null);
+
+  // retrieves official payment destination details from the central system configuration
+  useEffect(() => {
+    async function fetchBankDetails() {
+      try {
+        const res = await fetch(`${API_BASE}/api/config/bank-details`);
+        const data = await res.json();
+        if (data.success) {
+          setBankDetails(data.bankDetails);
+        }
+      } catch (err) {
+        console.error("Failed to load bank details", err);
+      }
+    }
+    if (open) fetchBankDetails();
+  }, [open]);
 
   // initiates the PayHere gateway flow for instant credit card / online transactions
   const handleOnlinePayment = async () => {
@@ -161,22 +177,23 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
             </Typography>
             
             <Box className="pbc-bank-card" sx={{ mb: 4 }}>
-              <div className="pbc-bank-row">
-                <span className="pbc-bank-label">Bank</span>
-                <span className="pbc-bank-value">{BANK_DETAILS.bankName}</span>
-              </div>
-              <div className="pbc-bank-row">
-                <span className="pbc-bank-label">Branch</span>
-                <span className="pbc-bank-value">{BANK_DETAILS.branch}</span>
-              </div>
-              <div className="pbc-bank-row">
-                <span className="pbc-bank-label">Owner</span>
-                <span className="pbc-bank-value">{BANK_DETAILS.accountName}</span>
-              </div>
-              <div className="pbc-bank-row pbc-bank-acc-row">
-                <span className="pbc-bank-label">Acc Number</span>
-                <span className="pbc-bank-value pbc-acc-no">{BANK_DETAILS.accountNumber}</span>
-              </div>
+               <div className="pbc-bank-row">
+                 <span className="pbc-bank-label">Bank</span>
+                 <span className="pbc-bank-value">{bankDetails?.bankName || "Loading..."}</span>
+               </div>
+               <div className="pbc-bank-row">
+                 <span className="pbc-bank-label">Branch</span>
+                 <span className="pbc-bank-label">Branch</span>
+                 <span className="pbc-bank-value">{bankDetails?.branch || "Loading..."}</span>
+               </div>
+               <div className="pbc-bank-row">
+                 <span className="pbc-bank-label">Owner</span>
+                 <span className="pbc-bank-value">{bankDetails?.accountName || "Loading..."}</span>
+               </div>
+               <div className="pbc-bank-row pbc-bank-acc-row">
+                 <span className="pbc-bank-label">Acc Number</span>
+                 <span className="pbc-bank-value pbc-acc-no">{bankDetails?.accountNumber || "Loading..."}</span>
+               </div>
             </Box>
 
             <Typography variant="body2" className="pbc-dialog-subtext" sx={{ mb: 1.5, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>Upload Transaction Slip</Typography>

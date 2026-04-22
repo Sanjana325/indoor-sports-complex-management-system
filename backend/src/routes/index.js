@@ -7,9 +7,11 @@ const adminRoutes = require("./admin.routes");
 const playerRoutes = require("./player.routes");
 const staffRoutes = require("./staff.routes");
 const coachRoutes = require("./coach.routes");
+const configRoutes = require("./config.routes");
 const paymentsController = require("../controllers/player/payments.controller");
 
 router.use(healthRoutes);
+router.use(configRoutes);
 router.post("/payments/notify", (req, res, next) => {
     console.log(">>> [GLOBAL] POST /api/payments/notify hit! Body:", JSON.stringify(req.body));
     next();

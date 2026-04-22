@@ -45,6 +45,26 @@ function formatTimeRange(startIso, endIso) {
   return `${formatTime(s)} - ${formatTime(e)}`;
 }
 
+// abbreviated month names for the date display cards
+const MONTH_NAMES = [
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+];
+
+// detailed timestamp formatter for the booking audit trail
+const formatFullTimestamp = (isoString) => {
+  if (!isoString) return "—";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 // management page for players to view their full reservation history and status
 export default function PlayerMyBookings() {
   const [sortOrder, setSortOrder] = useState("NEWEST");
@@ -104,12 +124,14 @@ export default function PlayerMyBookings() {
 
   // handles real-time filtering and sorting of the booking list based on user selection
   const computed = useMemo(() => {
-    const withMeta = rows.filter(r => r.rawStatus !== 'PENDING_PAYMENT').map((r) => {
+    // processes and enriches raw booking data with UI-friendly flags
+    const withMeta = rows.map((r) => {
       const dateObj = new Date(r.date);
       const dateKey = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
       
       const isConfirmed = r.rawStatus === 'CONFIRMED';
-      const isPending = r.rawStatus === 'WAITING_VERIFICATION';
+      // treats both manual verification and unpaid state as 'Pending' in the UI
+      const isPending = r.rawStatus === 'WAITING_VERIFICATION' || r.rawStatus === 'PENDING_PAYMENT';
       const isCancelled = r.rawStatus === 'CANCELLED' || r.rawStatus === 'EXPIRED';
 
       return { 
@@ -162,7 +184,13 @@ export default function PlayerMyBookings() {
         <header className="pt-header">
           <div className="pt-header-content">
             <h1 className="pt-title">My Bookings</h1>
-            <p className="pt-subtitle">Track and manage your sessions at ArenaPro</p>
+            <p className="pt-subtitle">
+              Track and manage your sessions at ArenaPro. 
+              <span style={{ display: 'block', fontSize: '0.75rem', marginTop: '4px', opacity: 0.8, color: 'var(--pt-primary)' }}>
+                <Schedule sx={{ fontSize: '0.85rem', verticalAlign: 'middle', mr: 0.5 }} />
+                Unpaid bookings expire after 10 minutes.
+              </span>
+            </p>
           </div>
 
           <div className="pt-sort-wrapper">
