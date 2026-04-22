@@ -1,3 +1,4 @@
+// official bank account details for cash deposit payments
 export const BANK_DETAILS = {
   bankName: "Bank of Ceylon",
   branch: "City Center",

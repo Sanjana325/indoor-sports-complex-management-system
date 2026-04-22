@@ -1,11 +1,13 @@
 import React from "react";
 
+// stylized badge component for consistent status labeling across tables and profiles
 const StatusPill = ({ status, label }) => {
+  // helper function to map raw backend status strings to CSS semantic classes
   const getStatusClass = (s) => {
     const term = String(s || "").toUpperCase();
     
     const map = {
-      // Payment Statuses
+      // payment lifecycle states
       PAID: "success",
       VERIFIED: "success",
       COMPLETED: "success",
@@ -14,12 +16,12 @@ const StatusPill = ({ status, label }) => {
       REJECTED: "danger",
       FAILED: "danger",
       
-      // User/Account Statuses
+      // account and accessibility states
       ACTIVE: "success",
       DISABLED: "danger",
       INACTIVE: "danger",
       
-      // Booking/Class Statuses
+      // logistical state trackers
       CONFIRMED: "success",
       CANCELLED: "danger",
       EXPIRED: "expired",
@@ -30,6 +32,7 @@ const StatusPill = ({ status, label }) => {
   };
 
   return (
+    /* dynamically assigned class determines the color theme of the badge */
     <span className={`status-pill ${getStatusClass(status)}`}>
       {label || status}
     </span>

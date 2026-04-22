@@ -2,10 +2,10 @@ import { useAnalytics } from "../../../hooks/useAnalytics";
 import { AnalyticHeader, AnalyticFilters, KPIStatsGrid } from "../../../components/admin/analytics/AnalyticsSuite";
 import { AnalyticChart, AnalyticTable } from "../../../components/admin/analytics/AnalyticsDataViews";
 
+// comprehensive financial dashboard for auditing revenue and payment health
 export default function PaymentsReportPage() {
+  // aggregates all system transactions into actionable financial data
   const { loading, data, activeRange, controls } = useAnalytics("payments");
-
-
 
   return (
     <div className="admin-content-inner">
@@ -15,12 +15,15 @@ export default function PaymentsReportPage() {
         onExportPDF={() => window.print()}
       />
 
+      {/* filtering options to switch between booking fees and class memberships */}
       <AnalyticFilters controls={controls} hasCategoryFilter={true} />
 
       <div style={{ marginBottom: '24px' }}>
+        {/* key financial indicators like total revenue and pending balance */}
         <KPIStatsGrid kpis={data.kpis} loading={loading} />
         
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr)', gap: '20px', marginBottom: '24px' }}>
+          {/* visual trends showing revenue growth and collection predictability */}
           <AnalyticChart 
             title="Revenue Growth" 
             type="line" 
@@ -43,6 +46,7 @@ export default function PaymentsReportPage() {
         </div>
         
         <div style={{ marginBottom: '24px' }}>
+          {/* identifying the most profitable courts and arenas */}
           <AnalyticChart 
             title="Revenue By Court" 
             type="bar" 
@@ -53,6 +57,7 @@ export default function PaymentsReportPage() {
         </div>
       </div>
 
+      {/* granular table showing every transaction record with verification status */}
       <AnalyticTable 
         headers={["PAYMENT ID", "PAYER DETAILS", "CATEGORY", "AMOUNT", "DATE & TIME", "VERIFIED", "METHOD", "STATUS"]}
         rows={data.reports}
@@ -73,6 +78,7 @@ export default function PaymentsReportPage() {
             <td>{row.verified}</td>
             <td>{row.method}</td>
             <td>
+              {/* status indicator for quickly checking which payments require action */}
               <span className={`status-pill ${
                 row.status === "VERIFIED" ? "success" : 
                 row.status === "REJECTED" ? "danger" : "warning"

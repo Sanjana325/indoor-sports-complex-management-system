@@ -6,6 +6,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// staff dashboard providing a central calendar view of all venue bookings and classes
 export default function StaffHome() {
   const [events, setEvents] = useState([]);
   const [sports, setSports] = useState([]);
@@ -21,13 +22,14 @@ export default function StaffHome() {
     fetchData();
   }, []);
 
+  // downloads comprehensive calendar data including bookings, classes, sports, and blocks
   async function fetchData() {
     setLoading(true);
     setError("");
     const token = localStorage.getItem("token");
 
     try {
-      // Pointing to ADMIN endpoints which are now STAFF-enabled
+      // access admin data endpoints (now accessible to staff roles)
       const [bookRes, sessRes, sportRes, courtRes, blockRes] = await Promise.all([
         fetch(`${API_BASE}/api/admin/bookings`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -59,7 +61,7 @@ export default function StaffHome() {
       setSports(sData.sports || []);
       setCourtsData(cData.courts || []);
 
-      // Transform Bookings
+      // maps court bookings into standard calendar event objects
       const bookingEvents = (bookData.bookings || [])
         .filter((b) => b.status !== "EXPIRED" && b.status !== "CANCELLED")
         .map((b) => {
@@ -84,20 +86,19 @@ export default function StaffHome() {
         };
       });
 
-      // Sessions
       const sessionEvents = (sessData.sessions || []);
 
-      // Blocked Slots (Fixed Mapping)
+      // maps administrative maintenance blocks into red-coded calendar events
       const blockedEvents = (blockData.slots || []).map((slot) => {
         return {
           id: `block-${slot.blockedSlotId}`,
           title: `Blocked: ${slot.reason} (${slot.courtName})`,
           start: slot.startDateTime,
           end: slot.endDateTime,
-          backgroundColor: "#fee2e2", // Light red background
-          borderColor: "#ef4444",     // Red border
-          textColor: "#dc2626",       // Explicit Red text
-          classNames: ["blocked-calendar-event"], // OVERRIDE GLOBAL TEXT-MAIN
+          backgroundColor: "#fee2e2", 
+          borderColor: "#ef4444",    
+          textColor: "#dc2626",      
+          classNames: ["blocked-calendar-event"], 
           extendedProps: {
             type: "BLOCKED",
             court: slot.courtName,
@@ -118,6 +119,7 @@ export default function StaffHome() {
     }
   }
 
+  // populates and opens the record detail modal when an event is clicked
   function handleEventClick(info) {
     const { extendedProps, title } = info.event;
     setSelectedEvent({
@@ -128,6 +130,7 @@ export default function StaffHome() {
     setIsDetailModalOpen(true);
   }
 
+  // dynamically filters the master event list by court name
   const filteredEvents = useMemo(() => {
     if (courtFilter === "ALL") return events;
     return events.filter((e) => {
@@ -139,6 +142,7 @@ export default function StaffHome() {
 
   return (
     <div className="admin-content-inner">
+      {/* page header with court selection filters */}
       <div className="flex-between mb-3">
         <div>
           <h1 className="page-title">Arena Schedule</h1>
@@ -161,6 +165,7 @@ export default function StaffHome() {
         </div>
       </div>
         
+            {/* color legend to help staff distinguish between sports and blocks */}
             <div className="arena-legend">
               {sports.map(s => (
                 <div key={s.SportID} className="arena-legend-item">
@@ -185,6 +190,7 @@ export default function StaffHome() {
 
         {error && <div style={{ color: 'var(--primary)', marginBottom: '10px' }}>{error}</div>}
 
+        {/* full calendar grid with monthly, weekly, and daily views */}
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -209,12 +215,12 @@ export default function StaffHome() {
           nowIndicator={true}
           themeSystem="standard"
           eventDisplay="block"
+          // custom renderer for internal event cards with cancellation styling
           eventContent={(arg) => {
             const isCancelled = arg.event.extendedProps.status === 'CANCELLED';
             const isBlocked = arg.event.extendedProps.type === 'BLOCKED';
             const type = arg.event.extendedProps.type;
             
-            // Shorten titles for month view readability
             let displayTitle = arg.event.title;
             if (arg.view.type === 'dayGridMonth') {
               if (type === 'BOOKING') displayTitle = arg.event.extendedProps.playerName;
@@ -236,7 +242,7 @@ export default function StaffHome() {
                 textDecoration: isCancelled ? 'line-through' : 'none'
               }}>
                 <span style={{ fontWeight: 700, fontSize: '0.7rem', opacity: 0.8 }}>
-                  {arg.timeText}
+                   {arg.timeText}
                 </span>
                 <span style={{ fontWeight: 500 }}>{displayTitle}</span>
                 {isCancelled && (
@@ -257,6 +263,7 @@ export default function StaffHome() {
         />
       </div>
 
+      {/* drill-down modal providing deep-dive details for any scheduled activity */}
       {isDetailModalOpen && selectedEvent && (
         <div className="detail-modal-backdrop" onClick={() => setIsDetailModalOpen(false)} style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
@@ -274,6 +281,7 @@ export default function StaffHome() {
 
             <div className="arena-list">
               {selectedEvent.type === 'BOOKING' ? (
+                /* comprehensive view of individual player rentals */
                 <>
                   <div className="arena-list-item">
                     <span className="form-label" style={{ margin: 0 }}>Customer:</span>
@@ -307,6 +315,7 @@ export default function StaffHome() {
                   </div>
                 </>
               ) : selectedEvent.type === 'BLOCKED' ? (
+                /* technical breakdown of venue maintenance blocks */
                 <>
                   <div className="arena-list-item">
                     <span className="form-label" style={{ margin: 0 }}>Blocked Court:</span>
@@ -332,6 +341,7 @@ export default function StaffHome() {
                   </div>
                 </>
               ) : (
+                /* professional overview of group coaching sessions */
                 <>
                   <div className="arena-list-item">
                     <span className="form-label" style={{ margin: 0 }}>Class:</span>

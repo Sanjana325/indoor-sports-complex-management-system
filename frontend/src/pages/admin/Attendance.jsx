@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// the main component for tracking player attendance in classes
 export default function Attendance() {
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
@@ -16,9 +18,13 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
+  // determines the correct api endpoint based on the logged-in user's role
   const getBasePath = () => localStorage.getItem("role") === "STAFF" ? "/api/staff" : "/api/admin";
+  
+  // returns the required authorization headers for every api call
   const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
+  // loads the list of available classes when the page first opens
   useEffect(() => {
     (async () => {
       try {
@@ -31,6 +37,7 @@ export default function Attendance() {
     })();
   }, []);
 
+  // fetches student enrollment for a specific class on a specific date
   useEffect(() => {
     if (!selectedClassId || !selectedDate) {
       setSession(null); setStudents([]); setMarks({}); setNoSession(false); return;
@@ -47,6 +54,7 @@ export default function Attendance() {
           } else {
             setSession(data.session); setStudents(data.students || []);
             const existing = {};
+            // pre-loads any existing attendance data already saved on the server
             (data.students || []).forEach((s) => {
               if (s.status === "PRESENT" || s.status === "ABSENT") existing[s.rawEnrollmentId] = s.status;
             });
@@ -59,22 +67,27 @@ export default function Attendance() {
   }, [selectedClassId, selectedDate]);
 
   const canShowStudents = session && students.length > 0;
+
+  // filters the student list based on real-time search input
   const filteredStudents = useMemo(() => {
     if (!canShowStudents) return [];
     const q = nameSearch.trim().toLowerCase();
     return students.filter((s) => (q ? s.name.toLowerCase().includes(q) : true));
   }, [students, nameSearch, canShowStudents]);
 
+  // updates the local state with a student's attendance status
   const mark = (rawEnrollmentId, status) => {
     setMarks((prev) => ({ ...prev, [rawEnrollmentId]: status }));
     setSuccessMsg("");
   };
 
+  // resets all attendance marks in the current view
   const clearMarksForThisSession = () => {
     if (!canShowStudents || !window.confirm("Clear all marks for this session?")) return;
     setMarks({}); setSuccessMsg("");
   };
 
+  // sends the local attendance marks to the database
   const saveAttendance = async () => {
     if (!session) return;
     const marksArray = Object.entries(marks)
@@ -131,6 +144,7 @@ export default function Attendance() {
             <input className="form-input" type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
           </div>
         </div>
+        {/* show success or alert messages beneath search filters */}
         {successMsg && <div className="status-pill success mt-2" style={{ width: "100%", textAlign: "center" }}>{successMsg}</div>}
         {session && session.status === "CANCELLED" && <div className="status-pill danger mt-2" style={{ width: "100%", textAlign: "center" }}>⚠ This session is cancelled.</div>}
       </div>
@@ -152,6 +166,7 @@ export default function Attendance() {
               </tr>
             </thead>
             <tbody>
+              {/* handle different data states like loading or empty results */}
               {loadingStudents ? (
                 <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing enrollment data...</td></tr>
               ) : noSession ? (

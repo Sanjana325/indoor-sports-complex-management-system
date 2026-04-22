@@ -4,8 +4,10 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// main calendar view for managing all arena activities
 export default function AdminCalendar() {
   const [events, setEvents] = useState([]);
   const [sports, setSports] = useState([]);
@@ -21,6 +23,7 @@ export default function AdminCalendar() {
     fetchData();
   }, []);
 
+  // gathers all bookings, classes, and blocked slots from the server
   async function fetchData() {
     setLoading(true);
     setError("");
@@ -58,12 +61,7 @@ export default function AdminCalendar() {
       setSports(sData.sports || []);
       setCourtsData(cData.courts || []);
 
-      // Transform Bookings
-      // Note: Booking date/time is already formatted in the controller, 
-      // but FullCalendar needs a specific format. 
-      // Let's rely on the raw data if we can, or parse the time strings.
-      // Admin bookings controller returns: { bookings: [{ id, date, time, status, ... }] }
-      // Where time is "HH:mm - HH:mm"
+      // creates calendar events for customer bookings
       const bookingEvents = (bookData.bookings || [])
         .filter((b) => b.status !== "EXPIRED" && b.status !== "CANCELLED")
         .map((b) => {
@@ -88,20 +86,20 @@ export default function AdminCalendar() {
         };
       });
 
-      // Sessions are already formatted by the listSessions controller
+      // coaching sessions are already formatted by the server
       const sessionEvents = sessData.sessions || [];
 
-      // Blocked Slots
+      // creates red calendar events for maintenance or reserved slots
       const blockedEvents = (blockData.slots || []).map((slot) => {
         return {
           id: `block-${slot.blockedSlotId}`,
           title: `Blocked: ${slot.reason} (${slot.courtName})`,
           start: slot.startDateTime,
           end: slot.endDateTime,
-          backgroundColor: "#fee2e2", // Light red background
-          borderColor: "#ef4444",     // Red border
-          textColor: "#dc2626",       // Explicit Red text
-          classNames: ["blocked-calendar-event"], // OVERRIDE GLOBAL TEXT-MAIN
+          backgroundColor: "#fee2e2", 
+          borderColor: "#ef4444",     
+          textColor: "#dc2626",       
+          classNames: ["blocked-calendar-event"], 
           extendedProps: {
             type: "BLOCKED",
             court: slot.courtName,
@@ -122,6 +120,7 @@ export default function AdminCalendar() {
     }
   }
 
+  // opens the detail popup when an event is clicked
   function handleEventClick(info) {
     const { extendedProps, title } = info.event;
     setSelectedEvent({
@@ -132,6 +131,7 @@ export default function AdminCalendar() {
     setIsDetailModalOpen(true);
   }
 
+  // logic to filter the calendar view by a specific court
   const filteredEvents = useMemo(() => {
     if (courtFilter === "ALL") return events;
     return events.filter((e) => {
@@ -149,6 +149,7 @@ export default function AdminCalendar() {
           <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Manage all court bookings and class sessions in one place.</p>
         </div>
         
+        {/* dropdown for filtering the schedule by court */}
         <div className="flex-start" style={{ gap: '12px' }}>
           <label className="form-label" style={{ marginBottom: 0 }}>Court:</label>
           <select 
@@ -165,6 +166,7 @@ export default function AdminCalendar() {
         </div>
       </div>
         
+      {/* visual key for different calendar colors */}
       <div className="arena-legend">
         {sports.map(s => (
           <div key={s.SportID} className="arena-legend-item">
@@ -218,7 +220,7 @@ export default function AdminCalendar() {
             const isBlocked = arg.event.extendedProps.type === 'BLOCKED';
             const type = arg.event.extendedProps.type;
             
-            // Shorten titles for month view readability
+            // helps keep the month view readable by shortening labels
             let displayTitle = arg.event.title;
             if (arg.view.type === 'dayGridMonth') {
               if (type === 'BOOKING') displayTitle = arg.event.extendedProps.playerName;
@@ -261,6 +263,7 @@ export default function AdminCalendar() {
         />
       </div>
 
+      {/* modal that pops up to show more info about a clicked slot */}
       {isDetailModalOpen && selectedEvent && (
         <div className="detail-modal-backdrop" onClick={() => setIsDetailModalOpen(false)} style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
@@ -372,6 +375,7 @@ export default function AdminCalendar() {
             </div>
 
             <div className="flex-between mt-2">
+              {/* direct links to edit the selected activity in its management module */}
               {selectedEvent.type !== 'BLOCKED' && (
                 <button className="btn btn-edit" onClick={() => window.location.href = selectedEvent.type === 'BOOKING' ? '/admin/bookings' : '/admin/classes'}>Edit</button>
               )}

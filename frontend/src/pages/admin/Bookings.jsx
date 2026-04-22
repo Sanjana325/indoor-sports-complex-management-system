@@ -1,25 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// helper to extract the short date from a full timestamp
 function formatBookedDate(isoString) {
   if (!isoString) return "-";
   const d = new Date(isoString);
   return Number.isNaN(d.getTime()) ? "-" : d.toISOString().slice(0, 10);
 }
 
+// helper to format the exact time in 24-hour style
 function formatBookedTime(isoString) {
   if (!isoString) return "-";
   const d = new Date(isoString);
   return Number.isNaN(d.getTime()) ? "-" : d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+// page for administrators to browse and track all court bookings
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
+  // loads the entire booking history from the server
   const fetchBookings = async () => {
     try {
       setLoading(true);
@@ -34,12 +39,13 @@ export default function Bookings() {
 
   useEffect(() => { fetchBookings(); }, []);
 
+  // manages filtering by user search and booking status simultaneously
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const visibleStatuses = ["WAITING_VERIFICATION", "CONFIRMED", "CANCELLED"];
     
     return bookings.filter(b => {
-      // Base filtration: exclude EXPIRED and PENDING_PAYMENT unless specifically selected (which they won't be from the filtered list)
+      // filters out irrelevant or hidden statuses by default
       if (!visibleStatuses.includes(b.status) && statusFilter === "ALL") return false;
       
       const matchesText = !q || `${b.id} ${b.playerName} ${b.court} ${b.date} ${b.time} ${b.status}`.toLowerCase().includes(q);
@@ -48,6 +54,7 @@ export default function Bookings() {
     });
   }, [bookings, search, statusFilter]);
 
+  // soft-deletes a booking without removing it from history
   const handleCancel = async (rawId) => {
     if (!window.confirm("Safe void this reservation? (Records remain preserved)")) return;
     try {
@@ -71,6 +78,7 @@ export default function Bookings() {
       </div>
 
       <div className="arena-card mb-3" style={{ padding: "var(--space-1)", display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+        {/* filters for finding specific records quickly */}
         <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Filter by ID, player, court..." value={search} onChange={e => setSearch(e.target.value)} />
         <select className="form-input" style={{ maxWidth: "200px" }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="ALL">All Active Statuses</option>
@@ -96,6 +104,7 @@ export default function Bookings() {
             </tr>
           </thead>
           <tbody>
+            {/* handles loading states or empty search results */}
             {loading ? (
               <tr><td colSpan="10" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing Archive...</td></tr>
             ) : filtered.length === 0 ? (
@@ -142,6 +151,7 @@ export default function Bookings() {
                   {!isStaff && (
                     <td>
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        {/* only show cancel button for active, non-cancelled bookings */}
                         {b.status !== "CANCELLED" && b.status !== "EXPIRED" ? (
                           <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleCancel(b.rawId)}>Cancel</button>
                         ) : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>-</span>}

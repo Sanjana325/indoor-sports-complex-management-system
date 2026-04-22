@@ -3,12 +3,13 @@ import authService from "../services/authService";
 
 export const AuthContext = createContext();
 
+// manages user login state and session for the whole app
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initial load from localStorage
+    // load saved user data from storage on startup
     const storedToken = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
     
@@ -29,10 +30,10 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // handle user login
   const login = async (email, password) => {
     const data = await authService.login(email, password);
     
-    // Safety check as per current Login.jsx logic
     if (!data.token || !data.user || !data.user.role) {
       throw new Error("Invalid response from server");
     }
@@ -50,7 +51,7 @@ export const AuthProvider = ({ children }) => {
       mustChangePassword: Boolean(data.mustChangePassword)
     };
 
-    // Save to localStorage (Preserve exact format as requested)
+    // save session data to browser storage
     localStorage.setItem("token", userData.token);
     localStorage.setItem("userId", userData.userId);
     localStorage.setItem("firstName", userData.firstName || "");
@@ -66,16 +67,13 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  /**
-   * Dynamically updates user state and localStorage.
-   * Useful for syncing changes like 'mustChangePassword' after a password update.
-   */
+  // update cached user data
   const updateUser = (updates) => {
     setUser((prev) => {
       if (!prev) return null;
       const updated = { ...prev, ...updates };
       
-      // Sync to localStorage
+      // sync updates to storage
       if (updates.firstName !== undefined) localStorage.setItem("firstName", updates.firstName || "");
       if (updates.lastName !== undefined) localStorage.setItem("lastName", updates.lastName || "");
       if (updates.email !== undefined) localStorage.setItem("email", updates.email || "");
@@ -89,6 +87,7 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  // clear user session
   const logout = () => {
     authService.logout();
     setUser(null);

@@ -6,7 +6,7 @@ import staffService from "../services/staffService";
 import adminService from "../services/adminService";
 import { getInitials } from "../utils/formatters";
 
-
+// list of operational navigation items for staff members including attendance and payment tracking
 const STAFF_NAV_ITEMS = [
   { path: "/staff", label: "Calendar", icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -28,6 +28,7 @@ const STAFF_NAV_ITEMS = [
   )},
 ];
 
+// primary layout for the staff portal providing navigation and live system alerts
 export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,6 +47,7 @@ export default function StaffLayout() {
   const [recentCancellations, setRecentCancellations] = useState([]);
   const [showLockToast, setShowLockToast] = useState(false);
 
+  // monitor global click events to shut open dropdowns when clicking away
   useEffect(() => {
     function handleOutsideClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
@@ -55,6 +57,7 @@ export default function StaffLayout() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  // background sync for pending payment notifications and session cancellations
   useEffect(() => {
     const fetchNotifs = async () => {
       try {
@@ -72,6 +75,7 @@ export default function StaffLayout() {
     return () => clearInterval(interval);
   }, []);
 
+  // marks a cancellation alert as read to remove it from the staff's tray
   const handleAcknowledge = async (sessionId) => {
     try {
       await staffService.acknowledgeCancellation(sessionId);
@@ -81,6 +85,7 @@ export default function StaffLayout() {
     }
   };
 
+  // intercepts navigation attempts if the account requires a mandatory password update
   const handleRestrictedClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -94,6 +99,7 @@ export default function StaffLayout() {
 
   return (
     <div className="admin-layout">
+      {/* sidebar navigation menu for quick access to operational modules */}
       <aside className="admin-sidebar">
         <div className="sidebar-main">
           <h2 className="sidebar-title">Arena<span>Pro</span></h2>
@@ -106,6 +112,7 @@ export default function StaffLayout() {
                 {item.icon}
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {item.badge && pendingPaymentsCount > 0 && (
+                  /* dynamic notification badge for unverified payment slips */
                   <span style={{ background: "var(--primary)", color: "white", fontSize: "0.7rem", padding: "2px 6px", borderRadius: "10px", fontWeight: 700 }}>{pendingPaymentsCount}</span>
                 )}
               </NavLink>
@@ -113,8 +120,10 @@ export default function StaffLayout() {
           </nav>
         </div>
 
+        {/* user identification and system termination cluster */}
         <footer className="sidebar-footer" ref={profileRef}>
           {isProfileOpen && (
+            /* context menu for account settings and session exit */
             <div className="sidebar-popup-menu">
               <Link to="/staff/profile" className="sidebar-popup-item">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -146,7 +155,9 @@ export default function StaffLayout() {
         </footer>
       </aside>
 
+      {/* main content viewport with notification overlay center */}
       <main className="admin-main">
+        {/* floating notification bell for urgent session cancel alerts */}
         <div className="floating-notif-container" ref={notifRef}>
           <button 
             className="floating-notif-bell" 
@@ -159,6 +170,7 @@ export default function StaffLayout() {
           </button>
           
           {isNotifOpen && (
+            /* toggleable list of recent system alerts and session statuses */
             <div className="floating-notif-dropdown">
               <div style={{ fontWeight: 800, marginBottom: "12px", fontSize: "0.95rem", color: "var(--text-main)" }}>Recent Alerts</div>
               {recentCancellations.length === 0 ? (
@@ -179,6 +191,7 @@ export default function StaffLayout() {
           )}
         </div>
 
+        {/* content area where specific portal modules are injected */}
         <section className="admin-content">
           <div className="admin-content-inner">
             <Outlet />
@@ -186,6 +199,7 @@ export default function StaffLayout() {
         </section>
       </main>
 
+      {/* global prompt for mandatory password rotation and account security */}
       <Snackbar 
         open={showLockToast} 
         autoHideDuration={6000} 

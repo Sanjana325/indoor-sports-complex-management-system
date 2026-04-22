@@ -4,14 +4,20 @@ import {
   BarChart, Bar, Cell
 } from 'recharts';
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// helper for padding single digit numbers for dates
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
+
+// converts a date object into a YYYY-MM-DD string for the api
 function toISODate(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
+
+// calculates the time difference between two strings (HH:mm)
 function fmtDuration(start, end) {
   if (!start || !end) return "-";
   const [sh, sm] = start.split(":").map(Number);
@@ -25,17 +31,22 @@ function fmtDuration(start, end) {
   return `${m}m`;
 }
 
+// turns technical status codes into user-friendly labels
 function statusLabelBooking(s) {
   if (s === "PENDING_PAYMENT") return "Pending";
   if (s === "CONFIRMED") return "Confirmed";
   if (s === "CANCELLED") return "Cancelled";
   return s;
 }
+
+// gets the CSS class name for a booking status
 function statusKeyBooking(s) {
   if (s === "CONFIRMED") return "confirmed";
   if (s === "CANCELLED") return "cancelled";
   return "pending";
 }
+
+// determines which sport a court belongs to based on its name
 function sportKeyFromCourtName(court) {
   const lower = court.toLowerCase();
   if (lower.includes("cricket")) return "cricket";
@@ -43,6 +54,8 @@ function sportKeyFromCourtName(court) {
   if (lower.includes("futsal")) return "futsal";
   return "cricket";
 }
+
+// helper to format sport names correctly
 function sportLabelFromKey(k) {
   if (k === "cricket") return "Cricket";
   if (k === "badminton") return "Badminton";
@@ -50,6 +63,7 @@ function sportLabelFromKey(k) {
   return "Cricket";
 }
 
+// the main dashboard page for administrative oversight
 export default function AdminHome() {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("MONTH");
@@ -68,6 +82,7 @@ export default function AdminHome() {
     }
   });
 
+  // calculates date ranges (start/end) for filtering dashboard stats
   const computeRange = (val) => {
     const today = new Date();
     const toISO = (d) => d.toISOString().split('T')[0];
@@ -93,6 +108,7 @@ export default function AdminHome() {
 
   const [activeRange, setActiveRange] = useState(() => computeRange("MONTH"));
 
+  // fetches summary totals and chart data whenever a date range is selected
   useEffect(() => {
     async function fetchStats() {
       setLoading(true);
@@ -117,6 +133,7 @@ export default function AdminHome() {
     fetchStats();
   }, [activeRange]);
 
+  // updates both the UI button state and the date filters
   const handleRangeChange = (val) => {
     setRange(val);
     setActiveRange(computeRange(val));
@@ -133,6 +150,7 @@ export default function AdminHome() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Real-time business intelligence for ArenaPro Operations</p>
         </div>
         
+        {/* time range quick-selection buttons */}
         <div style={{ display: 'flex', gap: '8px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
           {['TODAY', 'MONTH', '3_MONTHS', 'YEAR', '5_YEARS'].map((r) => (
             <button 
@@ -156,6 +174,7 @@ export default function AdminHome() {
         </div>
       </div>
 
+      {/* dashboard widgets showing top-level totals */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
         <div className="arena-card dashboard-stat-card indigo-flat">
            <span className="stat-label-simple">Total Bookings</span>
@@ -173,6 +192,7 @@ export default function AdminHome() {
         </div>
       </div>
 
+      {/* visual line chart showing revenue performance over time */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginBottom: '24px' }}>
         <div className="arena-card" style={{ padding: '24px' }}>
           <div className="flex-between mb-4">
@@ -196,6 +216,7 @@ export default function AdminHome() {
         </div>
       </div>
 
+      {/* breakdown charts for specialized data analysis */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
         <div className="arena-card" style={{ padding: '24px' }}>
           <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '20px' }}>Revenue by Sport</h4>

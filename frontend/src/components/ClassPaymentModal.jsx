@@ -9,11 +9,13 @@ import { BANK_DETAILS } from "../utils/constants";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// payment orchestrator for class enrollments supporting both automated and manual methods
 const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
   const [step, setStep] = useState(1);
   const [slipFile, setSlipFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  // initiates the PayHere gateway flow for instant credit card / online transactions
   const handleOnlinePayment = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -32,6 +34,7 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
         return;
       }
 
+      // required configuration payload for the external payment gateway
       const payment = {
         sandbox: true,
         merchant_id: payData.merchant_id,
@@ -65,6 +68,7 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
     }
   };
 
+  // handles multi-part form data submission for manual bank slip verification
   const handleBankSlipSubmit = async () => {
     if (!slipFile) {
         alert("Please select a file to upload.");
@@ -124,10 +128,12 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
       <DialogContent className="pbc-dialog-content">
         {step === 1 ? (
           <>
+            {/* simple instruction on fee breakdown and total amount due */}
             <Typography variant="body1" className="pbc-dialog-subtext" sx={{ mb: 4 }}>
               To complete your enrollment, please pay the first 4-weeks fee of <strong>LKR {Number(classData?.Fee).toLocaleString()}</strong>.
             </Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2.5 }}>
+              {/* triggers the automated card payment gateway */}
               <Card 
                 className="pbc-method-card" 
                 onClick={handleOnlinePayment}
@@ -136,6 +142,7 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>Online Pay</Typography>
                 <Typography variant="caption" sx={{ opacity: 0.6 }}>Instant Activation</Typography>
               </Card>
+              {/* allows users to provide an offline bank transfer proof */}
               <Card 
                 className="pbc-method-card" 
                 onClick={() => setStep(2)}
@@ -147,6 +154,7 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
             </Box>
           </>
         ) : (
+          /* detailed view for bank account information and slip upload */
           <Box sx={{ mt: 1 }}>
             <Typography variant="body1" className="pbc-dialog-subtext" sx={{ mb: 3 }}>
                 Deposit <strong>LKR {Number(classData?.Fee).toLocaleString()}</strong> to the following account:
@@ -172,6 +180,7 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
             </Box>
 
             <Typography variant="body2" className="pbc-dialog-subtext" sx={{ mb: 1.5, fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>Upload Transaction Slip</Typography>
+            {/* interactive dropzone for selecting physical or digital payment proofs */}
             <div className="file-upload-zone" onClick={() => document.getElementById('slip-input-class').click()}>
                 <Receipt sx={{ fontSize: '2rem', mb: 1, color: 'rgba(255,255,255,0.3)' }} />
                 <Typography variant="body2" sx={{ color: slipFile ? '#00ff88' : 'rgba(255,255,255,0.5)' }}>

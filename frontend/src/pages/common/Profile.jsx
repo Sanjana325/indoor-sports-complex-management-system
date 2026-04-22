@@ -4,9 +4,11 @@ import { getInitials } from "../../utils/formatters";
 
 const API_BASE = "http://localhost:5000/api";
 
+// universal profile management page for all user roles (admin, coach, player, staff)
 export default function Profile() {
   const { updateUser } = useAuth();
   
+  // initializes user state from browser localstorage for instant loading
   const [user, setUserProfile] = useState({
     userId: localStorage.getItem("userId") || "",
     firstName: localStorage.getItem("firstName") || "",
@@ -21,7 +23,6 @@ export default function Profile() {
 
   const initials = getInitials(user.firstName, user.lastName);
 
-  // Profile Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     firstName: user.firstName,
@@ -32,6 +33,7 @@ export default function Profile() {
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
 
+  // sends updated name and contact details to the auth profile endpoint
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setProfileError("");
@@ -75,7 +77,6 @@ export default function Profile() {
       setUserProfile(updatedData);
       updateUser({ firstName: data.user.firstName, lastName: data.user.lastName });
       
-      // Phone is not formally managed by AuthContext yet, so store directly:
       localStorage.setItem("phone", data.user.phoneNumber || "");
       
       setIsEditing(false);
@@ -97,6 +98,7 @@ export default function Profile() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // validates and submits password rotation request with strict 8-char enforcement
   async function handleChangePassword(e) {
     e.preventDefault();
     setErrorMsg("");
@@ -141,7 +143,6 @@ export default function Profile() {
         return;
       }
 
-      // Sync global state immediately
       updateUser({ mustChangePassword: false });
       
       setCurrentPassword("");
@@ -157,7 +158,7 @@ export default function Profile() {
 
   return (
     <div className="profile-page-container" style={{ padding: "var(--space-3)" }}>
-      {/* Hero Banner Section */}
+      {/* visual hero banner displaying current user identity and role initials */}
       <header className="profile-hero">
         <div className="profile-hero-avatar">
           {initials}
@@ -170,7 +171,7 @@ export default function Profile() {
       </header>
 
       <div className="profile-grid">
-        {/* Left Column: Personal Information */}
+        {/* left column for viewing or editing primary personal contact details */}
         <section className="arena-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 className="info-section-title" style={{ marginBottom: 0 }}>
@@ -203,6 +204,7 @@ export default function Profile() {
           )}
 
           {isEditing ? (
+            /* interactive form for modifying name and telephone number */
             <form onSubmit={handleProfileUpdate}>
               <div className="form-group">
                 <label className="form-label">First Name</label>
@@ -247,6 +249,7 @@ export default function Profile() {
               </div>
             </form>
           ) : (
+            /* read-only layout for displaying saved personal attributes */
             <>
               <div className="info-row">
                 <div className="info-row-icon">
@@ -279,6 +282,7 @@ export default function Profile() {
               </div>
 
               {user.role === "COACH" && (
+                /* conditional coach-specific specialization and qualification fields */
                 <>
                   <div className="info-row">
                     <div className="info-row-icon">
@@ -304,7 +308,7 @@ export default function Profile() {
           )}
         </section>
 
-        {/* Right Column: Security/Password Management */}
+        {/* right column for secure credential management and mandatory password resets */}
         <section className="arena-card">
           <h2 className="info-section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>

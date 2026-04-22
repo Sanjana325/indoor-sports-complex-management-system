@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { profileRouteForRole } from "../utils/navigation";
 
+// higher-order route guard for enforcing authentication and role-based permissions
 const ProtectedRoute = ({ allowedRoles = [] }) => {
   const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
@@ -10,11 +11,12 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
     return <div>Loading...</div>; 
   }
 
+  // kick unauthorized guests back to the login page
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Force Change Password Enforcement
+  // hard redirect to profile settings if the system flags a mandatory password rotation
   if (user?.mustChangePassword) {
     const profilePath = profileRouteForRole(user.role);
     if (location.pathname !== profilePath) {
@@ -22,8 +24,8 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
     }
   }
 
+  // cross-reference user role against allowed list to prevent lateral access
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    // Redirect to their specific dashboard if trying to access unauthorized area
     const homePaths = {
       ADMIN: "/admin",
       SUPER_ADMIN: "/admin",

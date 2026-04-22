@@ -11,6 +11,7 @@ import {
 } from "@mui/icons-material";
 import "../../styles/PlayerTables.css";
 
+// returns the status pill css class based on the booking state
 function pillClass(status) {
   const s = (status || "").toLowerCase();
   if (s === "confirmed") return "pt-pill confirmed";
@@ -18,6 +19,7 @@ function pillClass(status) {
   return "pt-pill pending";
 }
 
+// standardizes different backend status codes into a common display format
 function normalizeStatus(s) {
   const v = (s || "").toLowerCase();
   if (v === "confirmed") return "confirmed";
@@ -25,6 +27,7 @@ function normalizeStatus(s) {
   return "pending";
 }
 
+// converts 24-hour timestamps from strings into a readable AM/PM range
 function formatTimeRange(startIso, endIso) {
   const s = new Date(startIso);
   const e = new Date(endIso);
@@ -42,20 +45,7 @@ function formatTimeRange(startIso, endIso) {
   return `${formatTime(s)} - ${formatTime(e)}`;
 }
 
-function formatFullTimestamp(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  return `${dateStr} at ${timeStr}`;
-}
-
-function isSameOrAfter(a, b) {
-  return a.getTime() >= b.getTime();
-}
-
-const MONTH_NAMES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
+// management page for players to view their full reservation history and status
 export default function PlayerMyBookings() {
   const [sortOrder, setSortOrder] = useState("NEWEST");
   const [activeTab, setActiveTab] = useState("ALL");
@@ -64,6 +54,7 @@ export default function PlayerMyBookings() {
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+  // loads the player's primary booking record from the database
   useEffect(() => {
     async function fetchBookings() {
       try {
@@ -111,6 +102,7 @@ export default function PlayerMyBookings() {
     fetchBookings();
   }, []);
 
+  // handles real-time filtering and sorting of the booking list based on user selection
   const computed = useMemo(() => {
     const withMeta = rows.filter(r => r.rawStatus !== 'PENDING_PAYMENT').map((r) => {
       const dateObj = new Date(r.date);
@@ -166,6 +158,7 @@ export default function PlayerMyBookings() {
   return (
     <div className="pt-page">
       <div className="pt-container">
+        {/* header section containing the search sort controls */}
         <header className="pt-header">
           <div className="pt-header-content">
             <h1 className="pt-title">My Bookings</h1>
@@ -181,6 +174,7 @@ export default function PlayerMyBookings() {
           </div>
         </header>
 
+        {/* top navigation tabs for filtering by specific reservation states */}
         <div className="pt-tabs">
           <button
             type="button"
@@ -223,6 +217,7 @@ export default function PlayerMyBookings() {
           </button>
         </div>
 
+        {/* main display area showing individual booking card details */}
         {loading ? (
           <div className="pt-loading-indicator">Loading your bookings...</div>
         ) : list.length === 0 ? (
@@ -264,7 +259,7 @@ export default function PlayerMyBookings() {
                     </div>
                   </div>
 
-                  {/* TIMESTAMPS */}
+                  {/* detailed audit log section showing registration and confirmation dates */}
                   <div className="pt-booking-timestamps" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
                     <div className="pt-meta-group" style={{ opacity: 0.7 }}>
                       <Schedule sx={{ fontSize: '0.85rem' }} />
@@ -285,4 +280,4 @@ export default function PlayerMyBookings() {
       </div>
     </div>
   );
-}
+}

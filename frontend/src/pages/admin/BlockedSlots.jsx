@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// page for admins to lock certain time slots for maintenance or events
 export default function BlockedSlots() {
   const [blockedSlots, setBlockedSlots] = useState([]);
   const [courts, setCourts] = useState([]);
@@ -20,6 +22,7 @@ export default function BlockedSlots() {
 
   useEffect(() => { fetchBlockedSlots(); fetchCourts(); }, []);
 
+  // downloads the current list of blocked slots from the api
   async function fetchBlockedSlots() {
     setLoading(true); setError("");
     try {
@@ -31,6 +34,7 @@ export default function BlockedSlots() {
     finally { setLoading(false); }
   }
 
+  // gets the list of courts to populate the selection dropdown
   async function fetchCourts() {
     try {
       const token = localStorage.getItem("token");
@@ -43,19 +47,24 @@ export default function BlockedSlots() {
     } catch (err) { console.error(err); }
   }
 
+  // filters the slots table based on the search query
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return blockedSlots;
     return blockedSlots.filter(b => `${b.courtName} ${b.reason}`.toLowerCase().includes(q));
   }, [blockedSlots, search]);
 
+  // sorts slots so that the newest ones appear at the top
   const sorted = useMemo(() => [...filtered].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), [filtered]);
 
+  // clears the form fields for a clean slate
   function resetForm() {
     setCourtId(courts.length > 0 ? courts[0].CourtID : ""); setDate(""); setStartTime(""); setEndTime(""); setReason(""); setEditingId(null);
   }
 
   function openAddModal() { setMode("ADD"); resetForm(); setIsModalOpen(true); }
+  
+  // populates the modal with existing data for editing
   function openEditModal(item) {
     setMode("EDIT"); setEditingId(item.rawId); setCourtId(item.courtId);
     const start = new Date(item.startDateTime); const end = new Date(item.endDateTime);
@@ -63,6 +72,7 @@ export default function BlockedSlots() {
     setReason(item.reason); setIsModalOpen(true);
   }
 
+  // removes a blocked slot permanently from the system
   async function handleRemove(id) {
     if (!window.confirm("Remove this blocked slot?")) return;
     try {
@@ -72,6 +82,7 @@ export default function BlockedSlots() {
     } catch (err) { alert("Action failed"); }
   }
 
+  // sends the block request (new or update) to the backend
   async function handleSubmit(e) {
     e.preventDefault();
     if (endTime <= startTime) { alert("End time must be after start time"); return; }
@@ -117,6 +128,7 @@ export default function BlockedSlots() {
               </tr>
           </thead>
           <tbody>
+            {/* handle empty or loading data states */}
             {loading ? (
               <tr><td colSpan="6" style={{ textAlign: "center", padding: "2rem" }}>Loading slot data...</td></tr>
             ) : sorted.length === 0 ? (
@@ -152,6 +164,7 @@ export default function BlockedSlots() {
         </table>
       </div>
 
+      {/* popup form for adding or updating a blockage */}
       {isModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
           <div className="arena-card" style={{ width: "100%", maxWidth: "500px" }}>

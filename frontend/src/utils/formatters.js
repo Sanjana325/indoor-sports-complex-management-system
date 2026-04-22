@@ -1,8 +1,4 @@
-/**
- * Formats a number as Sri Lankan Rupee (LKR)
- * @param {number|string} n 
- * @returns {string}
- */
+// converts a number into a formatted Sri Lankan Rupee string
 export const formatLKR = (n) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return "-";
@@ -12,11 +8,7 @@ export const formatLKR = (n) => {
   })}`;
 };
 
-/**
- * Formats an ISO string or Date object into a readable date string
- * @param {string|Date} isoString 
- * @returns {string}
- */
+// turns date strings or objects into readable text with time
 export const formatDate = (isoString) => {
   if (!isoString) return "—";
   const d = new Date(isoString);
@@ -30,23 +22,14 @@ export const formatDate = (isoString) => {
   });
 };
 
-/**
- * Generates initials from a user's first and last name
- * @param {string} firstName 
- * @param {string} lastName 
- * @returns {string}
- */
+// gets the first letter of first and last name for profile icons
 export const getInitials = (firstName = "", lastName = "") => {
   const a = (firstName || "").trim().charAt(0).toUpperCase();
   const b = (lastName || "").trim().charAt(0).toUpperCase();
   return (a + b) || "U";
 };
 
-/**
- * Safely normalizes status strings for consistent comparison
- * @param {string} status 
- * @returns {string}
- */
+// groups various status names into three main categories
 export const normalizeStatusKey = (status) => {
   const s = (status || "").toLowerCase().trim();
   if (s === "verified" || s === "completed" || s === "paid") return "COMPLETED";

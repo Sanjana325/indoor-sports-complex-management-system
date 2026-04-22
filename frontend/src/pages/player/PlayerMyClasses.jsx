@@ -60,6 +60,7 @@ function formatTime(t) {
   return timeStr.includes(':') ? timeStr.slice(0, 5) : timeStr;
 }
 
+// helper to transform raw schedule data into a readable format for players
 function formatScheduleDetailed(c) {
   const start = formatTime(c.StartTime);
   const end = formatTime(c.EndTime);
@@ -93,17 +94,16 @@ function formatLKR(n) {
   return `LKR ${num.toLocaleString("en-LK")}`;
 }
 
+// inventory page for players to see all sports classes they have currently joined
 export default function PlayerMyClasses() {
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [payClassData, setPayClassData] = useState(null);
 
-  // Coach Profile Modal State
   const [coachModalOpen, setCoachModalOpen] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState(null);
 
@@ -111,6 +111,7 @@ export default function PlayerMyClasses() {
     fetchMyClasses();
   }, []);
 
+  // downloads the player enrollment list and payment status from the backend
   const fetchMyClasses = async () => {
     try {
       setLoading(true);
@@ -123,6 +124,7 @@ export default function PlayerMyClasses() {
     }
   };
 
+  // sends a request to revoke the player's enrollment and stop billing
   const handleLeaveClass = async (enrollmentId) => {
     if (!window.confirm("Are you sure you want to leave this class? Recurring payments will be stopped.")) return;
     try {
@@ -134,6 +136,7 @@ export default function PlayerMyClasses() {
     }
   };
 
+  // stores class info for the payment gateway popup
   const handlePayNow = (e, enrollment) => {
     e.stopPropagation();
     setPayClassData({
@@ -144,6 +147,7 @@ export default function PlayerMyClasses() {
     setPaymentModalOpen(true);
   };
 
+  // formats coach profile data for the credential modal
   const handleSeeMoreCoach = (c) => {
     setSelectedCoach({
       name: `${c.CoachFirstName} ${c.CoachLastName}`,
@@ -155,7 +159,7 @@ export default function PlayerMyClasses() {
   return (
     <div className="pmc-portal-container">
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        {/* HEADER SECTION */}
+        {/* top header for class management dashboard */}
         <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
             <Typography variant="h3" className="pmc-title">
@@ -175,7 +179,7 @@ export default function PlayerMyClasses() {
           </Button>
         </Box>
 
-        {/* CONTENT */}
+        {/* shows loading spinner or grid of enrolled class cards */}
         {loading ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10 }}>
             <CircularProgress sx={{ color: 'var(--primary)', mb: 2 }} />
@@ -208,6 +212,7 @@ export default function PlayerMyClasses() {
             </Button>
           </Box>
         ) : (
+          /* grid layout of all sports classes the player has registered for */
           <Grid container spacing={3}>
             {enrollments.map((c) => {
               const IconComp = ICON_MAP[c.SportName] || DEFAULT_ICON;
@@ -217,7 +222,6 @@ export default function PlayerMyClasses() {
                 <Grid item xs={12} sm={6} md={4} key={c.EnrollmentID}>
                   <Card className="pmc-enrollment-card">
                     <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                      {/* TOP BAR: Enrollment ID */}
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                         <Typography className="pmc-enrollment-id">
                           #ENR-{c.EnrollmentID}
@@ -229,7 +233,6 @@ export default function PlayerMyClasses() {
                         />
                       </Box>
 
-                      {/* HEADER: Sport Badge */}
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
                         <Avatar sx={{ bgcolor: 'var(--primary-light)', color: 'var(--primary)', width: 44, height: 44, border: '1px solid rgba(22, 163, 74, 0.1)' }}>
                           <IconComp />
@@ -239,12 +242,11 @@ export default function PlayerMyClasses() {
                         </Typography>
                       </Box>
 
-                      {/* TITLE */}
                       <Typography variant="h5" sx={{ color: 'var(--text-main)', fontWeight: 800, mb: 2, lineHeight: 1.2 }}>
                         {c.Title}
                       </Typography>
 
-                      {/* DETAILS */}
+                      {/* displays coach, detailed class schedule, and fee info */}
                       <Box sx={{ mb: 2 }}>
                         <div className="pmc-detail-item">
                           <Person sx={{ fontSize: 20 }} />
@@ -286,7 +288,7 @@ export default function PlayerMyClasses() {
                         </div>
                       </Box>
 
-                      {/* Payment Alert if Pending */}
+                      {/* banner alert for overdue payments with a direct link to the gateway */}
                       {!isPaid && (
                         <div className="pmc-payment-due-alert">
                           <Typography variant="body2" sx={{ color: '#ca8a04', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>
@@ -301,7 +303,7 @@ export default function PlayerMyClasses() {
                         </div>
                       )}
 
-                      {/* FOOTER: LEAVE ACTION */}
+                      {/* allows players to voluntarily withdraw from a class */}
                       <Box className="pmc-card-footer" sx={{ mt: !isPaid ? 2.5 : 'auto' }}>
                         <Button 
                           onClick={() => handleLeaveClass(c.EnrollmentID)}
@@ -322,7 +324,7 @@ export default function PlayerMyClasses() {
         )}
       </Container>
 
-      {/* Class Payment Modal */}
+      {/* payment processing modal for class dues */}
       {payClassData && (
           <ClassPaymentModal 
             open={paymentModalOpen}
@@ -332,7 +334,7 @@ export default function PlayerMyClasses() {
           />
       )}
 
-      {/* COACH INFO POPUP */}
+      {/* popup for viewing coach biography and professional certificates */}
       <Dialog 
         open={coachModalOpen} 
         onClose={() => setCoachModalOpen(false)}

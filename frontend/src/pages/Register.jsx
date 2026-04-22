@@ -4,11 +4,13 @@ import "../styles/Register.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// clean up email text to remove spaces and make it lowercase
 function normalizeEmail(email) {
   if (typeof email !== "string") return "";
   return email.trim().toLowerCase();
 }
 
+// check if the email address format is valid
 function isValidEmail(email) {
   if (typeof email !== "string") return false;
   const e = email.trim();
@@ -17,6 +19,7 @@ function isValidEmail(email) {
   return re.test(e);
 }
 
+// ensure the password meets security requirements
 function isStrongPassword(pw) {
   if (typeof pw !== "string") return false;
   if (pw.length < 8) return false;
@@ -26,28 +29,29 @@ function isStrongPassword(pw) {
   return true;
 }
 
+// descriptive message for password requirements
 function passwordPolicyMessage() {
   return "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
 }
 
+// remove spaces and formatting from phone numbers
 function normalizePhone(phone) {
   if (typeof phone !== "string") return "";
   return phone.replace(/\s+/g, "").trim();
 }
 
+// check if the phone number provided is valid
 function isValidPhoneNumber(phone) {
   const p = normalizePhone(phone);
-
   if (!p) return false;
-
   if (/^\+94\d{9}$/.test(p)) return true;
   if (/^94\d{9}$/.test(p)) return true;
   if (/^0\d{9}$/.test(p)) return true;
   if (/^\d{9,12}$/.test(p)) return true;
-
   return false;
 }
 
+// page where new players can create an account
 export default function Register() {
   const navigate = useNavigate();
 
@@ -57,9 +61,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
   const [fieldErrors, setFieldErrors] = useState({});
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -67,24 +69,20 @@ export default function Register() {
   const normalizedEmail = useMemo(() => normalizeEmail(email), [email]);
   const normalizedPhone = useMemo(() => normalizePhone(phoneNumber), [phoneNumber]);
 
+  // verify all form fields are filled correctly before signup
   function validateForm() {
     const errs = {};
-
     const fn = String(firstName || "").trim();
     const ln = String(lastName || "").trim();
 
     if (!fn) errs.firstName = "First name is required";
     if (!ln) errs.lastName = "Last name is required";
-
     if (!normalizedPhone) errs.phoneNumber = "Phone number is required";
     else if (!isValidPhoneNumber(normalizedPhone)) errs.phoneNumber = "Enter a valid phone number";
-
     if (!normalizedEmail) errs.email = "Email is required";
     else if (!isValidEmail(normalizedEmail)) errs.email = "Enter a valid email address";
-
     if (!password) errs.password = "Password is required";
     else if (!isStrongPassword(password)) errs.password = passwordPolicyMessage();
-
     if (!confirmPassword) errs.confirmPassword = "Confirm password is required";
     else if (password !== confirmPassword) errs.confirmPassword = "Passwords do not match";
 
@@ -92,6 +90,7 @@ export default function Register() {
     return Object.keys(errs).length === 0;
   }
 
+  // send signup data to server
   async function handleRegister() {
     setError("");
     setSuccess("");
@@ -129,6 +128,7 @@ export default function Register() {
         return;
       }
 
+      // save auto-logged in session
       localStorage.setItem("token", token);
       localStorage.setItem("userId", String(user.userId || ""));
       localStorage.setItem("firstName", user.firstName || "");
@@ -146,18 +146,21 @@ export default function Register() {
     }
   }
 
+  // get specific error for a field
   function fieldErrorText(key) {
     return fieldErrors && fieldErrors[key] ? fieldErrors[key] : "";
   }
 
   return (
     <div className="reg-page">
+      {/* interactive signup form for new user onboarding */}
       <div className="reg-card">
         <div className="title-container">
           <h2 className="brand-title">Arena<span>Pro</span></h2>
           <h3 className="action-title">Create Account</h3>
         </div>
 
+        {/* status alerts for feedback loops */}
         {error ? <div className="reg-error">{error}</div> : null}
         {success ? <div className="reg-success">{success}</div> : null}
 
@@ -236,6 +239,7 @@ export default function Register() {
           {loading ? "Registering..." : "Create Account"}
         </button>
 
+        {/* redirect to login if account already exists */}
         <p className="reg-link">
           Already have an account? <Link to="/login">Sign in</Link>
         </p>

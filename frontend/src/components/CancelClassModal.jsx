@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
+// converts an ISO date string to a short 3-letter weekday label
 function dayShortFromISO(iso) {
   const d = new Date(iso + "T00:00:00");
-  const idx = d.getDay(); // 0 Sun ... 6 Sat
+  const idx = d.getDay(); 
   const map = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return map[idx] || "Mon";
 }
 
+// calculates and formats human-readable duration between two clock times
 function durationLabel(start, end) {
   if (!start || !end) return "-";
   const [sh, sm] = start.split(":").map(Number);
@@ -20,6 +22,7 @@ function durationLabel(start, end) {
   return `${m}m`;
 }
 
+// interactive modal that allows coaches to select and cancel a specific teaching session
 export default function CancelClassModal({ coachName, classes, onClose, onSubmit }) {
   const [dateISO, setDateISO] = useState(() => {
     const t = new Date();
@@ -35,7 +38,7 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // close on Escape
+  // accessibility listener to handle modal closure via the escape key
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") onClose();
@@ -44,12 +47,13 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Fetch sessions when date changes
+  // triggers a fresh session lookup whenever the coach picks a different calendar date
   useEffect(() => {
     if (!dateISO) return;
     fetchSessions();
   }, [dateISO]);
 
+  // queries the backend for active coaching sessions scheduled on the selected date
   const fetchSessions = async () => {
     try {
       setLoadingSessions(true);
@@ -72,6 +76,7 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
     }
   };
 
+  // validates the selection and passes the cancellation details up to the parent handler
   function handleSubmit(e) {
     e.preventDefault();
 
@@ -90,10 +95,12 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
   }
 
   return (
+    /* full-screen semi-transparent overlay to focus user attention on the modal */
     <div className="detail-modal-backdrop" onMouseDown={onClose} style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
     }}>
       <div className="arena-card" onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
+        {/* standard dismiss button for exiting the cancellation workflow */}
         <button type="button" onClick={onClose} style={{
           position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)'
         }}>×</button>
@@ -102,11 +109,13 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
         <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
 
         <form onSubmit={handleSubmit}>
+          {/* date picker input to narrow down which day's sessions to view */}
           <div className="form-group">
             <label className="form-label">Date</label>
             <input className="form-input" type="date" value={dateISO} onChange={(e) => setDateISO(e.target.value)} />
           </div>
 
+          {/* dynamic dropdown list that updates based on the selected date above */}
           <div className="form-group">
             <label className="form-label">Select Class Session</label>
             <select className="form-input" value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} disabled={loadingSessions}>
@@ -123,6 +132,7 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
                 </>
               )}
             </select>
+            {/* simple feedback for empty states when no sessions exist for a day */}
             {!loadingSessions && sessionsForDate.length === 0 && (
               <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px' }}>No classes found for this date.</div>
             )}

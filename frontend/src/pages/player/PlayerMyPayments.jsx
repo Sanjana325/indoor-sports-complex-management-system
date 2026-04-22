@@ -18,6 +18,7 @@ import "../../styles/PlayerTables.css";
 
 const MONTH_NAMES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
+// utility for date-based sorting of the payment cards
 function sortByDate(rows, sortOrder) {
   return [...rows].sort((a, b) => {
     const d1 = new Date(a.date).getTime();
@@ -26,6 +27,7 @@ function sortByDate(rows, sortOrder) {
   });
 }
 
+// client-side filtering logic for the transaction search bar
 function matchesQuery(row, q, type) {
   if (!q) return true;
   const base =
@@ -36,16 +38,7 @@ function matchesQuery(row, q, type) {
   return base.toLowerCase().includes(q);
 }
 
-function formatFullDateTime(iso) {
-  if (!iso) return "Transaction Pending";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "Invalid Date";
-  
-  const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  return `${dateStr} • ${timeStr}`;
-}
-
+// transactional history page for players to track court and class payments
 export default function PlayerMyPayments() {
   const [activeTab, setActiveTab] = useState("COURT");
   const [courtSort, setCourtSort] = useState("NEWEST");
@@ -58,6 +51,7 @@ export default function PlayerMyPayments() {
   const [classPayments, setClassPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // retrieves all historical transactions for the logged-in player
   useEffect(() => {
     async function fetchPayments() {
       try {
@@ -65,17 +59,15 @@ export default function PlayerMyPayments() {
         const data = await playerService.getMyPayments();
         
         if (Array.isArray(data.payments)) {
-          console.log("[MyPayments] Raw Data:", data.payments[0]);
           const formatted = data.payments.map((p) => {
             const rawStatus = p?.Status || "";
             const safeKey = normalizeStatusKey(rawStatus);
             const safeStatus = safeKey.charAt(0) + safeKey.slice(1).toLowerCase();
             
-            // Hardened date extraction
             const rawDate = p?.PaidAt || p?.VerifiedAt || p?.CreatedAt || null;
             let dateObj = rawDate ? new Date(rawDate) : null;
             if (!dateObj || isNaN(dateObj.getTime())) {
-              dateObj = new Date(); // Fallback to current if still nothing
+              dateObj = new Date(); 
             }
 
             return {
@@ -92,7 +84,7 @@ export default function PlayerMyPayments() {
               rawBookingId: p?.BookingID || null,
               className: p?.ClassTitle || null,
               type: p?.ClassTitle ? "CLASS" : "COURT",
-              paidAtFull: formatFullDateTime(rawDate)
+              paidAtFull: p?.PaidAt ? new Date(p.PaidAt).toLocaleString() : "Pending"
             };
           });
           setCourtPayments(formatted.filter(p => p.type === "COURT"));
@@ -143,11 +135,6 @@ export default function PlayerMyPayments() {
 
   function handleUploadSlip(paymentId, type) {
     alert(`Upload bank slip for ${paymentId} (Action is pending integration)`);
-    if (type === "COURT") {
-      setCourtPayments((prev) => prev.map((p) => (p.paymentId === paymentId ? { ...p, slipUploaded: true } : p)));
-    } else {
-      setClassPayments((prev) => prev.map((p) => (p.paymentId === paymentId ? { ...p, slipUploaded: true } : p)));
-    }
   }
 
   function handleViewSlip(slipPath) {
@@ -168,6 +155,7 @@ export default function PlayerMyPayments() {
   return (
     <div className="pt-page">
       <div className="pt-container">
+        {/* page title header for the ledger view */}
         <header className="pt-header">
           <div className="pt-header-content">
             <h1 className="pt-title">My Payments</h1>
@@ -175,7 +163,7 @@ export default function PlayerMyPayments() {
           </div>
         </header>
 
-        {/* Level 1 Tabs */}
+        {/* category tabs separating court rentals from training classes */}
         <div className="pt-tabs">
           <button
             type="button"
@@ -198,7 +186,7 @@ export default function PlayerMyPayments() {
           </button>
         </div>
 
-        {/* Dashboard Controls */}
+        {/* dashboard controls for searching, filtering by status, and date sorting */}
         <div className="pt-controls-row">
           <div className="pt-search-wrapper">
             <Search className="pt-search-icon" />
@@ -233,7 +221,7 @@ export default function PlayerMyPayments() {
           </div>
         </div>
 
-        {/* Transaction Content */}
+        {/* renders formatted payment cards with status indicators and details */}
         {loading ? (
           <div className="pt-loading-indicator">Retrieving transactions...</div>
         ) : currentList.length === 0 ? (
@@ -243,6 +231,7 @@ export default function PlayerMyPayments() {
             <p className="pt-empty-text">Your payment history for this category is currently empty.</p>
           </div>
         ) : (
+          /* grid of detailed transaction history cards */
           <div className="pt-cards">
             {currentList.map((p) => {
               const sk = p.statusKey;
@@ -252,13 +241,11 @@ export default function PlayerMyPayments() {
 
               return (
                 <div key={p.paymentId} className="pt-booking-card">
-                  {/* Visual Date Block */}
                   <div className="pt-date-block">
                     <div className="pt-date-month">{p.month}</div>
                     <div className="pt-date-day">{p.day}</div>
                   </div>
 
-                  {/* Upgraded Main Content */}
                   <div className="pt-booking-main">
                     <div className="pt-booking-header-row" style={{ alignItems: 'flex-start' }}>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -312,7 +299,7 @@ export default function PlayerMyPayments() {
                       </div>
                     </div>
 
-                    {/* Enhanced Footer Actions */}
+                    {/* allows viewing uploaded receipts for manual bank-transfer payments */}
                     <div style={{ 
                       marginTop: '1rem', 
                       display: 'flex', 

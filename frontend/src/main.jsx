@@ -7,11 +7,12 @@ import App from "./App.jsx";
 import ErrorBoundary from "./components/shared/ErrorBoundary";
 import { AuthProvider } from "./context/AuthContext";
 
+// set up the site theme like colors and background
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#16a34a', // var(--primary)
+      main: '#16a34a',
     },
     background: {
       default: '#f1f5f9',
@@ -24,6 +25,7 @@ const theme = createTheme({
   },
 });
 
+// find the root div and start the react app
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ErrorBoundary>

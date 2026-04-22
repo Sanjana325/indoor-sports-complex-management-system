@@ -2,10 +2,10 @@ import { useAnalytics } from "../../../hooks/useAnalytics";
 import { AnalyticHeader, AnalyticFilters, KPIStatsGrid } from "../../../components/admin/analytics/AnalyticsSuite";
 import { AnalyticChart, AnalyticTable } from "../../../components/admin/analytics/AnalyticsDataViews";
 
+// report page for monitoring student registration and class popularity trends
 export default function EnrollmentsReportPage() {
+  // processes enrollment statistics via the common analytics engine
   const { loading, data, activeRange, controls } = useAnalytics("enrollments");
-
-
 
   return (
     <div className="admin-content-inner">
@@ -15,12 +15,15 @@ export default function EnrollmentsReportPage() {
         onExportPDF={() => window.print()}
       />
 
+      {/* filter panel to isolate data by specific dates or class titles */}
       <AnalyticFilters controls={controls} hasTargetClassFilter={true} metadata={data.metadata} />
 
       <div style={{ marginBottom: '24px' }}>
+        {/* business metrics like total students and net growth rate */}
         <KPIStatsGrid kpis={data.kpis} loading={loading} />
         
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', marginBottom: '24px' }}>
+          {/* charts showing new students joining daily and total class occupancy */}
           <AnalyticChart 
             title="Daily Enrollment Growth" 
             type="line" 
@@ -37,6 +40,7 @@ export default function EnrollmentsReportPage() {
           />
         </div>
 
+        {/* ledger of all individual enrollment events matching the filters */}
         <AnalyticTable 
           headers={["ID", "Player", "Class", "Enrolled Date", "Status"]}
           rows={data.reports}

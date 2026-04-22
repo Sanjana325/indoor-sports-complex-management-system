@@ -15,7 +15,9 @@ import {
 } from '@mui/icons-material';
 import '../styles/LandingPage.css';
 
+// main point of entry for public users
 export default function LandingPage() {
+  // list of sports shown in the public gallery
   const sports = [
     { name: 'Badminton', img: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800' },
     { name: 'Cricket', img: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80&w=800' },
@@ -27,7 +29,7 @@ export default function LandingPage() {
 
   return (
     <div className="landing-container">
-      {/* Navigation */}
+      {/* top navigation bar */}
       <nav className="lp-nav">
         <Link to="/" className="lp-brand">Arena<span>Pro</span></Link>
         <div className="lp-nav-actions">
@@ -36,7 +38,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* main hero entrance section */}
       <header className="lp-hero">
         <div className="lp-hero-content">
           <span className="lp-hero-tag">Elite Sports arena</span>
@@ -54,6 +56,7 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* hero images stack with floating perspective effects */}
         <div className="lp-hero-visual">
           <div className="lp-visual-stack">
             <img 
@@ -75,7 +78,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Features Section */}
+      {/* features list summarizing complex advantages */}
       <section id="about" className="lp-section">
         <h2 className="lp-section-title">Why Professionals Choose Us</h2>
         <div className="lp-about-grid">
@@ -102,7 +105,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Sports Gallery */}
+      {/* sports gallery items displaying available disciplines */}
       <section className="lp-section lp-sports-section">
         <h2 className="lp-section-title" style={{ color: 'white' }}>Our Disciplines</h2>
         <div className="lp-sports-grid">
@@ -120,7 +123,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Contact Section */}
+      {/* contact information section for venue accessibility */}
       <section className="lp-section">
         <div className="lp-contact-grid">
           <div className="lp-contact-info">
@@ -130,7 +133,7 @@ export default function LandingPage() {
             </p>
             
             <div className="lp-info-item">
-              <Map className="lp-info-icon" />
+              <div className="lp-info-icon"><Map /></div>
               <div>
                 <h4 style={{ margin: 0 }}>Location</h4>
                 <p style={{ margin: 0, color: '#64748b' }}>197/51, Meegahakotuwa, Kuliyapitiya, Sri Lanka</p>
@@ -138,7 +141,7 @@ export default function LandingPage() {
             </div>
 
             <div className="lp-info-item">
-              <Phone className="lp-info-icon" />
+              <div className="lp-info-icon"><Phone /></div>
               <div>
                 <h4 style={{ margin: 0 }}>Phone</h4>
                 <p style={{ margin: 0, color: '#64748b' }}>+94 37 123 4567</p>
@@ -146,19 +149,17 @@ export default function LandingPage() {
             </div>
 
             <div className="lp-info-item">
-              <Email className="lp-info-icon" />
+              <div className="lp-info-icon"><Email /></div>
               <div>
                 <h4 style={{ margin: 0 }}>Email</h4>
                 <p style={{ margin: 0, color: '#64748b' }}>contact@arenapro.lk</p>
               </div>
             </div>
           </div>
-
-
         </div>
       </section>
 
-      {/* Footer */}
+      {/* page footer with quick navigation links */}
       <footer className="lp-footer">
         <div className="lp-footer-grid">
           <div>

@@ -14,10 +14,10 @@ import { BANK_DETAILS } from "../../utils/constants";
 import "../../styles/PlayerBookCourt.css";
 
 
+// complex court booking page for players with real-time availability and payment
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-
-// Map names to icons locally
+// icons used to visually identify different sports
 const ICON_MAP = {
   "Cricket": SportsCricket,
   "Badminton": SportsTennis,
@@ -29,7 +29,7 @@ const ICON_MAP = {
 
 const DEFAULT_ICON = SportsSoccer;
 
-
+// system allowed 1-hour time blocks for court reservations
 const TIME_SLOTS = [
   { id: "08-09", label: "08:00 AM - 09:00 AM", available: true },
   { id: "09-10", label: "09:00 AM - 10:00 AM", available: true },
@@ -60,7 +60,7 @@ export default function PlayerBookCourt() {
   const navigate = useNavigate();
 
 
-  // API State
+  // state management for api data and user selections
   const [sports, setSports] = useState([]);
   const [courts, setCourts] = useState([]);
   const [loadingSports, setLoadingSports] = useState(true);
@@ -135,7 +135,7 @@ export default function PlayerBookCourt() {
   };
 
 
-  // Fetch Sports on Mount
+  // downloads the master list of all sports offered for booking
   useEffect(() => {
     async function fetchSports() {
       try {
@@ -191,7 +191,7 @@ export default function PlayerBookCourt() {
   }, [selectedSportId]);
 
 
-  // Fetch Availability when Court or Date changes
+  // checks the server for existing reservations to prevent double-booking
   useEffect(() => {
     if (!selectedCourtId || !selectedDate) {
       setAvailability({ bookings: [], blocked: [] });
@@ -242,6 +242,7 @@ export default function PlayerBookCourt() {
   }, [selectedTimeSlots, selectedCourt]);
 
 
+  // logically checks if a slot is blocked by a booking, class, or historical date
   const isSlotBlocked = (slotId) => {
     const [startH] = slotId.split("-").map(Number);
     const slotStart = new Date(`${selectedDate}T${String(startH).padStart(2, "0")}:00:00`);
@@ -337,6 +338,7 @@ export default function PlayerBookCourt() {
   };
 
 
+  // sends an OTP verification email before finalizing any paid transaction
   const handleConfirmBookingClick = async () => {
     if (!selectedSportId || !selectedCourtId || !selectedDate || selectedTimeSlots.length === 0 || !selectedPaymentMethod) {
       alert("Please complete all selections, including payment method, before confirming.");
@@ -418,6 +420,7 @@ export default function PlayerBookCourt() {
   };
 
 
+  // triggers the PayHere redirect for instant online credit/debit card payments
   const handleOnlinePayment = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -599,6 +602,7 @@ export default function PlayerBookCourt() {
 
   return (
     <div className="pbc-page">
+      {/* interactive booking workflow with live price calculation */}
       <div className="pbc-header">
         <h1 className="pbc-title-glass">Book a Court</h1>
         <button className="pbc-back-btn" onClick={() => navigate("/player")}>
@@ -611,7 +615,7 @@ export default function PlayerBookCourt() {
         {/* LEFT COLUMN: Main Flow (70%) */}
         <div className="pbc-main-flow">
 
-          {/* STEP 1: Select Sport */}
+          {/* step 1: browser based selection of the primary sport category */}
           <section className="pbc-section glass-panel">
             <h2 className="pbc-section-title">
               <span className="pbc-step-badge">1</span>
@@ -691,6 +695,7 @@ export default function PlayerBookCourt() {
 
 
           {/* STEP 3: Available Time Slots */}
+          {/* step 3: real-time grid for selecting available 1-hour time blocks */}
           <section className="pbc-section glass-panel">
             <h2 className="pbc-section-title">
               <span className="pbc-step-badge">3</span>
@@ -739,6 +744,7 @@ export default function PlayerBookCourt() {
 
 
         {/* RIGHT COLUMN: Sticky Summary (30%) */}
+        {/* summary sidebar providing a breakdown of costs and selection details */}
         <div className="pbc-sidebar">
           <div className="pbc-summary-card glass-panel sticky">
             <h3 className="summary-title">Booking Summary</h3>

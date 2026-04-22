@@ -1,8 +1,4 @@
-/**
- * Dynamically determines the profile route based on user role.
- * @param {string} role - The user role (e.g., ADMIN, STAFF, PLAYER).
- * @returns {string} - The absolute path to the profile page.
- */
+// finds the correct profile link based on what role the user has
 export function profileRouteForRole(role) {
   const r = String(role || "").toUpperCase();
   if (r === "ADMIN" || r === "SUPER_ADMIN") return "/admin/profile";
@@ -12,11 +8,7 @@ export function profileRouteForRole(role) {
   return "/profile";
 }
 
-/**
- * Dynamically determines the home/dashboard route based on user role.
- * @param {string} role - The user role.
- * @returns {string} - The absolute path to the home page.
- */
+// finds the main dashboard link for each user role
 export function homeRouteForRole(role) {
   const r = String(role || "").toUpperCase();
   if (r === "ADMIN" || r === "SUPER_ADMIN") return "/admin";

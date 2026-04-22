@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
+// directory of all available analytical report types
 const REPORTS = [
   { 
     key: "BOOKINGS", 
@@ -31,6 +32,7 @@ const REPORTS = [
   },
 ];
 
+// matching visual icons with report categories
 const getReportIcon = (name) => {
   if (name === "calendar") return "📅";
   if (name === "dollar") return "💰";
@@ -39,6 +41,7 @@ const getReportIcon = (name) => {
   return "📄";
 };
 
+// central hub for administrators to access various types of business reports
 export default function Reports() {
   const navigate = useNavigate();
 
@@ -52,6 +55,7 @@ export default function Reports() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--space-2)" }}>
+        {/* dynamically renders a card for every report defined in the list */}
         {REPORTS.map((r) => (
           <div key={r.key} className="arena-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
             <div style={{ display: "flex", gap: "15px", alignItems: "flex-start", marginBottom: 'var(--space-2)' }}>

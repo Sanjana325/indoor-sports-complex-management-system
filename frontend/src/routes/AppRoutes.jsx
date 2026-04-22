@@ -10,7 +10,7 @@ import LandingPage from "../pages/LandingPage";
 import Profile from "../pages/common/Profile";
 import Settings from "../pages/common/Settings";
 
-// Admin
+// admin pages
 import AdminLayout from "../layouts/AdminLayout";
 import AdminHome from "../pages/admin/AdminHome";
 import AdminCalendar from "../pages/admin/AdminCalendar";
@@ -29,17 +29,17 @@ import PaymentsReportPage from "../pages/admin/reports/PaymentsReportPage";
 import AttendanceReportPage from "../pages/admin/reports/AttendanceReportPage";
 import EnrollmentsReportPage from "../pages/admin/reports/EnrollmentsReportPage";
 
-// Staff
+// staff pages
 import StaffLayout from "../layouts/StaffLayout";
 import StaffHome from "../pages/staff/StaffHome";
 
-// Coach
+// coach pages
 import CoachLayout from "../layouts/CoachLayout";
 import CoachHome from "../pages/coach/CoachHome";
 import MyClasses from "../pages/coach/MyClasses";
 import CancelledSessions from "../pages/coach/CancelledSessions";
 
-// Player
+// player pages
 import PlayerLayout from "../layouts/PlayerLayout";
 import PlayerHome from "../pages/player/PlayerHome";
 import PlayerMyBookings from "../pages/player/PlayerMyBookings";
@@ -48,15 +48,18 @@ import PlayerMyPayments from "../pages/player/PlayerMyPayments";
 import PlayerBookCourt from "../pages/player/PlayerBookCourt";
 import PlayerAvailableClasses from "../pages/player/PlayerAvailableClasses";
 
+// define all website routes and who can access them
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* public pages */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
+      {/* admin only area */}
       <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPER_ADMIN"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminHome />} />
@@ -80,6 +83,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
+      {/* staff area */}
       <Route element={<ProtectedRoute allowedRoles={["STAFF"]} />}>
         <Route path="/staff" element={<StaffLayout />}>
           <Route index element={<StaffHome />} />
@@ -93,6 +97,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
+      {/* coach area */}
       <Route element={<ProtectedRoute allowedRoles={["COACH"]} />}>
         <Route path="/coach" element={<CoachLayout />}>
           <Route index element={<CoachHome />} />
@@ -103,6 +108,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
+      {/* player area */}
       <Route element={<ProtectedRoute allowedRoles={["PLAYER"]} />}>
         <Route path="/player" element={<PlayerLayout />}>
           <Route index element={<PlayerHome />} />

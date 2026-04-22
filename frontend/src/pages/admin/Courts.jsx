@@ -1,13 +1,16 @@
 import { useMemo, useState, useEffect } from "react";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// helper to format currency values as LKR
 function formatLKR(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return "-";
   return `LKR ${n.toLocaleString()}`;
 }
 
+// management page for creating and updating court profiles
 export default function Courts() {
   const [courts, setCourts] = useState([]);
   const [sports, setSports] = useState([]);
@@ -32,6 +35,7 @@ export default function Courts() {
     fetchCourts();
   }, []);
 
+  // downloads the master list of all sports available in the system
   async function fetchSports() {
     try {
       setLoadingSports(true);
@@ -52,6 +56,7 @@ export default function Courts() {
     }
   }
 
+  // downloads the full list of court profiles from the api
   async function fetchCourts() {
     try {
       setLoadingCourts(true);
@@ -78,6 +83,7 @@ export default function Courts() {
     }
   }
 
+  // real-time search logic for finding specific courts or sports
   const filteredCourts = useMemo(() => {
     if (!normalizedSearch) return courts;
     return courts.filter(c => {
@@ -86,11 +92,14 @@ export default function Courts() {
     });
   }, [courts, normalizedSearch]);
 
+  // clears form input states for a new entry
   const resetForm = () => {
     setSelectedSports([]); setName(""); setCapacity(""); setPricePerHour(""); setEditingId(null);
   };
 
   const openAddModal = () => { setMode("ADD"); resetForm(); setIsModalOpen(true); };
+  
+  // pre-loads the modal with existing data for editing
   const openEditModal = (court) => {
     setMode("EDIT"); setEditingId(court.rawId); setSelectedSports(court.sportsList || []);
     setName(court.name || ""); setCapacity(String(court.capacity ?? ""));
@@ -98,6 +107,7 @@ export default function Courts() {
   };
   const closeModal = () => setIsModalOpen(false);
 
+  // deletes a court record permanently from the database
   async function handleRemove(id) {
     if (!window.confirm("Are you sure you want to remove this court?")) return;
     try {
@@ -111,6 +121,7 @@ export default function Courts() {
     } catch (err) { console.error(err); }
   }
 
+  // sends the court profile data (new or update) to the backend
   async function handleSubmit(e) {
     e.preventDefault();
     if (selectedSports.length === 0) return alert("Select at least one sport");
@@ -151,6 +162,7 @@ export default function Courts() {
         />
       </div>
 
+      {/* displays either a loading state or the population list of courts */}
       {loadingCourts ? (
         <div className="arena-card" style={{ textAlign: "center", padding: "var(--space-4)" }}>Loading...</div>
       ) : (
@@ -172,6 +184,7 @@ export default function Courts() {
                   <td><span className="table-id">{c.id}</span></td>
                   <td style={{ fontWeight: 700 }}>{c.name}</td>
                   <td>
+                    {/* shows all sports supported by this specific court */}
                     <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                       {c.sportsList.map(s => <span key={s} className="status-pill success" style={{ fontSize: "0.7rem" }}>{s}</span>)}
                     </div>
@@ -191,6 +204,7 @@ export default function Courts() {
         </div>
       )}
 
+      {/* popup modal for adding or modifying a court record */}
       {isModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
           <div className="arena-card" style={{ width: "100%", maxWidth: "500px", boxShadow: "var(--shadow-lg)" }}>
@@ -202,6 +216,7 @@ export default function Courts() {
               </div>
               <div className="form-group">
                 <label className="form-label">Select Sports</label>
+                {/* allows selecting which sports activities this court physically supports */}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", padding: "var(--space-1)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)" }}>
                   {sports.map(s => (
                     <label key={s} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", cursor: "pointer", padding: "4px 8px", background: selectedSports.includes(s) ? "var(--primary-light)" : "transparent", borderRadius: "10px", border: "1px solid", borderColor: selectedSports.includes(s) ? "var(--primary)" : "transparent" }}>

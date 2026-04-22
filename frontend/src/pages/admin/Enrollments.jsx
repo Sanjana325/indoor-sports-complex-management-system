@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const STATUS_OPTIONS = ["ALL", "ENROLLED", "CANCELLED"];
 
+// converts billing types into user-friendly text
 function billingLabel(t) {
   return t === "ONE_TIME" ? "One-time" : "Monthly";
 }
 
+// turns financial status codes into readable labels for the table
 function feeStatusLabel(s) {
   if (s === "PAID") return "Full Paid";
   if (s === "DUE") return "Due Balance";
@@ -16,6 +19,7 @@ function feeStatusLabel(s) {
   return s;
 }
 
+// standard options to choose from when cancelling a student enrollment
 const CANCEL_REASONS = [
   "Payment Default / Outstanding Balance",
   "Violation of Academy Rules",
@@ -23,23 +27,27 @@ const CANCEL_REASONS = [
   "Administrative Decision"
 ];
 
+// major dashboard for managing students enrolled in coaching classes
 export default function Enrollments() {
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [classFilter, setClassFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // Cancellation Modal State
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancellationReason, setCancellationReason] = useState(CANCEL_REASONS[0]);
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // determines the api prefix based on user access level
   const getBasePath = () => localStorage.getItem("role") === "STAFF" ? "/api/staff" : "/api/admin";
+  
+  // common headers used for authenticated requests
   const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
   useEffect(() => { fetchEnrollments(); }, []);
 
+  // downloads the entire enrollment database for the admin to view
   const fetchEnrollments = async () => {
     try {
       setLoading(true);
@@ -52,12 +60,14 @@ export default function Enrollments() {
     finally { setLoading(false); }
   };
 
+  // generates a unique list of class names to populate the filter dropdown
   const classOptions = useMemo(() => {
     const unique = Array.from(new Set(enrollments.map((e) => e.className)));
     unique.sort((a, b) => a.localeCompare(b));
     return ["ALL", ...unique];
   }, [enrollments]);
 
+  // handles multi-level filtering by class and status simultaneously
   const filtered = useMemo(() => {
     return enrollments.filter((e) => {
       const classOk = classFilter === "ALL" || e.className === classFilter;
@@ -66,12 +76,14 @@ export default function Enrollments() {
     });
   }, [enrollments, classFilter, statusFilter]);
 
+  // triggers the confirmation popup before removing a student
   function openCancelModal(item) {
     setSelectedEnrollment(item);
     setCancellationReason(CANCEL_REASONS[0]);
     setIsCancelModalOpen(true);
   }
 
+  // sends the cancellation command to the server with the chosen reason
   async function handleConfirmCancel() {
     if (!selectedEnrollment) return;
     try {
@@ -102,6 +114,7 @@ export default function Enrollments() {
       </div>
 
       <div className="arena-card mb-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+        {/* filters to help find students from specific classes or states */}
         <div className="form-group">
           <label className="form-label">Filter by Academic Class</label>
           <select className="form-input" value={classFilter} onChange={(e) => setClassFilter(e.target.value)}>
@@ -131,6 +144,7 @@ export default function Enrollments() {
             </tr>
           </thead>
           <tbody>
+            {/* handles error or empty results based on the current filters */}
             {loading ? (
               <tr><td colSpan="8" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing enrollment records...</td></tr>
             ) : filtered.length === 0 ? (
@@ -157,6 +171,7 @@ export default function Enrollments() {
                   {localStorage.getItem("role") === "ADMIN" && (
                     <td>
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        {/* only allows cancellation for currently enrolled students */}
                         {e.status === "ENROLLED" ? (
                           <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openCancelModal(e)}>Cancel</button>
                         ) : <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>-</span>}
@@ -183,7 +198,7 @@ export default function Enrollments() {
   );
 }
 
-// Minimalist Modal for Cancellation
+// secondary component for the cancellation form popup
 function CancelModal({ isOpen, onClose, onConfirm, reason, setReason, isSubmitting, studentName }) {
   if (!isOpen) return null;
   return (

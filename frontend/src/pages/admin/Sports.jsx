@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// management page for creating and configuring different sport disciplines
 export default function Sports() {
     const [sports, setSports] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -14,6 +16,7 @@ export default function Sports() {
 
     useEffect(() => { fetchSports(); }, []);
 
+    // fetches the full list of sports from the database
     async function fetchSports() {
         try {
             setLoading(true);
@@ -27,6 +30,7 @@ export default function Sports() {
         finally { setLoading(false); }
     }
 
+    // sends new sport data or updates existing ones to the server
     async function handleAddOrUpdateSport(e) {
         e.preventDefault();
         const name = String(newSportName || "").trim().toUpperCase();
@@ -53,17 +57,22 @@ export default function Sports() {
         finally { setSaving(false); }
     }
 
+    // prepares the popup form for a brand new sport entry
     function handleAddClick() {
         setEditingSport(null); setNewSportName(""); setNewSportColor("#22c55e"); setIsBookable(true); setIsModalOpen(true);
     }
+
+    // loads existing sport data into the form for modification
     function handleEditClick(s) {
         setEditingSport(s); setNewSportName(s.SportName); setNewSportColor(s.ColorCode || "#22c55e");
         setIsBookable(s.IsBookable === 1 || s.IsBookable === true); setIsModalOpen(true);
     }
+
     function handleCloseModal() {
         setIsModalOpen(false); setEditingSport(null); setNewSportName("");
     }
 
+    // permanently removes a sport from the system database
     async function handleDeleteSport(id, name) {
         if (!window.confirm(`Permanently remove ${name}?`)) return;
         try {
@@ -95,6 +104,7 @@ export default function Sports() {
                         </tr>
                     </thead>
                     <tbody>
+                        {/* handles loading states or empty lists for the sports database */}
                         {loading ? (
                             <tr><td colSpan="5" style={{ textAlign: "center", padding: "2rem" }}>Loading database...</td></tr>
                         ) : sports.length === 0 ? (
@@ -106,6 +116,7 @@ export default function Sports() {
                                     <td style={{ fontWeight: 700, fontSize: "1rem" }}>{String(s.SportName || "").toUpperCase()}</td>
                                     <td>
                                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                            {/* visual preview of the sport's chosen identification color */}
                                             <div style={{ width: "24px", height: "24px", borderRadius: "6px", backgroundColor: s.ColorCode || "#22c55e", border: "1px solid rgba(0,0,0,0.05)" }}></div>
                                             <code style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{s.ColorCode}</code>
                                         </div>
@@ -128,6 +139,7 @@ export default function Sports() {
                 </table>
             </div>
 
+            {/* modal entry form for registering or updating sport metadata */}
             {isModalOpen && (
                 <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
                     <div className="arena-card" style={{ width: "100%", maxWidth: "450px" }}>
@@ -140,11 +152,13 @@ export default function Sports() {
                             <div className="form-group">
                                 <label className="form-label">Brand Color</label>
                                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                    {/* hex color picker for visual reports and calendaring */}
                                     <input type="color" value={newSportColor} onChange={e => setNewSportColor(e.target.value)} style={{ width: "50px", height: "50px", border: "none", borderRadius: "8px", cursor: "pointer", background: "none" }} />
                                     <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>This color will represent the sport in calendars and charts.</span>
                                 </div>
                             </div>
                             <div className="form-group">
+                                {/* toggles whether students can book this court directly or only through classes */}
                                 <label className="flex-between" style={{ cursor: "pointer", padding: "12px", background: "var(--bg-main)", borderRadius: "8px" }}>
                                     <div>
                                         <div style={{ fontWeight: 600 }}>Enable Public Booking</div>

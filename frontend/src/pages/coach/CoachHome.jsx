@@ -4,6 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
+// main dashboard for coaching staff to manage their work schedule and attendance
 export default function CoachHome() {
   const [events, setEvents] = useState([]);
   const [sports, setSports] = useState([]);
@@ -13,13 +14,12 @@ export default function CoachHome() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Attendance Drill-Down
   const [attendance, setAttendance] = useState([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [showAttendance, setShowAttendance] = useState(false);
 
+  // retrieves the current coach's full name from local storage for a personalized greeting
   const coachName = useMemo(() => {
-// ... (rest of helper functions)
     const fn = localStorage.getItem("firstName") || "";
     const ln = localStorage.getItem("lastName") || "";
     return `${fn} ${ln}`.trim() || "Coach";
@@ -31,6 +31,7 @@ export default function CoachHome() {
     fetchCalendarData();
   }, []);
 
+  // downloads assigned classes and sessions to populate the personal work calendar
   const fetchCalendarData = async () => {
     try {
       setLoading(true);
@@ -54,6 +55,7 @@ export default function CoachHome() {
     }
   };
 
+  // fetches student enrollment and attendance status for a specific class session
   const fetchAttendance = async (sessionId) => {
     try {
       setLoadingAttendance(true);
@@ -75,8 +77,9 @@ export default function CoachHome() {
     }
   };
 
+  // triggers the detail popup when a coach clicks on a calendar time-slot
   function handleEventClick(info) {
-    const { extendedProps, title } = info.event;
+    const { extendedProps } = info.event;
     const eventData = {
       id: info.event.id,
       title: info.event.title,
@@ -84,7 +87,7 @@ export default function CoachHome() {
     };
     setSelectedEvent(eventData);
     setIsDetailModalOpen(true);
-    setShowAttendance(false); // Reset for new modal
+    setShowAttendance(false);
   }
 
   function handleViewAttendance() {
@@ -110,6 +113,7 @@ export default function CoachHome() {
         </div>
       </div>
 
+      {/* color legend to help distinguish between different sports on the calendar */}
       {sports.length > 0 && (
         <div className="arena-legend">
           {sports.map(s => (
@@ -128,6 +132,7 @@ export default function CoachHome() {
 
         {error && <div style={{ color: 'var(--primary)', marginBottom: '10px' }}>{error}</div>}
 
+        {/* interactive main calendar showing daily and weekly class sessions */}
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -154,6 +159,7 @@ export default function CoachHome() {
         />
       </div>
 
+      {/* detailed drill-down modal reveal when clicking a session */}
       {isDetailModalOpen && selectedEvent && (
         <div className="detail-modal-backdrop" onClick={closeDetailModal} style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
@@ -184,6 +190,7 @@ export default function CoachHome() {
 
               <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
               
+              {/* toggles between basic session info and the student attendance list */}
               {!showAttendance ? (
                 <div style={{ textAlign: 'center', padding: '1rem 0' }}>
                   <button 

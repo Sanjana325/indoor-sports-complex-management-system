@@ -1,21 +1,25 @@
 import React from "react";
 
+// safety wrapper that catches runtime exceptions in the component tree to prevent total app crashes
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
+  // updates state so the next render will show the fallback UI instead of the broken feature
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
 
+  // records error details to the browser console for developer debugging
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
+      /* friendly fallback screen shown to users when a critical rendering error occurs */
       return (
         <div style={{ 
           padding: "40px", 
@@ -46,6 +50,8 @@ class ErrorBoundary extends React.Component {
           >
             Refresh Page
           </button>
+          
+          {/* displays raw technical details only in development mode to assist debugging */}
           {process.env.NODE_ENV === "development" && (
             <pre style={{ 
               marginTop: "40px", 

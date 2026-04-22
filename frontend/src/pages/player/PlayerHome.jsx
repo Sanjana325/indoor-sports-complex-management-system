@@ -17,6 +17,7 @@ import { formatLKR } from "../../utils/formatters";
 import "../../styles/PlayerPortal.css";
 
 const CARD_WIDTH = 304; 
+// static images for each sport to make the dashboard look professional
 const SPORT_IMAGES = {
   "Football":     "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=800",
   "Badminton":    "https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?auto=format&fit=crop&q=80&w=800",
@@ -28,6 +29,7 @@ const SPORT_IMAGES = {
   "Tennis":       "https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&q=80&w=800",
 };
 
+// main landing page for players showing their activity summary and quick links
 export default function PlayerHome() {
   const navigate = useNavigate();
   const [sports, setSports] = useState([]);
@@ -37,6 +39,7 @@ export default function PlayerHome() {
   const [loading, setLoading] = useState(true);
   const [offset, setOffset] = useState(0);
 
+  // downloads current player data including upcoming sessions and enrollments
   useEffect(() => {
     async function fetchData() {
       try {
@@ -61,6 +64,7 @@ export default function PlayerHome() {
     fetchData();
   }, []);
 
+  // processes the raw data into display stats for the total counts
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const todaySessions = bookings.filter(b => b.Date?.split('T')[0] === today).length;
@@ -75,7 +79,7 @@ export default function PlayerHome() {
 
   return (
     <div className="player-portal-home">
-      {/* HERO Section - Asymmetrical Split */}
+      {/* greeting section with high-level stats cards */}
       <section className="hero-wrapper-elite">
         <div className="hero-content-left">
           <h1 className="hero-title-elite">Player Dashboard</h1>
@@ -103,11 +107,10 @@ export default function PlayerHome() {
               <span className="stat-value">{stats.todaySessions}</span>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* QUICK ACTIONS - Centered and Compacted */}
+      {/* quick navigation tiles for primary portal features */}
       <section className="player-quick-actions" style={{ marginTop: '-11rem', padding: '0 10%', gap: '2rem' }}>
         <div className="action-card action-card-primary" style={{ flex: 1, padding: '2rem 1.75rem' }}>
           <SportsScore className="action-card-ghost" style={{ fontSize: '8rem' }} />
@@ -142,7 +145,7 @@ export default function PlayerHome() {
         </div>
       </section>
 
-      {/* SPORTS CAROUSEL */}
+      {/* visual sport explorer carousel with direct links to booking */}
       <div className="sports-band-section" style={{ marginTop: '5rem' }}>
         <div className="sports-band-header">
           <h2 className="sports-band-title">Explore Your Arena</h2>

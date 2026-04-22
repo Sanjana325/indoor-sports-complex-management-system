@@ -4,15 +4,18 @@ import "../styles/Login.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// helper to read URL parameters (like the reset token)
 function useQuery() {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
 }
 
+// user-friendly description of what makes a password safe
 function passwordPolicyMessage() {
   return "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
 }
 
+// strict check for password security requirements
 function isStrongPassword(pw) {
   if (typeof pw !== "string") return false;
   if (pw.length < 8) return false;
@@ -22,6 +25,7 @@ function isStrongPassword(pw) {
   return true;
 }
 
+// page where users set a new password after receiving a reset link
 export default function ResetPassword() {
   const navigate = useNavigate();
   const q = useQuery();
@@ -33,6 +37,7 @@ export default function ResetPassword() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  // logic to enable/disable the submit button based on validation
   const canSubmit = useMemo(() => {
     if (!token) return false;
     if (!isStrongPassword(newPassword)) return false;
@@ -40,6 +45,7 @@ export default function ResetPassword() {
     return true;
   }, [token, newPassword, confirm]);
 
+  // process the password change request
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
@@ -85,12 +91,14 @@ export default function ResetPassword() {
 
   return (
     <div className="login-container">
+      {/* secure form for finalizing the password recovery process */}
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="title-container">
           <h2 className="brand-title">Arena<span>Pro</span></h2>
           <h3 className="action-title">Reset Password</h3>
         </div>
 
+        {/* global alert messages for feedback */}
         {error ? <div className="login-error">{error}</div> : null}
         {message ? <div className="login-success">{message}</div> : null}
 
@@ -104,6 +112,7 @@ export default function ResetPassword() {
           required
         />
 
+        {/* help text to guide the user on security rules */}
         <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>{passwordPolicyMessage()}</div>
 
         <label style={{ marginTop: 12 }}>Confirm Password</label>
@@ -120,6 +129,7 @@ export default function ResetPassword() {
           {loading ? "Resetting..." : "Reset Password"}
         </button>
 
+        {/* link back to authentication gateway */}
         <p className="register-text">
           Back to <Link to="/login">Login</Link>
         </p>

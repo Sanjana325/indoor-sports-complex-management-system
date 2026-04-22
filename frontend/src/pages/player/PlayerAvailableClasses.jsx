@@ -44,6 +44,7 @@ import ClassPaymentModal from "../../components/ClassPaymentModal";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// maps sport names to their corresponding MUI icons for the class cards
 const ICON_MAP = {
   "Cricket": SportsCricket,
   "Badminton": SportsTennis,
@@ -58,9 +59,10 @@ const DAY_MAP = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function formatTime(t) {
   if (!t) return "";
-  return t.slice(0, 5); // 09:00:00 -> 09:00
+  return t.slice(0, 5); 
 }
 
+// combines date and time into a readable schedule label (e.g. "Mon, Wed | 09:00 - 10:00")
 function formatSchedule(cls) {
   const timeRange = `${formatTime(cls.StartTime)} - ${formatTime(cls.EndTime)}`;
   if (cls.ScheduleType === "ONETIME") {
@@ -75,6 +77,7 @@ function formatSchedule(cls) {
   return timeRange;
 }
 
+// catalog page for players to browse and enroll in professional sports classes
 export default function PlayerAvailableClasses() {
   const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
@@ -83,7 +86,6 @@ export default function PlayerAvailableClasses() {
   const [selectedCoach, setSelectedCoach] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [enrollClassData, setEnrollClassData] = useState(null);
 
@@ -91,6 +93,7 @@ export default function PlayerAvailableClasses() {
     fetchAvailableClasses();
   }, []);
 
+  // fetches all classes that have open capacity from the server
   async function fetchAvailableClasses() {
     try {
       setLoading(true);
@@ -113,6 +116,7 @@ export default function PlayerAvailableClasses() {
     }
   }
 
+  // validates if the player can join the class before opening the payment modal
   const handleEnrollClick = async (classId) => {
     try {
         const token = localStorage.getItem("token");
@@ -133,6 +137,7 @@ export default function PlayerAvailableClasses() {
     }
   };
 
+  // stores coach bio data to display in the profile popup
   const handleSeeMoreCoach = (cls) => {
     setSelectedCoach({
       name: `${cls.CoachFirstName} ${cls.CoachLastName}`,
@@ -145,7 +150,7 @@ export default function PlayerAvailableClasses() {
   return (
     <div className="pac-portal-container">
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        {/* HEADER SECTION */}
+        {/* main header with navigation back to player dashboard */}
         <Box sx={{ mb: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
             <Typography variant="h3" className="pac-title">
@@ -165,20 +170,18 @@ export default function PlayerAvailableClasses() {
           </Button>
         </Box>
 
-        {/* LOADING STATE */}
+        {/* shows appropriate UI for loading, error, or empty class list */}
         {loading ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 10 }}>
             <CircularProgress sx={{ color: 'var(--primary)', mb: 2 }} />
             <Typography sx={{ color: 'var(--text-muted)' }}>Searching for open classes...</Typography>
           </Box>
         ) : error ? (
-          /* ERROR STATE */
           <Box sx={{ textAlign: 'center', py: 10, bgcolor: 'rgba(239, 68, 68, 0.05)', borderRadius: '16px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
             <Typography variant="h6" sx={{ color: '#ef4444', fontWeight: 700 }}>{error}</Typography>
             <Button onClick={fetchAvailableClasses} sx={{ mt: 2, color: 'var(--text-main)', fontWeight: 600 }}>Try Again</Button>
           </Box>
         ) : classes.length === 0 ? (
-          /* EMPTY STATE */
           <Box sx={{ 
             textAlign: 'center', 
             py: 12, 
@@ -191,7 +194,7 @@ export default function PlayerAvailableClasses() {
             <Typography sx={{ color: 'var(--text-muted)' }}>All current classes are full or completed. Check back soon!</Typography>
           </Box>
         ) : (
-          /* CLASSES GRID */
+          /* grid layout of all class cards matching the database results */
           <Grid container spacing={3}>
             {classes.map((cls) => {
               const IconComp = ICON_MAP[cls.SportName] || DEFAULT_ICON;
@@ -199,7 +202,6 @@ export default function PlayerAvailableClasses() {
                 <Grid item xs={12} sm={6} md={4} key={cls.ClassID}>
                   <Card className="heavy-frost-card">
                     <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      {/* HEADER: Sport Badge */}
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                           <Avatar sx={{ bgcolor: 'var(--primary-light)', color: 'var(--primary)', width: 44, height: 44, border: '1px solid rgba(22, 163, 74, 0.1)' }}>
@@ -211,12 +213,11 @@ export default function PlayerAvailableClasses() {
                         </Box>
                         </Box>
 
-                      {/* TITLE */}
                       <Typography variant="h5" sx={{ color: 'var(--text-main)', fontWeight: 800, mb: 2, lineHeight: 1.3 }}>
                         {cls.Title}
                       </Typography>
 
-                      {/* DETAILS */}
+                      {/* displays coach name, schedule, and arena location */}
                       <Box sx={{ mb: 4 }}>
                         <div className="pac-detail-item">
                           <Person sx={{ fontSize: 20 }} />
@@ -252,7 +253,7 @@ export default function PlayerAvailableClasses() {
                         </div>
                       </Box>
 
-                      {/* FOOTER: FEE & ACTION */}
+                      {/* card footer showing the registration fee and enroll button */}
                       <Box className="card-footer-flex">
                         <Box>
                           <Typography variant="caption" sx={{ color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 0.5 }}>Fee</Typography>
@@ -276,7 +277,7 @@ export default function PlayerAvailableClasses() {
           </Grid>
         )}
 
-        {/* COACH INFO POPUP */}
+        {/* handles the pop-up display for coach professional credentials */}
         <Dialog 
           open={isModalOpen} 
           onClose={() => setIsModalOpen(false)}
@@ -332,7 +333,7 @@ export default function PlayerAvailableClasses() {
           </DialogActions>
         </Dialog>
 
-        {/* PAYMENT MODAL */}
+        {/* reusable payment modal that handles gateway integration for class fees */}
         {enrollClassData && (
             <ClassPaymentModal 
                 open={paymentModalOpen}
@@ -344,4 +345,4 @@ export default function PlayerAvailableClasses() {
       </Container>
     </div>
   );
-}
+}

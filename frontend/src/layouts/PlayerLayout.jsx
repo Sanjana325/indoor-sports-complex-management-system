@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { getInitials } from "../utils/formatters";
 import "../styles/PlayerPortal.css";
 
+// specialized layout for the player dashboard with restricted access handling
 export default function PlayerLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,6 +17,7 @@ export default function PlayerLayout() {
   const [showLockToast, setShowLockToast] = useState(false);
   const profileRef = useRef(null);
 
+  // closes profile dropdown when clicking anywhere else on the screen
   useEffect(() => {
     function handleOutsideClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
@@ -24,10 +26,12 @@ export default function PlayerLayout() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  // auto-closes menu on navigation to prevent overlay sticking
   useEffect(() => {
     setIsProfileOpen(false);
   }, [location.pathname]);
 
+  // blocks navigation if the user hasn't changed their default password
   const handleRestrictedClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -41,7 +45,7 @@ export default function PlayerLayout() {
 
   return (
     <div className="player-portal-layout">
-      {/* TOP NAVIGATION */}
+      {/* horizontal navigation bar for top-level player actions */}
       <nav className="player-nav">
         <div className="player-nav-brand-container">
           <Link to="/player" className="player-nav-brand">
@@ -49,6 +53,7 @@ export default function PlayerLayout() {
           </Link>
         </div>
 
+        {/* nav links with conditional restriction overlay for unverified accounts */}
         <div className={`player-nav-links ${user.mustChangePassword ? 'is-restricted' : ''}`}
              onClickCapture={user.mustChangePassword ? handleRestrictedClick : undefined}>
           <NavLink to="/player" className="player-nav-link" end>Home</NavLink>
@@ -57,7 +62,7 @@ export default function PlayerLayout() {
           <NavLink to="/player/my-payments" className="player-nav-link">Payments</NavLink>
         </div>
 
-        {/* ELITE USER CHIP */}
+        {/* interactive user profile chip with dropdown menu */}
         <div className="player-nav-user" ref={profileRef} onClick={() => setIsProfileOpen(!isProfileOpen)}>
           <div className="user-chip-trigger">
             <div className="user-chip-avatar">{initials}</div>
@@ -69,6 +74,7 @@ export default function PlayerLayout() {
           </div>
 
           {isProfileOpen && (
+            /* floating dropdown for account settings and session termination */
             <div className="player-profile-dropdown">
                <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b' }}>{user.firstName} {user.lastName}</div>
@@ -82,11 +88,12 @@ export default function PlayerLayout() {
         </div>
       </nav>
 
-      {/* MAIN CONTENT AREA */}
+      {/* primary container for rendering nested dashboard views */}
       <main className="player-content-wrapper">
         <Outlet />
       </main>
 
+      {/* temporary alert prompting users to finalize their account security */}
       <Snackbar 
         open={showLockToast} 
         autoHideDuration={6000} 

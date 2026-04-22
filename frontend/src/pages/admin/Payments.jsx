@@ -4,8 +4,7 @@ import ArenaTable from "../../components/shared/ArenaTable";
 import StatusPill from "../../components/shared/StatusPill";
 import { formatDate } from "../../utils/formatters";
 
-
-
+// page for administrators to audit and verify all system transactions
 export default function Payments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,6 +13,7 @@ export default function Payments() {
   const [showAllClasses, setShowAllClasses] = useState(false);
   const [showAllCourts, setShowAllCourts] = useState(false);
 
+  // downloads the full transaction history from the server
   const fetchPayments = async () => {
     try {
       setLoading(true);
@@ -28,6 +28,7 @@ export default function Payments() {
 
   useEffect(() => { fetchPayments(); }, []);
 
+  // handles verifying or rejecting a payment, updating the UI state immediately
   const handleAction = async (endpoint, id, rawId, newStatus) => {
     if (newStatus === "REJECTED" && !window.confirm("Are you sure you want to REJECT this payment? This will cancel the associated reservation.")) return;
     try {
@@ -42,6 +43,7 @@ export default function Payments() {
     }
   };
 
+  // manages filtering by user search query and payment status
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return payments.filter(p => {
@@ -51,6 +53,7 @@ export default function Payments() {
     });
   }, [payments, search, statusFilter]);
 
+  // splits the payments into two logical categories for better organization
   const bookingPayments = filtered.filter(p => p.type === "Court Booking");
   const classFeePayments = filtered.filter(p => p.type === "Class Fee");
 
@@ -65,6 +68,7 @@ export default function Payments() {
       </div>
 
       <div className="arena-card mb-3" style={{ padding: "var(--space-1)", display: "flex", gap: "var(--space-2)" }}>
+        {/* search and filter controls for the transaction log */}
         <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Search transactions..." value={search} onChange={e => setSearch(e.target.value)} />
         <select className="form-input" style={{ maxWidth: "200px" }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="ALL">All Statuses</option>
@@ -80,11 +84,13 @@ export default function Payments() {
   );
 }
 
+// reusable UI section for displaying a list of payments in a table
 function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onReject, loading, showBookingId, showEnrollmentId }) {
   return (
     <div className="mb-4">
       <div className="flex-between mb-1" style={{ alignItems: "flex-end" }}>
         <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)" }}>{title} ({total})</h3>
+        {/* toggle button to show more or less rows in the table */}
         {total > 5 && (
           <button className="btn-link" onClick={onToggle} style={{ fontSize: "0.8rem", color: "var(--primary)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
             {showAll ? "Collapse" : "Show All"}
@@ -116,6 +122,7 @@ function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onRej
             <td style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "0.85rem" }}>LKR {Number(p.amount).toLocaleString()}</td>
             <td style={{ fontSize: "0.8rem" }}>{formatDate(p.paidAt)}</td>
             <td>
+              {/* allows safe viewing of uploaded bank slips or payment proofs */}
               {p.slip ? (
                 <button className="btn-link" onClick={() => window.open(p.slip, "_blank")} style={{ color: "var(--primary)", fontSize: "0.85rem", fontWeight: 600, background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}>View Slip</button>
               ) : <span style={{ color: "var(--text-muted)" }}>-</span>}
@@ -125,6 +132,7 @@ function PaymentSection({ title, rows, onToggle, showAll, total, onVerify, onRej
             </td>
             <td>
               <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                {/* verification workflow: only pending payments can be edited */}
                 {p.status === "PENDING" ? (
                   <>
                     <button className="btn btn-primary" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => onVerify(p.id, p.paymentIdStr)}>Verify</button>

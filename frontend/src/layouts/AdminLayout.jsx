@@ -5,7 +5,7 @@ import adminService from "../services/adminService";
 import { useAuth } from "../hooks/useAuth";
 import { getInitials } from "../utils/formatters";
 
-
+// configuration for all sidebar navigation links with their corresponding SVG icons
 const NAV_ITEMS = [
   { path: "/admin", label: "Overview", icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -45,6 +45,7 @@ const NAV_ITEMS = [
   )},
 ];
 
+// master layout for the administrative backend providing shared navigation and real-time alerts
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,6 +64,7 @@ export default function AdminLayout() {
   const [recentCancellations, setRecentCancellations] = useState([]);
   const [showLockToast, setShowLockToast] = useState(false);
 
+  // monitor global click interactions to collapse open dropdown menus
   useEffect(() => {
     function handleOutsideClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
@@ -72,6 +74,7 @@ export default function AdminLayout() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  // periodically checks for new manual transaction slips and coach cancellations
   useEffect(() => {
     const fetchNotifs = async () => {
       try {
@@ -89,6 +92,7 @@ export default function AdminLayout() {
     return () => clearInterval(interval);
   }, []);
 
+  // dismisses a specific session notification once the admin has seen it
   const handleAcknowledge = async (sessionId) => {
     try {
       await adminService.acknowledgeCancellation(sessionId);
@@ -98,6 +102,7 @@ export default function AdminLayout() {
     }
   };
 
+  // security trigger for restricting access when an account is in a temporary state
   const handleRestrictedClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -111,6 +116,7 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-layout">
+      {/* sidebar component providing high-level administrative routing */}
       <aside className="admin-sidebar">
         <div className="sidebar-main">
           <h2 className="sidebar-title">Arena<span>Pro</span></h2>
@@ -123,6 +129,7 @@ export default function AdminLayout() {
                 {item.icon}
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {item.badge && pendingPaymentsCount > 0 && (
+                  /* dynamic notification badge for pending financial approvals */
                   <span style={{ background: "var(--primary)", color: "white", fontSize: "0.7rem", padding: "2px 6px", borderRadius: "10px", fontWeight: 700 }}>{pendingPaymentsCount}</span>
                 )}
               </NavLink>
@@ -130,8 +137,10 @@ export default function AdminLayout() {
           </nav>
         </div>
 
+        {/* persistent footer area for account profile access */}
         <footer className="sidebar-footer" ref={profileRef}>
           {isProfileOpen && (
+            /* interactive popup for profile editing and session termination */
             <div className="sidebar-popup-menu">
               <Link to="/admin/profile" className="sidebar-popup-item">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -163,7 +172,9 @@ export default function AdminLayout() {
         </footer>
       </aside>
 
+      {/* primary workspace area with real-time notification overlays */}
       <main className="admin-main">
+        {/* floating notification center for urgent system-wide events */}
         <div className="floating-notif-container" ref={notifRef}>
           <button 
             className="floating-notif-bell" 
@@ -176,6 +187,7 @@ export default function AdminLayout() {
           </button>
           
           {isNotifOpen && (
+            /* detailed list of recent cancellations needing attention */
             <div className="floating-notif-dropdown">
               <div style={{ fontWeight: 800, marginBottom: "12px", fontSize: "0.95rem", color: "var(--text-main)" }}>Recent Alerts</div>
               {recentCancellations.length === 0 ? (
@@ -196,6 +208,7 @@ export default function AdminLayout() {
           )}
         </div>
 
+        {/* dynamic viewport where specific administrative routes render */}
         <section className="admin-content">
           <div className="admin-content-inner">
             <Outlet />
@@ -203,6 +216,7 @@ export default function AdminLayout() {
         </section>
       </main>
 
+      {/* mandatory password reset alert for security enforcement */}
       <Snackbar 
         open={showLockToast} 
         autoHideDuration={6000} 

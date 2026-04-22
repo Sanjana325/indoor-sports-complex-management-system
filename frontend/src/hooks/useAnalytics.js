@@ -2,10 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-/**
- * Professional Analytics Hook
- * Handles date range logic, API fetching, and dashboard state.
- */
+// custom hook to manage data fetching, filtering, and state for administrative analytics reports
 export function useAnalytics(type) {
   const [loading, setLoading] = useState(true);
   const [preset, setPreset] = useState("MONTH");
@@ -24,6 +21,7 @@ export function useAnalytics(type) {
     charts: {}
   });
 
+  // helper to normalize date objects into the backend-friendly YYYY-MM-DD format
   const toISODate = (d) => {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -31,6 +29,7 @@ export function useAnalytics(type) {
     return `${yyyy}-${mm}-${dd}`;
   };
 
+  // calculates relative start and end boundaries based on user-selected time batches
   const computePresetRange = (presetValue) => {
     const today = new Date();
     const startOfDay = (d) => { d.setHours(0,0,0,0); return d; };
@@ -58,6 +57,7 @@ export function useAnalytics(type) {
 
   const [activeRange, setActiveRange] = useState(() => computePresetRange("MONTH"));
 
+  // central API controller for pulling filtered datasets based on the current view state
   const fetchData = useCallback(async (range, method, category, classId) => {
     setLoading(true);
     try {
@@ -79,11 +79,12 @@ export function useAnalytics(type) {
     }
   }, [type]);
 
-  // Initial load
+  // refreshes dashboard data whenever any core filter toggle changes
   useEffect(() => {
     fetchData(activeRange, activeMethod, activeCategory, activeClassId);
   }, [fetchData, activeRange, activeMethod, activeCategory, activeClassId]);
 
+  // manual trigger for syncing local UI state with the active API range
   const updateRange = () => {
     let range;
     if (rangeMode === "CUSTOM") {

@@ -1,10 +1,12 @@
 import { useNavigate } from "react-router-dom";
 
+// layout header for specific report pages with title, breadcrumbs, and export actions
 export const AnalyticHeader = ({ title, subtitle, onExportPDF }) => {
   const navigate = useNavigate();
   return (
     <div className="flex-between mb-4 analytic-header">
       <div>
+        {/* navigation back link to return to the root reports index */}
         <button 
           className="btn-back mb-1" 
           onClick={() => navigate("/admin/reports")}
@@ -16,6 +18,7 @@ export const AnalyticHeader = ({ title, subtitle, onExportPDF }) => {
         {subtitle && <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{subtitle}</p>}
       </div>
       <div style={{ display: 'flex', gap: '12px' }}>
+        {/* conditional action button for generating a static PDF version of the current view */}
         {onExportPDF && (
           <button className="btn btn-primary" onClick={onExportPDF}>
             Export as PDF
@@ -26,10 +29,12 @@ export const AnalyticHeader = ({ title, subtitle, onExportPDF }) => {
   );
 };
 
+// global filter bar for analytics with date range presets and dynamic categorical selects
 export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, hasTargetClassFilter, metadata }) => {
   return (
     <div className="arena-card mb-4 no-print" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
       <div className="flex-between" style={{ gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+        {/* quick selection for standard time periods like 'This Month' or 'This Year' */}
         <div className="form-group" style={{ marginBottom: 0 }}>
           <select 
             className="form-input" 
@@ -44,6 +49,8 @@ export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, 
             <option value="YEAR">Last 1 Year</option>
           </select>
         </div>
+        
+        {/* manual override for picking exact start and end dates */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input 
             className="form-input" 
@@ -61,6 +68,7 @@ export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, 
         </div>
         
         {hasMethodFilter && (
+          /* narrows down transaction reports by payment channel */
           <div className="form-group" style={{ marginBottom: 0 }}>
             <select 
               className="form-input" 
@@ -76,6 +84,7 @@ export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, 
         )}
         
         {hasCategoryFilter && (
+          /* splits revenue or attendance data by module type */
           <div className="form-group" style={{ marginBottom: 0 }}>
             <select 
               className="form-input" 
@@ -91,6 +100,7 @@ export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, 
         )}
 
         {hasTargetClassFilter && metadata?.classes && (
+          /* focuses reports on a specific coaching program */
           <div className="form-group" style={{ marginBottom: 0 }}>
             <select 
               className="form-input" 
@@ -118,13 +128,18 @@ export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, 
   );
 };
 
+// summarizes key performance indicators into a high-visibility responsive grid
 export const KPIStatsGrid = ({ kpis, loading }) => {
+  // helper to convert snake_case or camelCase keys into professional uppercase headers
   const formatKey = (key) => key.replace(/([A-Z])/g, ' $1').toUpperCase();
+  
+  // ensures currency values are correctly prefixed and delimited
   const formatValue = (key, val) => {
     if (key.toLowerCase().includes('revenue')) return `LKR ${val.toLocaleString()}`;
     return val;
   };
 
+  // skeleton screen for KPI cards to prevent layout shifts during fetching
   if (loading) {
      return (
        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: '24px' }}>
@@ -141,6 +156,7 @@ export const KPIStatsGrid = ({ kpis, loading }) => {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: '24px' }} className="kpi-grid no-print">
       {Object.entries(kpis).map(([key, val]) => (
+        /* individual statistic card with side-border branding */
         <div key={key} className="arena-card" style={{ position: 'relative', overflow: 'hidden', padding: '20px' }}>
           <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 800, marginBottom: '6px' }}>{formatKey(key)}</div>
           <div style={{ fontSize: "1.5rem", fontWeight: 900, color: "var(--text-main)" }}>{formatValue(key, val)}</div>
@@ -151,6 +167,7 @@ export const KPIStatsGrid = ({ kpis, loading }) => {
   );
 };
 
+// informative panel for automated data observations and computed trends
 export const InsightPanel = ({ insights, loading }) => {
   if (loading) return null;
   return (
@@ -159,6 +176,7 @@ export const InsightPanel = ({ insights, loading }) => {
         ✨ Intelligent Insights
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {/* iterates through calculated observations to provide quick takeaways */}
         {insights.map((ins, i) => (
           <p key={i} style={{ fontSize: '0.875rem', color: 'var(--text-main)', display: 'flex', gap: '8px' }}>
             <span style={{ color: 'var(--primary)' }}>•</span> {ins}

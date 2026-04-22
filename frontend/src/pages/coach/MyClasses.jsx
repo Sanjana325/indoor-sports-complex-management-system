@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CancelClassModal from "../../components/CancelClassModal";
 
+// converts class schedule days array into a readable comma-separated string
 function formatDays(days) {
-// ... (rest of helper functions same as before)
   if (!days || days.length === 0) return "-";
   return days.join(", ");
 }
 
+// transforms standard 24h time strings into raw numeric minutes for duration math
 function timeToMinutes(t) {
   if (!t || !t.includes(":")) return null;
   const [hh, mm] = t.split(":").map(Number);
@@ -15,6 +16,7 @@ function timeToMinutes(t) {
   return hh * 60 + mm;
 }
 
+// calculates and labels the duration of a class session in hours and minutes
 function durationLabel(startTime, endTime) {
   const s = timeToMinutes(startTime);
   const e = timeToMinutes(endTime);
@@ -30,12 +32,14 @@ function durationLabel(startTime, endTime) {
   return `${m}m`;
 }
 
+// formats numeric amounts into Sri Lankan Rupee currency strings
 function formatLKR(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return "-";
   return `LKR ${n.toLocaleString("en-LK")}`;
 }
 
+// secondary modal component to show the names of students enrolled in a specific class
 function EnrolledStudentsModal({ classId, className, onClose }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,7 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
     fetchStudents();
   }, [classId]);
 
+  // downloads the full enrollment list for the selected class ID
   const fetchStudents = async () => {
     try {
       setLoading(true);
@@ -80,6 +85,7 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
         <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
 
         <div className="arena-list">
+          {/* handles loading or empty states for the student list */}
           {loading ? (
             <div style={{ textAlign: 'center', padding: '20px' }}>Loading students...</div>
           ) : error ? (
@@ -110,13 +116,13 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
   );
 }
 
+// main inventory page for coaches to oversee all their assigned academic classes
 export default function MyClasses() {
   const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // For Drill-Down
   const [selectedClassForStudents, setSelectedClassForStudents] = useState(null);
 
   const coachName = useMemo(() => {
@@ -131,6 +137,7 @@ export default function MyClasses() {
     fetchMyClasses();
   }, []);
 
+  // downloads the master list of all classes taught by this specific coach
   const fetchMyClasses = async () => {
     try {
       setLoading(true);
@@ -152,10 +159,7 @@ export default function MyClasses() {
     }
   };
 
-  // cancelled sessions state removed for persistent history flow
   const [isCancelOpen, setIsCancelOpen] = useState(false);
-
-  // The backend already filters classes by CoachID, so we don't need to filter by name here.
   const myClasses = classes;
 
   function openCancel() {
@@ -166,6 +170,7 @@ export default function MyClasses() {
     setIsCancelOpen(false);
   }
 
+  // sends the cancellation request for a specific session to the backend
   async function handleCancelSubmit(payload) {
     try {
       const token = localStorage.getItem("token");
@@ -202,6 +207,7 @@ export default function MyClasses() {
           <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Monitor student participation and manage your teaching schedule.</p>
         </div>
 
+        {/* emergency trigger to cancel an upcoming class session */}
         <button type="button" className="btn btn-danger" onClick={openCancel}>
           Cancel Class Session
         </button>
@@ -222,6 +228,7 @@ export default function MyClasses() {
           </thead>
 
           <tbody>
+            {/* conditional rendering for class log database loading state */}
             {loading ? (
               <tr>
                 <td colSpan="7" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -251,6 +258,7 @@ export default function MyClasses() {
                   </td>
 
                   <td>
+                    {/* displays the specific date for one-time sessions OR day names for recurring ones */}
                     {c.scheduleType === "ONE_TIME" ? c.oneTimeDate || "-" : formatDays(c.days)}
                   </td>
 
@@ -265,6 +273,7 @@ export default function MyClasses() {
                   <td>{formatLKR(c.fee)}</td>
 
                   <td>
+                    {/* provides a drill-down button to see exactly who is in the class */}
                     {Number.isFinite(c.enrolledCount) && Number.isFinite(c.capacity) ? (
                       <div className="flex-start" style={{ gap: '12px' }}>
                         <span style={{ fontWeight: 600 }}>{c.enrolledCount}/{c.capacity}</span>
@@ -286,8 +295,7 @@ export default function MyClasses() {
         </table>
       </div>
 
-
-
+      {/* modal trigger for selecting a specific class slot to revoke */}
       {isCancelOpen && (
         <CancelClassModal
           coachName={coachName}
@@ -297,6 +305,7 @@ export default function MyClasses() {
         />
       )}
 
+      {/* modal reveal for the detailed student enrollment register */}
       {selectedClassForStudents && (
         <EnrolledStudentsModal 
           classId={selectedClassForStudents.id}

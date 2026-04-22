@@ -1,26 +1,31 @@
 import { useMemo, useState, useEffect } from "react";
 import api from "../../services/api";
 
+// backend server address
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// list of weekdays for scheduling weekly classes
 const DAYS = [
   { label: "Mon", value: 1 }, { label: "Tue", value: 2 }, { label: "Wed", value: 3 },
   { label: "Thu", value: 4 }, { label: "Fri", value: 5 }, { label: "Sat", value: 6 },
   { label: "Sun", value: 0 }
 ];
 
+// converts numeric day values into readable short strings
 function formatDays(days) {
   if (!days || !Array.isArray(days)) return [];
   const dayMap = { 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 0: "Sun" };
   return days.map(d => dayMap[d] || d);
 }
 
+// converts "HH:mm" time strings into total minutes for easier calculation
 function timeToMinutes(t) {
   if (!t || !t.includes(":")) return null;
   const [hh, mm] = t.split(":").map(Number);
   return hh * 60 + mm;
 }
 
+// calculates the duration between start and end times in a readable format
 function durationLabel(startTime, endTime) {
   const s = timeToMinutes(startTime); const e = timeToMinutes(endTime);
   if (s === null || e === null || e <= s) return "-";
@@ -28,6 +33,7 @@ function durationLabel(startTime, endTime) {
   return h > 0 ? `${h}h ${m > 0 ? m + 'm' : ''}` : `${m}m`;
 }
 
+// main management page for coaching classes and sessions
 export default function ClassManagement() {
   const [classes, setClasses] = useState([]);
   const [sportsList, setSportsList] = useState([]);
@@ -56,11 +62,12 @@ export default function ClassManagement() {
   const [cancelledHistory, setCancelledHistory] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
+  // determines the correct api path based on the user's login role
   const getBasePath = () => localStorage.getItem("role") === "STAFF" ? "/api/staff" : "/api/admin";
-  const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
   useEffect(() => { fetchInitialData(); }, []);
 
+  // fetches all required dropdown data and class records at once
   async function fetchInitialData() {
     try {
       setLoadingInitial(true);
@@ -80,12 +87,17 @@ export default function ClassManagement() {
   }
 
   const selectedSportObj = useMemo(() => sportsList.find(s => s.SportName === sport) || null, [sport, sportsList]);
+  
+  // filters coaches so that only those who teach the selected sport are shown
   const filteredCoaches = useMemo(() => sport ? coachesList.filter(c => c.sports.includes(sport)) : coachesList, [coachesList, sport]);
+
+  // validation state to check if enough time/date info exists to check court availability
   const hasSlotInputs = useMemo(() => {
     if (!startTime || !endTime || !selectedSportObj) return false;
     return scheduleType === "WEEKLY" ? (days.length > 0 && !!startDate) : !!oneTimeDate;
   }, [startTime, endTime, scheduleType, days, oneTimeDate, startDate, selectedSportObj]);
 
+  // dynamically checks the database for non-conflicting courts based on the current form inputs
   useEffect(() => {
     async function fetchCourts() {
       if (!hasSlotInputs) { setAvailableCourts([]); return; }
@@ -102,19 +114,24 @@ export default function ClassManagement() {
     return () => clearTimeout(timer);
   }, [hasSlotInputs, selectedSportObj, scheduleType, startTime, endTime, oneTimeDate, startDate, days, mode, editingId]);
 
+  // real-time search logic for the classes table
   const filteredClasses = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? classes.filter((c) => `${c.className} ${c.coachName} ${c.sport}`.toLowerCase().includes(q)) : classes;
   }, [classes, search]);
 
+  // resets the registration form fields to their defaults
   function resetForm() {
     setClassName(""); setCoachId(""); setCourtIds([]); setCapacity(""); setFee(""); setScheduleType("WEEKLY");
     setDays([]); setOneTimeDate(""); setStartDate(""); setStartTime(""); setEndTime(""); setFormError(""); setIsConflict(false);
   }
 
   function openAddModal() { setMode("ADD"); resetForm(); if (sportsList.length > 0) setSport(sportsList[0].SportName); setIsModalOpen(true); }
+
+  // pre-fills the form with existing record data for updating
   function openEditModal(item) { setMode("EDIT"); setEditingId(item.rawId); setSport(item.sport); setClassName(item.className); setCoachId(String(item.coachId)); setCourtIds(item.courtIds || []); setCapacity(String(item.capacity)); setFee(String(item.fee || "")); setScheduleType(item.scheduleType || "WEEKLY"); setDays(item.days || []); setOneTimeDate(item.oneTimeDate || ""); setStartDate(item.startDate?.split('T')[0] || ""); setStartTime(item.startTime || ""); setEndTime(item.endTime || ""); setIsModalOpen(true); }
 
+  // toggles a class between active and deactivated states
   async function handleToggleStatus(item) {
     const isDeactivating = item.status !== "DEACTIVATED";
     if (!window.confirm(`Are you sure you want to ${isDeactivating ? "deactivate" : "activate"} this class?`)) return;
@@ -124,6 +141,7 @@ export default function ClassManagement() {
     } catch (err) { console.error(err); }
   }
 
+  // sends class data (new or update) to the server after validation
   async function handleSubmit(e) {
     e.preventDefault(); setFormError(""); setSubmitting(true);
     const payload = { title: className.trim(), sportId: selectedSportObj.SportID, coachId: Number(coachId), courtIds: courtIds.map(Number), capacity: Number(capacity), fee: Number(fee), billingType: scheduleType === "WEEKLY" ? "MONTHLY" : "ONE_TIME", scheduleType, startDate: scheduleType === "WEEKLY" ? startDate : oneTimeDate, oneTimeDate: scheduleType === "ONE_TIME" ? oneTimeDate : "", startTime, endTime, weekdays: scheduleType === "WEEKLY" ? days : [] };
@@ -144,6 +162,7 @@ export default function ClassManagement() {
       <div className="flex-between mb-3">
         <div>
           <h2 className="page-title">Classes</h2>
+          {/* switch between the current schedule and the history of cancelled sessions */}
           <div className="flex-start mt-2" style={{ gap: "12px" }}>
             <button className={`btn ${activeTab === "ACTIVE" ? "btn-primary" : "btn-secondary"}`} style={{ borderRadius: "20px", padding: "6px 16px", fontSize: "0.8rem" }} onClick={() => setActiveTab("ACTIVE")}>Active Schedules</button>
             <button className={`btn ${activeTab === "HISTORY" ? "btn-danger" : "btn-secondary"}`} style={{ borderRadius: "20px", padding: "6px 16px", fontSize: "0.8rem" }} onClick={() => setActiveTab("HISTORY")}>Cancellation Log</button>
@@ -176,6 +195,7 @@ export default function ClassManagement() {
                 </tr>
               </thead>
               <tbody>
+                {/* manage various list states such as loading or empty results */}
                 {loadingInitial ? (
                   <tr><td colSpan="9" style={{ textAlign: "center", padding: "2rem" }}>Analyzing educational framework...</td></tr>
                 ) : filteredClasses.length === 0 ? (
@@ -196,6 +216,7 @@ export default function ClassManagement() {
                         <div style={{ fontSize: "0.85rem", color: "var(--text-main)", fontWeight: 600 }}>{c.courtName || "Unassigned"}</div>
                       </td>
                       <td>
+                        {/* shows either weekly days or the specific date for one-time classes */}
                         {c.scheduleType === "WEEKLY" ? (
                           <>
                             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>Starts: {c.startDate?.split('T')[0]}</div>
@@ -256,6 +277,7 @@ export default function ClassManagement() {
               </tr>
             </thead>
             <tbody>
+              {/* historical record of all class sessions that were cancelled */}
               {cancelledHistory.length === 0 ? (
                 <tr><td colSpan="5" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No historical cancellations on record.</td></tr>
               ) : (
@@ -287,6 +309,7 @@ export default function ClassManagement() {
         </div>
       )}
 
+      {/* modal form for creating or updating a class profile */}
       {isModalOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
           <div className="arena-card" style={{ width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
@@ -327,6 +350,7 @@ export default function ClassManagement() {
                       </label>
                     </div>
                   </label>
+                  {/* allows choosing multiple days for the weekly frequency */}
                   {scheduleType === "WEEKLY" ? (
                     <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "8px" }}>
                       {DAYS.map(d => (
@@ -359,6 +383,7 @@ export default function ClassManagement() {
 
                 <div className="form-group" style={{ gridColumn: "span 2" }}>
                   <label className="form-label">Arena Court Assignment</label>
+                  {/* dynamically reveals which courts are physically available for the chosen time */}
                   {!hasSlotInputs ? (
                     <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", padding: "10px", background: "var(--bg-main)", borderRadius: "8px" }}>Configure schedule parameters to view available courts.</div>
                   ) : availableCourts.length === 0 ? (

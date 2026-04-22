@@ -4,7 +4,7 @@ import { Snackbar, Alert } from "@mui/material";
 import { useAuth } from "../hooks/useAuth";
 import { getInitials } from "../utils/formatters";
 
-
+// definitions for the coach sidebar menu items and their associated SVG icons
 const COACH_NAV_ITEMS = [
   { path: "/coach", label: "Dashboard Home", icon: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
@@ -17,6 +17,7 @@ const COACH_NAV_ITEMS = [
   )},
 ];
 
+// secondary layout specifically for the coach dashboard featuring a persistent sidebar
 export default function CoachLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,6 +31,7 @@ export default function CoachLayout() {
   const [showLockToast, setShowLockToast] = useState(false);
   const profileRef = useRef(null);
 
+  // monitor global click events to shut the user popup when focus is lost
   useEffect(() => {
     function handleOutsideClick(e) {
       if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
@@ -38,6 +40,7 @@ export default function CoachLayout() {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  // interceptor for restricted navigation when a password reset is pending
   const handleRestrictedClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -51,6 +54,7 @@ export default function CoachLayout() {
 
   return (
     <div className="admin-layout">
+      {/* vertical navigation panel containing primary dashboard redirects */}
       <aside className="admin-sidebar">
         <div className="sidebar-main">
           <h2 className="sidebar-title">Arena<span>Pro</span></h2>
@@ -67,8 +71,10 @@ export default function CoachLayout() {
           </nav>
         </div>
 
+        {/* user identification and system control cluster at the bottom */}
         <footer className="sidebar-footer" ref={profileRef}>
           {isProfileOpen && (
+            /* context menu for coach profile management and logging out */
             <div className="sidebar-popup-menu">
               <Link to="/coach/profile" className="sidebar-popup-item">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -100,8 +106,8 @@ export default function CoachLayout() {
         </footer>
       </aside>
 
+      {/* primary scrolling viewport for dynamic coach modules */}
       <main className="admin-main">
-
         <section className="admin-content">
           <div className="admin-content-inner">
             <Outlet />
@@ -109,6 +115,7 @@ export default function CoachLayout() {
         </section>
       </main>
 
+      {/* global warning notification for mandatory account security updates */}
       <Snackbar 
         open={showLockToast} 
         autoHideDuration={6000} 
