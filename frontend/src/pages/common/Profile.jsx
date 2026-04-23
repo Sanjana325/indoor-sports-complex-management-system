@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { getInitials } from "../../utils/formatters";
-
-const API_BASE = "http://localhost:5000/api";
+import api from "../../services/api";
 
 // universal profile management page for all user roles (admin, coach, player, staff)
 export default function Profile() {
@@ -44,47 +43,32 @@ export default function Profile() {
       return;
     }
 
-    const token = localStorage.getItem("token");
     setProfileSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          firstName: editForm.firstName,
-          lastName: editForm.lastName,
-          phoneNumber: editForm.phone
-        })
+      const res = await api.put("/api/auth/profile", {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        phoneNumber: editForm.phone
       });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setProfileError(data.message || "Failed to update profile.");
-        return;
-      }
 
       const updatedData = {
         ...user,
-        firstName: data.user.firstName,
-        lastName: data.user.lastName,
-        phone: data.user.phoneNumber
+        firstName: res.data.user.firstName,
+        lastName: res.data.user.lastName,
+        phone: res.data.user.phoneNumber
       };
       
       setUserProfile(updatedData);
-      updateUser({ firstName: data.user.firstName, lastName: data.user.lastName });
+      updateUser({ firstName: res.data.user.firstName, lastName: res.data.user.lastName });
       
-      localStorage.setItem("phone", data.user.phoneNumber || "");
+      localStorage.setItem("phone", res.data.user.phoneNumber || "");
       
       setIsEditing(false);
       setProfileSuccess("Profile updated successfully.");
       
       setTimeout(() => setProfileSuccess(""), 4000);
     } catch (err) {
-      setProfileError("Network error. Please try again.");
+      setProfileError(err.response?.data?.message || "Network error. Please try again.");
     } finally {
       setProfileSubmitting(false);
     }
@@ -119,29 +103,9 @@ export default function Profile() {
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setErrorMsg("You are not logged in. Please login again.");
-      return;
-    }
-
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/change-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ currentPassword, newPassword })
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setErrorMsg(data.message || "Failed to change password.");
-        return;
-      }
+      await api.post("/api/auth/change-password", { currentPassword, newPassword });
 
       updateUser({ mustChangePassword: false });
       
@@ -150,7 +114,7 @@ export default function Profile() {
       setConfirmNewPassword("");
       setSuccessMsg("Password updated successfully.");
     } catch (err) {
-      setErrorMsg("Network error. Please try again.");
+      setErrorMsg(err.response?.data?.message || "Network error. Please try again.");
     } finally {
       setSubmitting(false);
     }

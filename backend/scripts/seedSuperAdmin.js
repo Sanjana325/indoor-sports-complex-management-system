@@ -1,6 +1,6 @@
 require("dotenv").config();
-const { pool } = require("../config/db");
-const { hashPassword } = require("../utils/password");
+const { pool } = require("../src/config/db");
+const { hashPassword } = require("../src/utils/password");
 
 async function run() {
   const email = process.env.SUPER_ADMIN_EMAIL;

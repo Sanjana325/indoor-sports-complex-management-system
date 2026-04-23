@@ -1,4 +1,4 @@
-const { getPaymentsReport } = require('./src/controllers/admin/reports.controller');
+const { getPaymentsReport } = require('../src/controllers/admin/reports.controller');
 
 const req = {
     query: {

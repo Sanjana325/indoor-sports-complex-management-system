@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CancelClassModal from "../../components/CancelClassModal";
+import api from "../../services/api";
 
 // converts class schedule days array into a readable comma-separated string
 function formatDays(days) {
@@ -44,7 +45,6 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
   useEffect(() => {
     fetchStudents();
@@ -54,19 +54,11 @@ function EnrolledStudentsModal({ classId, className, onClose }) {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/classes/${classId}/students`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setStudents(data.students || []);
-      } else {
-        setError(data.message || "Failed to load students");
-      }
+      const res = await api.get(`/api/coach/classes/${classId}/students`);
+      setStudents(res.data.students || []);
     } catch (err) {
       console.error(err);
-      setError("Error connecting to server");
+      setError(err.response?.data?.message || "Error connecting to server");
     } finally {
       setLoading(false);
     }
@@ -131,8 +123,6 @@ export default function MyClasses() {
     return `${fn} ${ln}`.trim() || "Coach";
   }, []);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
   useEffect(() => {
     fetchMyClasses();
   }, []);
@@ -141,18 +131,10 @@ export default function MyClasses() {
   const fetchMyClasses = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/my-classes`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setClasses(data.classes || []);
-      } else {
-        setError(data.message || "Failed to fetch classes");
-      }
+      const res = await api.get("/api/coach/my-classes");
+      setClasses(res.data.classes || []);
     } catch (err) {
-      setError("Error connecting to server");
+      setError(err.response?.data?.message || "Error connecting to server");
       console.error(err);
     } finally {
       setLoading(false);
@@ -173,29 +155,16 @@ export default function MyClasses() {
   // sends the cancellation request for a specific session to the backend
   async function handleCancelSubmit(payload) {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/sessions/cancel`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          sessionId: payload.sessionId,
-        }),
+      const res = await api.patch("/api/coach/sessions/cancel", {
+        sessionId: payload.sessionId,
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        setIsCancelOpen(false);
-        alert("Class session cancelled successfully. Redirecting to cancellation history...");
-        navigate("/coach/cancelled-sessions");
-      } else {
-        alert(data.message || "Failed to cancel session");
-      }
+      setIsCancelOpen(false);
+      alert("Class session cancelled successfully. Redirecting to cancellation history...");
+      navigate("/coach/cancelled-sessions");
     } catch (err) {
       console.error(err);
-      alert("Error connecting to server");
+      alert(err.response?.data?.message || "Error connecting to server");
     }
   }
 

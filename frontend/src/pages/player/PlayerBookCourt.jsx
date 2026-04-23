@@ -11,10 +11,8 @@ import {
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import "../../styles/PlayerBookCourt.css";
+import api from "../../services/api";
 
-
-// complex court booking page for players with real-time availability and payment
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 // icons used to visually identify different sports
 const ICON_MAP = {
@@ -103,10 +101,9 @@ export default function PlayerBookCourt() {
   useEffect(() => {
     async function fetchBankDetails() {
       try {
-        const res = await fetch(`${API_BASE}/api/config/bank-details`);
-        const data = await res.json();
-        if (data.success) {
-          setBankDetails(data.bankDetails);
+        const res = await api.get("/api/config/bank-details");
+        if (res.data.success) {
+          setBankDetails(res.data.bankDetails);
         }
       } catch (err) {
         console.error("Failed to load bank details from server", err);
@@ -156,18 +153,10 @@ export default function PlayerBookCourt() {
     async function fetchSports() {
       try {
         setLoadingSports(true);
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/player/sports`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setSports(data.sports || []);
-        } else {
-          setApiError(data.message || "Failed to load sports");
-        }
+        const res = await api.get("/api/player/sports");
+        setSports(res.data.sports || []);
       } catch (err) {
-        setApiError("Connection error. Please try again.");
+        setApiError(err.response?.data?.message || "Connection error. Please try again.");
       } finally {
         setLoadingSports(false);
       }
@@ -187,18 +176,10 @@ export default function PlayerBookCourt() {
     async function fetchCourts() {
       try {
         setLoadingCourts(true);
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/player/courts?sportId=${selectedSportId}`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setCourts(data.courts || []);
-        } else {
-          setApiError(data.message || "Failed to load courts");
-        }
+        const res = await api.get("/api/player/courts", { params: { sportId: selectedSportId } });
+        setCourts(res.data.courts || []);
       } catch (err) {
-        setApiError("Connection error while loading courts.");
+        setApiError(err.response?.data?.message || "Connection error while loading courts.");
       } finally {
         setLoadingCourts(false);
       }
@@ -218,19 +199,13 @@ export default function PlayerBookCourt() {
     async function fetchAvailability() {
       try {
         setLoadingAvailability(true);
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/player/courts/${selectedCourtId}/availability?date=${selectedDate}`, {
-          headers: { "Authorization": `Bearer ${token}` }
+        const res = await api.get(`/api/player/courts/${selectedCourtId}/availability`, { 
+          params: { date: selectedDate } 
         });
-        const data = await res.json();
-        if (res.ok) {
-          setAvailability({
-            bookings: data.bookings || [],
-            blocked: data.blocked || []
-          });
-        } else {
-          console.error("Failed to load availability", data.message);
-        }
+        setAvailability({
+          bookings: res.data.bookings || [],
+          blocked: res.data.blocked || []
+        });
       } catch (err) {
         console.error("Connection error while loading availability.", err);
       } finally {
@@ -371,17 +346,7 @@ export default function PlayerBookCourt() {
 
     try {
       setOtpSending(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/player/otp/generate`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Failed to send OTP.");
-        setOtpSending(false);
-        return;
-      }
+      const res = await api.post("/api/player/otp/generate");
       
       setOtpError("");
       setOtpCode("");
@@ -390,7 +355,7 @@ export default function PlayerBookCourt() {
       if (resendTimer === 0) setResendTimer(60);
     } catch (err) {
       console.error(err);
-      alert("Error generating OTP");
+      alert(err.response?.data?.message || "Error generating OTP");
     } finally {
       setOtpSending(false);
     }
@@ -404,18 +369,7 @@ export default function PlayerBookCourt() {
     try {
       setOtpVerifying(true);
       setOtpError("");
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/player/otp/verify`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ otpCode })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setOtpError(data.message || "Invalid OTP");
-        setOtpVerifying(false);
-        return;
-      }
+      const res = await api.post("/api/player/otp/verify", { otpCode });
       
       // OTP Validated! Proceed based on pre-selected method
       if (selectedPaymentMethod === 'ONLINE') {
@@ -426,7 +380,7 @@ export default function PlayerBookCourt() {
 
     } catch (err) {
       console.error(err);
-      setOtpError("Error verifying OTP");
+      setOtpError(err.response?.data?.message || "Error verifying OTP");
     } finally {
       setOtpVerifying(false);
     }
@@ -447,8 +401,6 @@ export default function PlayerBookCourt() {
   // triggers the PayHere redirect for instant online credit/debit card payments
   const handleOnlinePayment = async () => {
     try {
-      const token = localStorage.getItem("token");
-
       // 1. Create the booking FIRST (if not already created)
       let bookingId = createdBookingId;
       if (!bookingId) {
@@ -456,46 +408,21 @@ export default function PlayerBookCourt() {
         const startHour = sortedSlots[0].split("-")[0];
         const endHour = sortedSlots[sortedSlots.length - 1].split("-")[1];
 
-        const bookingRes = await fetch(`${API_BASE}/api/player/bookings`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            courtId: selectedCourtId,
-            sportId: selectedSportId,
-            startDateTime: `${selectedDate} ${startHour}:00:00`,
-            endDateTime: `${selectedDate} ${endHour}:00:00`
-          })
+        const bookingRes = await api.post("/api/player/bookings", {
+          courtId: selectedCourtId,
+          sportId: selectedSportId,
+          startDateTime: `${selectedDate} ${startHour}:00:00`,
+          endDateTime: `${selectedDate} ${endHour}:00:00`
         });
 
-        const bookingData = await bookingRes.json();
-        if (!bookingRes.ok) {
-          alert(bookingData.message || "Failed to create booking");
-          return;
-        }
-        bookingId = bookingData.bookingId;
+        bookingId = bookingRes.data.bookingId;
         setCreatedBookingId(bookingId);
       }
 
 
       // 2. Initiate Payment
-      const payRes = await fetch(`${API_BASE}/api/player/payments/initiate-booking`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ bookingId })
-      });
-
-
-      const payData = await payRes.json();
-      if (!payRes.ok) {
-        alert(payData.message || "Failed to initiate payment");
-        return;
-      }
+      const payRes = await api.post("/api/player/payments/initiate-booking", { bookingId });
+      const payData = payRes.data;
 
 
       // 3. Construct PayHere Object
@@ -531,14 +458,13 @@ export default function PlayerBookCourt() {
 
     } catch (err) {
       console.error("Payment Error:", err);
-      alert("An error occurred during payment initiation.");
+      alert(err.response?.data?.message || "An error occurred during payment initiation.");
     }
   };
 
   const handleBankTransferClick = async () => {
     try {
       setUploadingSlip(true);
-      const token = localStorage.getItem("token");
 
       let bookingId = createdBookingId;
       if (!bookingId) {
@@ -546,26 +472,14 @@ export default function PlayerBookCourt() {
         const startHour = sortedSlots[0].split("-")[0];
         const endHour = sortedSlots[sortedSlots.length - 1].split("-")[1];
 
-        const bookingRes = await fetch(`${API_BASE}/api/player/bookings`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            courtId: selectedCourtId,
-            sportId: selectedSportId,
-            startDateTime: `${selectedDate} ${startHour}:00:00`,
-            endDateTime: `${selectedDate} ${endHour}:00:00`
-          })
+        const bookingRes = await api.post("/api/player/bookings", {
+          courtId: selectedCourtId,
+          sportId: selectedSportId,
+          startDateTime: `${selectedDate} ${startHour}:00:00`,
+          endDateTime: `${selectedDate} ${endHour}:00:00`
         });
 
-        const bookingData = await bookingRes.json();
-        if (!bookingRes.ok) {
-          alert(bookingData.message || "Failed to create booking");
-          return;
-        }
-        bookingId = bookingData.bookingId;
+        bookingId = bookingRes.data.bookingId;
         setCreatedBookingId(bookingId);
       }
 
@@ -577,7 +491,7 @@ export default function PlayerBookCourt() {
       setCreatedBookingId(bookingId);
     } catch (err) {
       console.error(err);
-      alert("Error preparing bank transfer booking.");
+      alert(err.response?.data?.message || "Error preparing bank transfer booking.");
     } finally {
       setUploadingSlip(false);
     }
@@ -590,34 +504,18 @@ export default function PlayerBookCourt() {
     }
     try {
       setUploadingSlip(true);
-      const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append("bookingId", createdBookingId);
       formData.append("slip", slipFile);
 
-      const res = await fetch(`${API_BASE}/api/player/payments/slip`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData
-      });
-
-      if (res.status === 401) {
-        alert("Your session has expired. Please log in again.");
-        return;
-      }
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Failed to upload bank slip.");
-        return;
-      }
+      await api.post("/api/player/payments/slip", formData);
 
       alert("Bank slip uploaded successfully! It is pending admin verification.");
       setPaymentModalOpen(false);
       navigate("/player/my-bookings", { replace: true });
     } catch (err) {
       console.error("Upload error:", err);
-      alert("An error occurred during slip upload.");
+      alert(err.response?.data?.message || "An error occurred during slip upload.");
     } finally {
       setUploadingSlip(false);
     }

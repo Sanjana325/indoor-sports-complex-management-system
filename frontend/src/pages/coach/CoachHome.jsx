@@ -3,6 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import api from "../../services/api";
 
 // main dashboard for coaching staff to manage their work schedule and attendance
 export default function CoachHome() {
@@ -25,8 +26,6 @@ export default function CoachHome() {
     return `${fn} ${ln}`.trim() || "Coach";
   }, []);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
   useEffect(() => {
     fetchCalendarData();
   }, []);
@@ -36,20 +35,12 @@ export default function CoachHome() {
     try {
       setLoading(true);
       setError("");
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/calendar`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setEvents(data.sessions || []);
-        setSports(data.sports || []);
-      } else {
-        setError(data.message || "Failed to fetch calendar data");
-      }
+      const res = await api.get("/api/coach/calendar");
+      setEvents(res.data.sessions || []);
+      setSports(res.data.sports || []);
     } catch (err) {
       console.error(err);
-      setError("Error connecting to server");
+      setError(err.response?.data?.message || "Error connecting to server");
     } finally {
       setLoading(false);
     }
@@ -59,16 +50,8 @@ export default function CoachHome() {
   const fetchAttendance = async (sessionId) => {
     try {
       setLoadingAttendance(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/sessions/${sessionId}/attendance`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAttendance(data.attendance || []);
-      } else {
-        setAttendance([]);
-      }
+      const res = await api.get(`/api/coach/sessions/${sessionId}/attendance`);
+      setAttendance(res.data.attendance || []);
     } catch (err) {
       console.error(err);
       setAttendance([]);

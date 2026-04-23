@@ -5,8 +5,7 @@ import {
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
 import { CreditCard, Receipt } from "@mui/icons-material";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import api from '../services/api';
 
 // payment orchestrator for class enrollments supporting both automated and manual methods
 const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
@@ -19,10 +18,9 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
   useEffect(() => {
     async function fetchBankDetails() {
       try {
-        const res = await fetch(`${API_BASE}/api/config/bank-details`);
-        const data = await res.json();
-        if (data.success) {
-          setBankDetails(data.bankDetails);
+        const res = await api.get("/api/config/bank-details");
+        if (res.data.success) {
+          setBankDetails(res.data.bankDetails);
         }
       } catch (err) {
         console.error("Failed to load bank details", err);
@@ -34,21 +32,11 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
   // initiates the PayHere gateway flow for instant credit card / online transactions
   const handleOnlinePayment = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/player/payments/initiate-enrollment`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ classId: classData.ClassID })
+      const res = await api.post("/api/player/payments/initiate-enrollment", { 
+        classId: classData.ClassID 
       });
 
-      const payData = await res.json();
-      if (!res.ok) {
-        alert(payData.message || "Failed to initiate payment");
-        return;
-      }
+      const payData = res.data;
 
       // required configuration payload for the external payment gateway
       const payment = {
@@ -80,7 +68,7 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
       }
     } catch (err) {
       console.error("Payment Error:", err);
-      alert("An error occurred during payment initiation.");
+      alert(err.response?.data?.message || "An error occurred during payment initiation.");
     }
   };
 
@@ -92,30 +80,19 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
     }
     try {
       setUploading(true);
-      const token = localStorage.getItem("token");
       const formData = new FormData();
       formData.append("classId", classData.ClassID);
       formData.append("type", "CLASS");
       formData.append("slip", slipFile);
 
-      const res = await fetch(`${API_BASE}/api/player/payments/slip`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.message || "Failed to upload bank slip.");
-        return;
-      }
+      const res = await api.post("/api/player/payments/slip", formData);
 
       alert("Bank slip uploaded successfully! It is pending admin verification.");
       onClose();
       if (onPaymentSuccess) onPaymentSuccess();
     } catch (err) {
       console.error("Upload error:", err);
-      alert("An error occurred during slip upload.");
+      alert(err.response?.data?.message || "An error occurred during slip upload.");
     } finally {
       setUploading(false);
     }

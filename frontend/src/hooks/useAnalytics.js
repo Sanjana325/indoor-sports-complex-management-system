@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import api from "../services/api";
 
 // custom hook to manage data fetching, filtering, and state for administrative analytics reports
 export function useAnalytics(type) {
@@ -61,11 +60,10 @@ export function useAnalytics(type) {
   const fetchData = useCallback(async (range, method, category, classId) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/reports/${type}?start=${range.start}&end=${range.end}&method=${method}&category=${category}&classId=${classId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await api.get(`/api/admin/reports/${type}`, {
+        params: { start: range.start, end: range.end, method, category, classId }
       });
-      const json = await res.json();
+      const json = res.data;
       setData({
         reports: json.reports || [],
         kpis: json.kpis || {},

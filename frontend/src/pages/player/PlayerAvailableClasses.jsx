@@ -41,8 +41,7 @@ import {
 } from "@mui/icons-material";
 import "../../styles/PlayerAvailableClasses.css";
 import ClassPaymentModal from "../../components/ClassPaymentModal";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import api from "../../services/api";
 
 // maps sport names to their corresponding MUI icons for the class cards
 const ICON_MAP = {
@@ -97,19 +96,10 @@ export default function PlayerAvailableClasses() {
   async function fetchAvailableClasses() {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/player/classes`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      
-      if (res.ok) {
-        setClasses(data.classes || []);
-      } else {
-        setError(data.message || "Failed to load classes");
-      }
+      const res = await api.get("/api/player/classes");
+      setClasses(res.data.classes || []);
     } catch (err) {
-      setError("Connection error. Please check your internet.");
+      setError(err.response?.data?.message || "Connection error. Please check your internet.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -119,21 +109,11 @@ export default function PlayerAvailableClasses() {
   // validates if the player can join the class before opening the payment modal
   const handleEnrollClick = async (classId) => {
     try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/player/classes/${classId}/enroll`, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await res.json();
-        
-        if (res.ok) {
-            setEnrollClassData(data.class);
-            setPaymentModalOpen(true);
-        } else {
-            alert(data.message || "Enrollment check failed");
-        }
+        const res = await api.post(`/api/player/classes/${classId}/enroll`);
+        setEnrollClassData(res.data.class);
+        setPaymentModalOpen(true);
     } catch (err) {
-        alert("Failed to initiate enrollment. Please try again.");
+        alert(err.response?.data?.message || "Failed to initiate enrollment. Please try again.");
     }
   };
 

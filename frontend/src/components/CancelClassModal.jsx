@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import api from "../services/api";
 
 // converts an ISO date string to a short 3-letter weekday label
 function dayShortFromISO(iso) {
@@ -36,8 +37,6 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState("");
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
   // accessibility listener to handle modal closure via the escape key
   useEffect(() => {
     function onKey(e) {
@@ -57,16 +56,8 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
   const fetchSessions = async () => {
     try {
       setLoadingSessions(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/sessions?date=${dateISO}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSessionsForDate(data.sessions || []);
-      } else {
-        setSessionsForDate([]);
-      }
+      const res = await api.get(`/api/coach/sessions`, { params: { date: dateISO } });
+      setSessionsForDate(res.data.sessions || []);
     } catch (err) {
       console.error(err);
       setSessionsForDate([]);

@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import api from "../../services/api";
 
 // page for coaches to track their own class sessions that were cancelled
 export default function CancelledSessions() {
@@ -18,20 +16,11 @@ export default function CancelledSessions() {
     try {
       setLoading(true);
       setError("");
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/coach/cancelled-sessions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setSessions(data.sessions || []);
-      } else {
-        setError(data.message || "Failed to fetch cancelled sessions");
-      }
+      const res = await api.get("/api/coach/cancelled-sessions");
+      setSessions(res.data.sessions || []);
     } catch (err) {
       console.error(err);
-      setError("Error connecting to server");
+      setError(err.response?.data?.message || "Error connecting to server");
     } finally {
       setLoading(false);
     }

@@ -3,8 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import api from "../../services/api";
 
 // staff dashboard providing a central calendar view of all venue bookings and classes
 export default function StaffHome() {
@@ -26,43 +25,22 @@ export default function StaffHome() {
   async function fetchData() {
     setLoading(true);
     setError("");
-    const token = localStorage.getItem("token");
 
     try {
       // access admin data endpoints (now accessible to staff roles)
       const [bookRes, sessRes, sportRes, courtRes, blockRes] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/bookings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/classes/sessions`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/sports`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/courts`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/blocked-slots`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        api.get("/api/admin/bookings"),
+        api.get("/api/admin/classes/sessions"),
+        api.get("/api/admin/sports"),
+        api.get("/api/admin/courts"),
+        api.get("/api/admin/blocked-slots")
       ]);
 
-      if (!bookRes.ok || !sessRes.ok || !sportRes.ok || !courtRes.ok || !blockRes.ok) {
-        throw new Error("Failed to fetch calendar data");
-      }
-
-      const bookData = await bookRes.json();
-      const sessData = await sessRes.json();
-      const sData = await sportRes.json();
-      const cData = await courtRes.json();
-      const blockData = await blockRes.json();
-
-      setSports(sData.sports || []);
-      setCourtsData(cData.courts || []);
+      setSports(sportRes.data.sports || []);
+      setCourtsData(courtRes.data.courts || []);
 
       // maps court bookings into standard calendar event objects
-      const bookingEvents = (bookData.bookings || [])
+      const bookingEvents = (bookRes.data.bookings || [])
         .filter((b) => b.status !== "EXPIRED" && b.status !== "CANCELLED")
         .map((b) => {
         const [startT, endT] = b.time.split(" - ");
@@ -86,10 +64,10 @@ export default function StaffHome() {
         };
       });
 
-      const sessionEvents = (sessData.sessions || []);
+      const sessionEvents = (sessRes.data.sessions || []);
 
       // maps administrative maintenance blocks into red-coded calendar events
-      const blockedEvents = (blockData.slots || []).map((slot) => {
+      const blockedEvents = (blockRes.data.slots || []).map((slot) => {
         return {
           id: `block-${slot.blockedSlotId}`,
           title: `Blocked: ${slot.reason} (${slot.courtName})`,
