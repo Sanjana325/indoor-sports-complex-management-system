@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import adminService from "../../services/adminService";
 
 // helper to extract the short date from a full timestamp
 function formatBookedDate(isoString) {
@@ -28,13 +26,10 @@ export default function Bookings() {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const role = localStorage.getItem("role");
-      const res = await fetch(`${API_BASE}${role === "STAFF" ? "/api/staff" : "/api/admin"}/bookings`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (res.ok) setBookings(data.bookings || []);
+      const data = await adminService.getBookings();
+      setBookings(data.bookings || []);
     } catch (err) { console.error(err); }
-    finally { setLoading(true); setLoading(false); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchBookings(); }, []);
@@ -58,11 +53,11 @@ export default function Bookings() {
   const handleCancel = async (rawId) => {
     if (!window.confirm("Safe void this reservation? (Records remain preserved)")) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/bookings/${rawId}/cancel`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) fetchBookings();
-      else alert("Failed to cancel booking");
-    } catch (e) { alert("Server error"); }
+      await adminService.cancelBooking(rawId);
+      fetchBookings();
+    } catch (e) { 
+      alert(e.response?.data?.message || "Server error"); 
+    }
   };
 
   const isStaff = localStorage.getItem("role") === "STAFF";

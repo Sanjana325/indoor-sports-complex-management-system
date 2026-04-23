@@ -14,6 +14,18 @@ const authService = {
     return response.data;
   },
 
+  // request a password reset link
+  forgotPassword: async (email) => {
+    const response = await api.post("/api/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  // set a new password using a reset token
+  resetPassword: async (token, newPassword) => {
+    const response = await api.post("/api/auth/reset-password", { token, newPassword });
+    return response.data;
+  },
+
   // clear local session
   logout: () => {
     localStorage.clear();

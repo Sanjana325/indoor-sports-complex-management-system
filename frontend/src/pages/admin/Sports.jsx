@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import adminService from "../../services/adminService";
 
 // management page for creating and configuring different sport disciplines
 export default function Sports() {
@@ -20,12 +18,8 @@ export default function Sports() {
     async function fetchSports() {
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
-            const res = await fetch(`${API_BASE}/api/admin/sports`, { headers: { Authorization: `Bearer ${token}` } });
-            if (res.ok) {
-                const data = await res.json();
-                setSports(data.sports || []);
-            }
+            const data = await adminService.getSports();
+            setSports(data.sports || data || []);
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }
@@ -37,24 +31,22 @@ export default function Sports() {
         if (!name) return;
         try {
             setSaving(true);
-            const token = localStorage.getItem("token");
             const isEdit = !!editingSport;
-            const url = isEdit ? `${API_BASE}/api/admin/sports/${editingSport.SportID}` : `${API_BASE}/api/admin/sports`;
-            const method = isEdit ? "PUT" : "POST";
-            const res = await fetch(url, {
-                method,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ sportName: name, colorCode: newSportColor, isBookable })
-            });
-            if (res.ok) {
-                handleCloseModal();
-                await fetchSports();
+            const payload = { sportName: name, colorCode: newSportColor, isBookable };
+            
+            if (isEdit) {
+                await adminService.updateSport(editingSport.SportID, payload);
             } else {
-                const d = await res.json();
-                alert(d.message || "Failed to save sport");
+                await adminService.createSport(payload);
             }
-        } catch (err) { alert("Connection error"); }
-        finally { setSaving(false); }
+
+            handleCloseModal();
+            await fetchSports();
+        } catch (err) { 
+            alert(err.response?.data?.message || "Failed to save sport"); 
+        } finally { 
+            setSaving(false); 
+        }
     }
 
     // prepares the popup form for a brand new sport entry
@@ -76,10 +68,11 @@ export default function Sports() {
     async function handleDeleteSport(id, name) {
         if (!window.confirm(`Permanently remove ${name}?`)) return;
         try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(`${API_BASE}/api/admin/sports/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-            if (res.ok) await fetchSports();
-        } catch (err) { console.error(err); }
+            await adminService.deleteSport(id);
+            await fetchSports();
+        } catch (err) { 
+            alert(err.response?.data?.message || "Connection error"); 
+        }
     }
 
     return (

@@ -1,14 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-// helper to format currency values as LKR
-function formatLKR(amount) {
-  const n = Number(amount);
-  if (!Number.isFinite(n)) return "-";
-  return `LKR ${n.toLocaleString()}`;
-}
+import adminService from "../../services/adminService";
+import { formatLKR } from "../../utils/formatters";
 
 // management page for creating and updating court profiles
 export default function Courts() {
@@ -39,13 +31,8 @@ export default function Courts() {
   async function fetchSports() {
     try {
       setLoadingSports(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/sports`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const list = data.sports || [];
+      const data = await adminService.getSports();
+      const list = data.sports || data || [];
       setRawSports(list);
       setSports(list.map(s => String(s.SportName || "").toUpperCase()).filter(Boolean));
       setSelectedSports([]);
@@ -60,13 +47,8 @@ export default function Courts() {
   async function fetchCourts() {
     try {
       setLoadingCourts(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/courts`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const rows = data.courts || [];
+      const data = await adminService.getCourts();
+      const rows = data.courts || data || [];
       setCourts(rows.map(r => ({
         id: r.id,
         rawId: r.rawId,
@@ -111,14 +93,11 @@ export default function Courts() {
   async function handleRemove(id) {
     if (!window.confirm("Are you sure you want to remove this court?")) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/courts/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) fetchCourts();
-      else alert("Failed to delete court");
-    } catch (err) { console.error(err); }
+      await adminService.deleteCourt(id);
+      fetchCourts();
+    } catch (err) { 
+      alert(err.response?.data?.message || "Failed to delete court"); 
+    }
   }
 
   // sends the court profile data (new or update) to the backend
@@ -127,17 +106,18 @@ export default function Courts() {
     if (selectedSports.length === 0) return alert("Select at least one sport");
     const sportIds = selectedSports.map(s => rawSports.find(r => String(r.SportName).toUpperCase() === s)?.SportID).filter(Boolean);
     const body = { name: name.trim(), capacity: Number(capacity), pricePerHour: Number(pricePerHour), sportIds };
-    const token = localStorage.getItem("token");
-    const url = mode === "ADD" ? `${API_BASE}/api/admin/courts` : `${API_BASE}/api/admin/courts/${editingId}`;
-    const method = mode === "ADD" ? "POST" : "PUT";
+    
     try {
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
-      if (res.ok) { closeModal(); fetchCourts(); }
-      else {
-        const data = await res.json().catch(() => ({}));
-        alert(data.message || "Failed to save court");
+      if (mode === "ADD") {
+        await adminService.createCourt(body);
+      } else {
+        await adminService.updateCourt(editingId, body);
       }
-    } catch (err) { console.error(err); alert("Connection error"); }
+      closeModal();
+      fetchCourts();
+    } catch (err) { 
+      alert(err.response?.data?.message || "Failed to save court"); 
+    }
   }
 
   return (
@@ -194,7 +174,7 @@ export default function Courts() {
                     <td>
                       <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
                         <button className="btn btn-edit" style={{ padding: "6px 12px" }} onClick={() => openEditModal(c)}>Edit</button>
-                        <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => handleRemove(c.id)}>Delete</button>
+                        <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => handleRemove(c.rawId)}>Delete</button>
                       </div>
                     </td>
                 </tr>

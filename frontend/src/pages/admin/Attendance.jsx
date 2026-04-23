@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import adminService from "../../services/adminService";
 
 // the main component for tracking player attendance in classes
 export default function Attendance() {
@@ -18,20 +16,13 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  // determines the correct api endpoint based on the logged-in user's role
-  const getBasePath = () => localStorage.getItem("role") === "STAFF" ? "/api/staff" : "/api/admin";
-  
-  // returns the required authorization headers for every api call
-  const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
-
   // loads the list of available classes when the page first opens
   useEffect(() => {
     (async () => {
       try {
         setLoadingClasses(true);
-        const res = await fetch(`${API_BASE}${getBasePath()}/attendance/classes`, { headers: getHeaders() });
-        const data = await res.json();
-        if (res.ok) setClasses(data.classes || []);
+        const data = await adminService.getAttendanceClasses();
+        setClasses(data.classes || []);
       } catch (err) { console.error(err); }
       finally { setLoadingClasses(false); }
     })();
@@ -45,21 +36,17 @@ export default function Attendance() {
     (async () => {
       try {
         setLoadingStudents(true); setNoSession(false); setSuccessMsg("");
-        const params = new URLSearchParams({ classId: selectedClassId, sessionDate: selectedDate });
-        const res = await fetch(`${API_BASE}${getBasePath()}/attendance?${params}`, { headers: getHeaders() });
-        const data = await res.json();
-        if (res.ok) {
-          if (!data.session) {
-            setSession(null); setStudents([]); setMarks({}); setNoSession(true);
-          } else {
-            setSession(data.session); setStudents(data.students || []);
-            const existing = {};
-            // pre-loads any existing attendance data already saved on the server
-            (data.students || []).forEach((s) => {
-              if (s.status === "PRESENT" || s.status === "ABSENT") existing[s.rawEnrollmentId] = s.status;
-            });
-            setMarks(existing); setNoSession(false);
-          }
+        const data = await adminService.getAttendance(selectedClassId, selectedDate);
+        if (!data.session) {
+          setSession(null); setStudents([]); setMarks({}); setNoSession(true);
+        } else {
+          setSession(data.session); setStudents(data.students || []);
+          const existing = {};
+          // pre-loads any existing attendance data already saved on the server
+          (data.students || []).forEach((s) => {
+            if (s.status === "PRESENT" || s.status === "ABSENT") existing[s.rawEnrollmentId] = s.status;
+          });
+          setMarks(existing); setNoSession(false);
         }
       } catch (err) { console.error(err); }
       finally { setLoadingStudents(false); }
@@ -99,20 +86,14 @@ export default function Attendance() {
     }
 
     try {
-      setSaving(true);
-      const res = await fetch(`${API_BASE}${getBasePath()}/attendance/mark`, {
-        method: "POST",
-        headers: { ...getHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: session.sessionId, marks: marksArray }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSuccessMsg(`✓ Attendance saved — ${data.count} record(s) updated.`);
-      } else {
-        const data = await res.json(); alert(data.message || "Failed to save");
-      }
-    } catch (err) { alert("Error saving attendance"); }
-    finally { setSaving(false); }
+      setSaving(true); setSuccessMsg("");
+      await adminService.saveAttendance(session.rawSessionId || session.SessionID, marksArray);
+      setSuccessMsg("Attendance saved successfully.");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to save attendance.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

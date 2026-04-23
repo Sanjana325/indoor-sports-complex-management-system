@@ -1,55 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Register.css";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-// clean up email text to remove spaces and make it lowercase
-function normalizeEmail(email) {
-  if (typeof email !== "string") return "";
-  return email.trim().toLowerCase();
-}
-
-// check if the email address format is valid
-function isValidEmail(email) {
-  if (typeof email !== "string") return false;
-  const e = email.trim();
-  if (e.length < 6 || e.length > 254) return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  return re.test(e);
-}
-
-// ensure the password meets security requirements
-function isStrongPassword(pw) {
-  if (typeof pw !== "string") return false;
-  if (pw.length < 8) return false;
-  if (!/[A-Z]/.test(pw)) return false;
-  if (!/[a-z]/.test(pw)) return false;
-  if (!/[0-9]/.test(pw)) return false;
-  return true;
-}
-
-// descriptive message for password requirements
-function passwordPolicyMessage() {
-  return "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
-}
-
-// remove spaces and formatting from phone numbers
-function normalizePhone(phone) {
-  if (typeof phone !== "string") return "";
-  return phone.replace(/\s+/g, "").trim();
-}
-
-// check if the phone number provided is valid
-function isValidPhoneNumber(phone) {
-  const p = normalizePhone(phone);
-  if (!p) return false;
-  if (/^\+94\d{9}$/.test(p)) return true;
-  if (/^94\d{9}$/.test(p)) return true;
-  if (/^0\d{9}$/.test(p)) return true;
-  if (/^\d{9,12}$/.test(p)) return true;
-  return false;
-}
+import authService from "../services/authService";
+import { 
+  normalizeEmail, 
+  isValidEmail, 
+  isStrongPassword, 
+  passwordPolicyMessage, 
+  normalizePhone, 
+  isValidPhoneNumber 
+} from "../utils/validation";
 
 // page where new players can create an account
 export default function Register() {
@@ -101,24 +61,13 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: String(firstName || "").trim(),
-          lastName: String(lastName || "").trim(),
-          phoneNumber: normalizedPhone,
-          email: normalizedEmail,
-          password
-        })
+      const data = await authService.register({
+        firstName: String(firstName || "").trim(),
+        lastName: String(lastName || "").trim(),
+        phoneNumber: normalizedPhone,
+        email: normalizedEmail,
+        password
       });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data.message || "Registration failed");
-        return;
-      }
 
       const token = data.token;
       const user = data.user;
@@ -140,7 +89,7 @@ export default function Register() {
       setSuccess("Registration successful. Redirecting...");
       window.location.href = "/player";
     } catch (err) {
-      setError("Cannot connect to backend. Make sure the server is running.");
+      setError(err.response?.data?.message || "Cannot connect to backend. Make sure the server is running.");
     } finally {
       setLoading(false);
     }

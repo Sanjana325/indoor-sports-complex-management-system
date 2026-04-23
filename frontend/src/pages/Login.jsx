@@ -3,22 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useAuth } from "../hooks/useAuth";
 import { profileRouteForRole, homeRouteForRole } from "../utils/navigation";
+import { normalizeEmail, isValidEmail } from "../utils/validation";
 import "../styles/Login.css";
-
-// clean up email text to remove spaces and make it lowercase
-function normalizeEmail(email) {
-  if (typeof email !== "string") return "";
-  return email.trim().toLowerCase();
-}
-
-// verify that the email address is correctly formatted
-function isValidEmail(email) {
-  if (typeof email !== "string") return false;
-  const e = email.trim();
-  if (e.length < 6 || e.length > 254) return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  return re.test(e);
-}
 
 // the main login page for all system users
 export default function Login() {

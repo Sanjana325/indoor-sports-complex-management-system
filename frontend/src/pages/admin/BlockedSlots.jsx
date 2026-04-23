@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import adminService from "../../services/adminService";
 
 // page for admins to lock certain time slots for maintenance or events
 export default function BlockedSlots() {
@@ -26,10 +24,8 @@ export default function BlockedSlots() {
   async function fetchBlockedSlots() {
     setLoading(true); setError("");
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/blocked-slots`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (res.ok) setBlockedSlots(data.slots || []);
+      const data = await adminService.getBlockedSlots();
+      setBlockedSlots(data.slots || []);
     } catch (err) { setError("Failed to connect to server"); }
     finally { setLoading(false); }
   }
@@ -37,13 +33,10 @@ export default function BlockedSlots() {
   // gets the list of courts to populate the selection dropdown
   async function fetchCourts() {
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/courts`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (res.ok) {
-        setCourts(data.courts || []);
-        if (data.courts?.length > 0) setCourtId(data.courts[0].CourtID);
-      }
+      const data = await adminService.getCourts();
+      const rows = data.courts || data || [];
+      setCourts(rows);
+      if (rows.length > 0) setCourtId(rows[0].CourtID);
     } catch (err) { console.error(err); }
   }
 
@@ -76,9 +69,8 @@ export default function BlockedSlots() {
   async function handleRemove(id) {
     if (!window.confirm("Remove this blocked slot?")) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/api/admin/blocked-slots/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) fetchBlockedSlots();
+      await adminService.deleteBlockedSlot(id);
+      fetchBlockedSlots();
     } catch (err) { alert("Action failed"); }
   }
 
@@ -89,14 +81,17 @@ export default function BlockedSlots() {
     const payload = { courtId: Number(courtId), startDateTime: `${date}T${startTime}:00`, endDateTime: `${date}T${endTime}:00`, reason: reason.trim() };
     setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
-      const url = mode === "ADD" ? `${API_BASE}/api/admin/blocked-slots` : `${API_BASE}/api/admin/blocked-slots/${editingId}`;
-      const method = mode === "ADD" ? "POST" : "PUT";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
-      if (res.ok) { setIsModalOpen(false); fetchBlockedSlots(); }
-      else { const d = await res.json(); alert(d.message || "Failed to save"); }
-    } catch (err) { alert("Connection error"); }
-    finally { setSubmitting(false); }
+      if (mode === "ADD") {
+        await adminService.createBlockedSlot(payload);
+      } else {
+        await adminService.updateBlockedSlot(editingId, payload);
+      }
+      setIsModalOpen(false); fetchBlockedSlots();
+    } catch (err) { 
+      alert(err.response?.data?.message || "Failed to save"); 
+    } finally { 
+      setSubmitting(false); 
+    }
   }
 
   return (

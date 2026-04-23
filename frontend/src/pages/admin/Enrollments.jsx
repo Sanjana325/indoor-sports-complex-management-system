@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import adminService from "../../services/adminService";
 
 const STATUS_OPTIONS = ["ALL", "ENROLLED", "CANCELLED"];
 
@@ -39,23 +37,14 @@ export default function Enrollments() {
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // determines the api prefix based on user access level
-  const getBasePath = () => localStorage.getItem("role") === "STAFF" ? "/api/staff" : "/api/admin";
-  
-  // common headers used for authenticated requests
-  const getHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
-
   useEffect(() => { fetchEnrollments(); }, []);
 
   // downloads the entire enrollment database for the admin to view
   const fetchEnrollments = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}${getBasePath()}/enrollments`, { headers: getHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setEnrollments(data.enrollments || []);
-      }
+      const data = await adminService.getEnrollments();
+      setEnrollments(data.enrollments || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -88,20 +77,14 @@ export default function Enrollments() {
     if (!selectedEnrollment) return;
     try {
       setIsSubmitting(true);
-      const res = await fetch(`${API_BASE}/api/admin/enrollments/${selectedEnrollment.id || selectedEnrollment.enrollmentId}/cancel`, { 
-        method: "PATCH", 
-        headers: { ...getHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: cancellationReason })
-      });
-      if (res.ok) {
-        setEnrollments(prev => prev.map(e => e.id === selectedEnrollment.id ? { ...e, status: "CANCELLED" } : e));
-        setIsCancelModalOpen(false);
-      } else {
-        const data = await res.json();
-        alert(data.message || "Action failed");
-      }
-    } catch (err) { alert("Action failed"); }
-    finally { setIsSubmitting(false); }
+      await adminService.cancelEnrollment(selectedEnrollment.id || selectedEnrollment.enrollmentId, cancellationReason);
+      setEnrollments(prev => prev.map(e => (e.id || e.enrollmentId) === (selectedEnrollment.id || selectedEnrollment.enrollmentId) ? { ...e, status: "CANCELLED" } : e));
+      setIsCancelModalOpen(false);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to cancel enrollment");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (

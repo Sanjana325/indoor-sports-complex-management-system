@@ -1,8 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import api from "../../services/api";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import adminService from "../../services/adminService";
 
 // list of weekdays for scheduling weekly classes
 const DAYS = [
@@ -62,27 +59,24 @@ export default function ClassManagement() {
   const [cancelledHistory, setCancelledHistory] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // determines the correct api path based on the user's login role
-  const getBasePath = () => localStorage.getItem("role") === "STAFF" ? "/api/staff" : "/api/admin";
-
   useEffect(() => { fetchInitialData(); }, []);
 
   // fetches all required dropdown data and class records at once
   async function fetchInitialData() {
     try {
       setLoadingInitial(true);
-      const base = getBasePath();
       const [spRes, cRes, clsRes, histRes] = await Promise.all([
-        api.get("/api/admin/sports"),
-        api.get("/api/admin/coaches"),
-        api.get(`${base}/classes`),
-        api.get("/api/admin/classes/cancellations/history")
+        adminService.getSports(),
+        adminService.getCoaches(),
+        adminService.getClasses(),
+        adminService.getClassCancellationsHistory()
       ]);
-      setSportsList(spRes.data.sports || []); 
-      if (spRes.data.sports?.length > 0) setSport(spRes.data.sports[0].SportName);
-      setCoachesList(cRes.data.coaches || []);
-      setClasses(clsRes.data.classes || []);
-      setCancelledHistory(histRes.data.history || []);
+      const spList = spRes.sports || spRes || [];
+      setSportsList(spList); 
+      if (spList.length > 0) setSport(spList[0].SportName);
+      setCoachesList(cRes.coaches || cRes || []);
+      setClasses(clsRes.classes || clsRes || []);
+      setCancelledHistory(histRes.history || histRes || []);
     } catch (err) { console.error(err); } finally { setLoadingInitial(false); }
   }
 
@@ -102,12 +96,17 @@ export default function ClassManagement() {
     async function fetchCourts() {
       if (!hasSlotInputs) { setAvailableCourts([]); return; }
       try {
-        const q = new URLSearchParams({ sportId: selectedSportObj.SportID, scheduleType, startTime, endTime });
-        if (mode === "EDIT" && editingId) q.set("excludeClassId", String(editingId));
-        if (scheduleType === "ONE_TIME") q.append("oneTimeDate", oneTimeDate);
-        else { q.append("startDate", startDate); days.forEach(d => q.append("weekdays", d)); }
-        const res = await api.get(`/api/admin/classes/available-courts?${q.toString()}`);
-        setAvailableCourts(res.data.availableCourts || []);
+        const q = {
+          startTime,
+          endTime,
+          sportId: selectedSportObj?.SportID,
+        };
+        if (mode === "EDIT" && editingId) q.excludeClassId = String(editingId);
+        if (scheduleType === "ONE_TIME") q.oneTimeDate = oneTimeDate;
+        else { q.startDate = startDate; q.weekdays = days; }
+
+        const res = await adminService.getAvailableCourts(q);
+        setAvailableCourts(res.availableCourts || []);
       } catch (err) { console.error(err); }
     }
     const timer = setTimeout(fetchCourts, 300);
@@ -136,8 +135,12 @@ export default function ClassManagement() {
     const isDeactivating = item.status !== "DEACTIVATED";
     if (!window.confirm(`Are you sure you want to ${isDeactivating ? "deactivate" : "activate"} this class?`)) return;
     try {
-      const res = await api.patch(`/api/admin/classes/${item.rawId}/${isDeactivating ? "deactivate" : "activate"}`);
-      if (res.status === 200) fetchInitialData();
+      if (isDeactivating) {
+        await adminService.deactivateClass(item.rawId);
+      } else {
+        await adminService.activateClass(item.rawId);
+      }
+      fetchInitialData();
     } catch (err) { console.error(err); }
   }
 
@@ -146,10 +149,13 @@ export default function ClassManagement() {
     e.preventDefault(); setFormError(""); setSubmitting(true);
     const payload = { title: className.trim(), sportId: selectedSportObj.SportID, coachId: Number(coachId), courtIds: courtIds.map(Number), capacity: Number(capacity), fee: Number(fee), billingType: scheduleType === "WEEKLY" ? "MONTHLY" : "ONE_TIME", scheduleType, startDate: scheduleType === "WEEKLY" ? startDate : oneTimeDate, oneTimeDate: scheduleType === "ONE_TIME" ? oneTimeDate : "", startTime, endTime, weekdays: scheduleType === "WEEKLY" ? days : [] };
     try {
-      const url = mode === "ADD" ? "/api/admin/classes" : `/api/admin/classes/${editingId}`;
-      const res = mode === "ADD" ? await api.post(url, payload) : await api.put(url, payload);
-      if (res.status === 200 || res.status === 201) { setIsModalOpen(false); fetchInitialData(); }
-      else { setFormError(res.data.message || "Failed to save"); setIsConflict(res.status === 409); }
+      if (mode === "ADD") {
+        await adminService.createClass(payload);
+      } else {
+        await adminService.updateClass(editingId, payload);
+      }
+      setIsModalOpen(false); 
+      fetchInitialData();
     } catch (err) { 
       setFormError(err.response?.data?.message || "Connection failed"); 
       setIsConflict(err.response?.status === 409);

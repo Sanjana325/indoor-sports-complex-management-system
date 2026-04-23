@@ -10,6 +10,12 @@ import {
   CalendarMonth 
 } from "@mui/icons-material";
 import "../../styles/PlayerTables.css";
+import playerService from "../../services/playerService";
+import { 
+  formatTimeRange, 
+  MONTH_NAMES, 
+  formatFullTimestamp 
+} from "../../utils/formatters";
 
 // returns the status pill css class based on the booking state
 function pillClass(status) {
@@ -27,44 +33,6 @@ function normalizeStatus(s) {
   return "pending";
 }
 
-// converts 24-hour timestamps from strings into a readable AM/PM range
-function formatTimeRange(startIso, endIso) {
-  const s = new Date(startIso);
-  const e = new Date(endIso);
-  
-  const formatTime = (date) => {
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    minutes = minutes < 10 ? '0'+minutes : minutes;
-    return hours + ':' + minutes + ' ' + ampm;
-  };
-  
-  return `${formatTime(s)} - ${formatTime(e)}`;
-}
-
-// abbreviated month names for the date display cards
-const MONTH_NAMES = [
-  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
-];
-
-// detailed timestamp formatter for the booking audit trail
-const formatFullTimestamp = (isoString) => {
-  if (!isoString) return "—";
-  const d = new Date(isoString);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
 // management page for players to view their full reservation history and status
 export default function PlayerMyBookings() {
   const [sortOrder, setSortOrder] = useState("NEWEST");
@@ -72,19 +40,13 @@ export default function PlayerMyBookings() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
   // loads the player's primary booking record from the database
   useEffect(() => {
     async function fetchBookings() {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/player/bookings`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok && Array.isArray(data.bookings)) {
+        const data = await playerService.getMyBookings();
+        if (Array.isArray(data.bookings)) {
           const formatted = data.bookings.map(b => {
             const dateObj = new Date(b.StartDateTime);
             const safeDate = dateObj.toISOString().split('T')[0];

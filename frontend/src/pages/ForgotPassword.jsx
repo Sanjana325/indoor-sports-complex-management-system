@@ -1,17 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { isValidEmail } from "../utils/validation";
+import authService from "../services/authService";
 import "../styles/Login.css";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-// helper to check if email format is correct
-function isValidEmail(email) {
-  if (typeof email !== "string") return false;
-  const e = email.trim();
-  if (e.length < 6 || e.length > 254) return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-  return re.test(e);
-}
 
 // page for users who forgot their login credentials
 export default function ForgotPassword() {
@@ -38,21 +29,10 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail })
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.message || "Request failed");
-        return;
-      }
-
+      const data = await authService.forgotPassword(cleanEmail);
       setMessage(data.message || "If that email exists, we sent a reset link.");
     } catch (err) {
-      setError("Cannot connect to backend. Make sure the server is running.");
+      setError(err.response?.data?.message || "Cannot connect to backend. Make sure the server is running.");
     } finally {
       setLoading(false);
     }

@@ -3,9 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import adminService from "../../services/adminService";
 
 // main calendar view for managing all arena activities
 export default function AdminCalendar() {
@@ -27,39 +25,18 @@ export default function AdminCalendar() {
   async function fetchData() {
     setLoading(true);
     setError("");
-    const token = localStorage.getItem("token");
 
     try {
-      const [bookRes, sessRes, sportRes, courtRes, blockRes] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/bookings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/classes/sessions`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/sports`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/courts`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_BASE}/api/admin/blocked-slots`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [bookData, sessData, sData, cData, blockData] = await Promise.all([
+        adminService.getBookings(),
+        adminService.getClassSessions(),
+        adminService.getSports(),
+        adminService.getCourts(),
+        adminService.getBlockedSlots()
       ]);
 
-      if (!bookRes.ok || !sessRes.ok || !sportRes.ok || !courtRes.ok || !blockRes.ok) {
-        throw new Error("Failed to fetch calendar data");
-      }
-
-      const bookData = await bookRes.json();
-      const sessData = await sessRes.json();
-      const sData = await sportRes.json();
-      const cData = await courtRes.json();
-      const blockData = await blockRes.json();
-
-      setSports(sData.sports || []);
-      setCourtsData(cData.courts || []);
+      setSports(sData.sports || sData || []);
+      setCourtsData(cData.courts || cData || []);
 
       // creates calendar events for customer bookings
       const bookingEvents = (bookData.bookings || [])

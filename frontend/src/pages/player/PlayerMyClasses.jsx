@@ -42,6 +42,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import "../../styles/PlayerMyClasses.css";
 import ClassPaymentModal from "../../components/ClassPaymentModal";
 import playerService from "../../services/playerService";
+import { formatLKR, formatScheduleDetailed } from "../../utils/formatters";
 
 const ICON_MAP = {
   "Cricket": SportsCricket,
@@ -52,47 +53,6 @@ const ICON_MAP = {
 };
 
 const DEFAULT_ICON = SportsSoccer;
-const DAY_MAP = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function formatTime(t) {
-  if (!t) return "";
-  const timeStr = String(t);
-  return timeStr.includes(':') ? timeStr.slice(0, 5) : timeStr;
-}
-
-// helper to transform raw schedule data into a readable format for players
-function formatScheduleDetailed(c) {
-  const start = formatTime(c.StartTime);
-  const end = formatTime(c.EndTime);
-  const timeRange = start && end ? `${start} - ${end}` : (start || end || "");
-
-  if (c.ScheduleType === "ONETIME") {
-    return `One-Time | ${timeRange || "No time set"}`;
-  }
-
-  if (c.Weekdays) {
-    try {
-      const days = String(c.Weekdays).split(',')
-        .map(d => {
-          const idx = parseInt(d.trim());
-          return !isNaN(idx) ? DAY_MAP[idx] : d;
-        })
-        .filter(d => d)
-        .join(", ");
-      return days ? `${days} | ${timeRange}` : timeRange;
-    } catch (e) {
-      console.error("[Format] Weekdays error:", e);
-    }
-  }
-  
-  return timeRange || "Schedule TBA";
-}
-
-function formatLKR(n) {
-  const num = Number(n);
-  if (!Number.isFinite(num)) return "-";
-  return `LKR ${num.toLocaleString("en-LK")}`;
-}
 
 // inventory page for players to see all sports classes they have currently joined
 export default function PlayerMyClasses() {

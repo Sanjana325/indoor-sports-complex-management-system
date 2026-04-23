@@ -3,19 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell
 } from 'recharts';
-
-// backend server address
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-// helper for padding single digit numbers for dates
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-
-// converts a date object into a YYYY-MM-DD string for the api
-function toISODate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
+import adminService from "../../services/adminService";
 
 // calculates the time difference between two strings (HH:mm)
 function fmtDuration(start, end) {
@@ -113,11 +101,7 @@ export default function AdminHome() {
     async function fetchStats() {
       setLoading(true);
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_BASE}/api/admin/reports/dashboard-stats?start=${activeRange.start}&end=${activeRange.end}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const d = await res.json();
+        const d = await adminService.getDashboardStats(activeRange.start, activeRange.end);
         if (d.totals) {
           setData({
             totals: d.totals,

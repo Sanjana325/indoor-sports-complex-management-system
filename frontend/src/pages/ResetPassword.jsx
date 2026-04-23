@@ -1,28 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { isStrongPassword, passwordPolicyMessage } from "../utils/validation";
+import authService from "../services/authService";
 import "../styles/Login.css";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 // helper to read URL parameters (like the reset token)
 function useQuery() {
   const { search } = useLocation();
   return useMemo(() => new URLSearchParams(search), [search]);
-}
-
-// user-friendly description of what makes a password safe
-function passwordPolicyMessage() {
-  return "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
-}
-
-// strict check for password security requirements
-function isStrongPassword(pw) {
-  if (typeof pw !== "string") return false;
-  if (pw.length < 8) return false;
-  if (!/[A-Z]/.test(pw)) return false;
-  if (!/[a-z]/.test(pw)) return false;
-  if (!/[0-9]/.test(pw)) return false;
-  return true;
 }
 
 // page where users set a new password after receiving a reset link
@@ -51,16 +36,6 @@ export default function ResetPassword() {
     setError("");
     setMessage("");
 
-    if (!token) {
-      setError("Reset token is missing.");
-      return;
-    }
-
-    if (!isStrongPassword(newPassword)) {
-      setError(passwordPolicyMessage());
-      return;
-    }
-
     if (newPassword !== confirm) {
       setError("Passwords do not match.");
       return;
@@ -68,22 +43,11 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, newPassword })
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.message || "Reset failed");
-        return;
-      }
-
+      const data = await authService.resetPassword(token, newPassword);
       setMessage(data.message || "Password reset successful.");
       setTimeout(() => navigate("/"), 1200);
     } catch (err) {
-      setError("Cannot connect to backend. Make sure the server is running.");
+      setError(err.response?.data?.message || "Cannot connect to backend. Make sure the server is running.");
     } finally {
       setLoading(false);
     }
