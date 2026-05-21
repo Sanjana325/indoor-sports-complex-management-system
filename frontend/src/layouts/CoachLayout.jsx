@@ -1,135 +1,136 @@
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import "../styles/AdminLayout.css";
+import { Snackbar, Alert } from "@mui/material";
+import { useAuth } from "../hooks/useAuth";
+import { getInitials } from "../utils/formatters";
 
-function getInitials(firstName = "", lastName = "") {
-  const a = (firstName || "").trim().charAt(0).toUpperCase();
-  const b = (lastName || "").trim().charAt(0).toUpperCase();
-  return (a + b) || "U";
-}
+// definitions for the coach sidebar menu items and their associated SVG icons
+const COACH_NAV_ITEMS = [
+  { path: "/coach", label: "Dashboard Home", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+  )},
+  { path: "/coach/my-classes", label: "Assigned Classes", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+  )},
+  { path: "/coach/cancelled-sessions", label: "Cancellation History", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+  )},
+];
 
+// secondary layout specifically for the coach dashboard featuring a persistent sidebar
 export default function CoachLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ User from localStorage
-  const user = useMemo(() => {
-    const firstName = localStorage.getItem("firstName") || "Coach";
-    const lastName = localStorage.getItem("lastName") || "";
-    const role = localStorage.getItem("role") || "COACH";
-    const email = localStorage.getItem("email") || "coach@sports.com";
-    const phone = localStorage.getItem("phone") || "07XXXXXXXX";
-
-    const qualifications = localStorage.getItem("qualifications") || "";
-    const specialization = localStorage.getItem("specialization") || "";
-
-    return { firstName, lastName, role, email, phone, qualifications, specialization };
-  }, []);
+  const { user, logout: authLogout } = useAuth();
 
   const displayName = `${user.firstName} ${user.lastName}`.trim();
   const initials = getInitials(user.firstName, user.lastName);
 
-  // Dropdown
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showLockToast, setShowLockToast] = useState(false);
   const profileRef = useRef(null);
 
+  // monitor global click events to shut the user popup when focus is lost
   useEffect(() => {
     function handleOutsideClick(e) {
-      if (!profileRef.current) return;
-      if (!profileRef.current.contains(e.target)) setIsProfileOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  useEffect(() => {
-    setIsProfileOpen(false);
-  }, [location.pathname]);
+  // interceptor for restricted navigation when a password reset is pending
+  const handleRestrictedClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowLockToast(true);
+  };
 
-  function handleLogout() {
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
-    localStorage.removeItem("firstName");
-    localStorage.removeItem("lastName");
-    localStorage.removeItem("phone");
-    localStorage.removeItem("qualifications");
-    localStorage.removeItem("specialization");
-
+  const logout = () => {
+    authLogout();
     navigate("/");
-  }
+  };
 
   return (
     <div className="admin-layout">
-      {/* SIDEBAR */}
+      {/* vertical navigation panel containing primary dashboard redirects */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Coach Panel</h2>
+        <div className="sidebar-main">
+          <h2 className="sidebar-title">Arena<span>Pro</span></h2>
+          <nav 
+            className={`sidebar-nav ${user.mustChangePassword ? 'is-restricted' : ''}`}
+            onClickCapture={user.mustChangePassword ? handleRestrictedClick : undefined}
+          >
+            {COACH_NAV_ITEMS.map(item => (
+              <NavLink key={item.path} to={item.path} end={item.path === "/coach"}>
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </div>
 
-        <nav className="sidebar-nav">
-          <NavLink to="/coach" end className={({ isActive }) => (isActive ? "active" : "")}>
-            Home
-          </NavLink>
+        {/* user identification and system control cluster at the bottom */}
+        <footer className="sidebar-footer" ref={profileRef}>
+          {isProfileOpen && (
+            /* context menu for coach profile management and logging out */
+            <div className="sidebar-popup-menu">
+              <Link to="/coach/profile" className="sidebar-popup-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                My Profile
+              </Link>
 
-          <NavLink to="/coach/my-classes" className={({ isActive }) => (isActive ? "active" : "")}>
-            My Classes
-          </NavLink>
-        </nav>
+              <button 
+                type="button" 
+                className="sidebar-popup-item logout" 
+                onClick={logout}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+              </button>
+            </div>
+          )}
+
+          <div 
+            className={`sidebar-user ${isProfileOpen ? 'is-active' : ''}`}
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+          >
+            <div className="sidebar-avatar">{initials}</div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{displayName}</div>
+              <div className="sidebar-user-role">Coach</div>
+            </div>
+            <span className="sidebar-user-caret">▾</span>
+          </div>
+        </footer>
       </aside>
 
-      {/* MAIN */}
+      {/* primary scrolling viewport for dynamic coach modules */}
       <main className="admin-main">
-        <div className="admin-topbar">
-          <strong>Coach Dashboard</strong>
-
-          <div className="topbar-right" ref={profileRef}>
-            <button
-              type="button"
-              className="profile-trigger"
-              onClick={() => setIsProfileOpen((p) => !p)}
-              aria-haspopup="menu"
-              aria-expanded={isProfileOpen}
-            >
-              <span className="profile-avatar">{initials}</span>
-              <span className="profile-name-mini">{displayName || "User"}</span>
-              <span className="profile-caret">▾</span>
-            </button>
-
-            {isProfileOpen && (
-              <div className="profile-menu" role="menu">
-                <div className="profile-menu-head">
-                  <div className="profile-menu-left">
-                    <div className="profile-menu-avatar">{initials}</div>
-                    <div className="profile-menu-meta">
-                      <div className="profile-menu-name">{displayName || "User"}</div>
-                      <div className="profile-menu-email">{user.email}</div>
-                    </div>
-                  </div>
-                  <div className="profile-role-pill">{user.role}</div>
-                </div>
-
-                <div className="profile-menu-list">
-                  <Link className="profile-menu-item" to="/coach/profile" role="menuitem">
-                    My Profile
-                  </Link>
-
-                  <Link className="profile-menu-item" to="/coach/settings" role="menuitem">
-                    Settings
-                  </Link>
-                </div>
-
-                <div className="profile-menu-footer">
-                  <button type="button" className="profile-logout-btn" onClick={handleLogout}>
-                    Logout
-                  </button>
-                </div>
-              </div>
-            )}
+        <section className="admin-content">
+          <div className="admin-content-inner">
+            <Outlet />
           </div>
-        </div>
-
-        <div className="admin-content">
-          <Outlet />
-        </div>
+        </section>
       </main>
+
+      {/* global warning notification for mandatory account security updates */}
+      <Snackbar 
+        open={showLockToast} 
+        autoHideDuration={6000} 
+        onClose={() => setShowLockToast(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowLockToast(false)} 
+          severity="warning" 
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 600 }}
+        >
+          Access Restricted: Please update your temporary password to unlock all dashboard features.
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

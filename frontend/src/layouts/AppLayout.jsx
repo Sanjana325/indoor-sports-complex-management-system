@@ -1,9 +1,10 @@
 import { Link, Outlet } from "react-router-dom";
 
+// basic application wrapper providing navigation and top-level structure
 export default function AppLayout() {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      {/* SIDEBAR */}
+      {/* sidebar navigation providing quick access to different user modules */}
       <aside
         style={{
           width: "220px",
@@ -12,7 +13,7 @@ export default function AppLayout() {
           padding: "16px",
         }}
       >
-        <h3>Sports Complex</h3>
+        <h3>ArenaPro</h3>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           <Link to="/admin" style={linkStyle}>Admin Dashboard</Link>
@@ -22,32 +23,33 @@ export default function AppLayout() {
         </nav>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* main view area where children routes are rendered */}
       <main style={{ flex: 1 }}>
-  {/* TOP BAR */}
-  <div
-    style={{
-      padding: "12px 20px",
-      borderBottom: "1px solid #ddd",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <strong>Dashboard</strong>
-    <Link to="/" style={{ textDecoration: "none" }}>Logout</Link>
-  </div>
+        {/* universal top bar with breadcrumbs and logout action */}
+        <div
+          style={{
+            padding: "12px 20px",
+            borderBottom: "1px solid #ddd",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <strong>Dashboard</strong>
+          <Link to="/" style={{ textDecoration: "none" }}>Logout</Link>
+        </div>
 
-  {/* PAGE CONTENT */}
-  <div style={{ padding: "20px" }}>
-    <Outlet />
-  </div>
-</main>
+        {/* content area where specific page components appear */}
+        <div style={{ padding: "20px" }}>
+          <Outlet />
+        </div>
+      </main>
 
     </div>
   );
 }
 
+// reusable CSS properties for sidebar navigation items
 const linkStyle = {
   color: "#fff",
   textDecoration: "none",

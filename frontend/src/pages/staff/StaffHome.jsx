@@ -1,264 +1,366 @@
-import { useMemo, useState } from "react";
-import "../../styles/StaffHome.css";
+import { useState, useEffect, useMemo } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import api from "../../services/api";
 
-import CalendarPanel from "../../components/CalendarPanel";
-import DayDetailsModal from "../../components/DayDetailsModal";
-import AvailabilityPanel from "../../components/AvailabilityPanel";
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-function toISODate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-function fmtDuration(start, end) {
-  if (!start || !end) return "-";
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  const mins = eh * 60 + em - (sh * 60 + sm);
-  if (!Number.isFinite(mins) || mins <= 0) return "-";
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
-
-function statusLabelBooking(s) {
-  if (s === "PENDING_PAYMENT") return "Pending";
-  if (s === "CONFIRMED") return "Confirmed";
-  if (s === "CANCELLED") return "Cancelled";
-  return s;
-}
-function statusKeyBooking(s) {
-  if (s === "CONFIRMED") return "confirmed";
-  if (s === "CANCELLED") return "cancelled";
-  return "pending";
-}
-function sportKeyFromCourtName(court) {
-  const lower = court.toLowerCase();
-  if (lower.includes("cricket")) return "cricket";
-  if (lower.includes("badminton")) return "badminton";
-  if (lower.includes("futsal")) return "futsal";
-  return "cricket";
-}
-function sportLabelFromKey(k) {
-  if (k === "cricket") return "Cricket";
-  if (k === "badminton") return "Badminton";
-  if (k === "futsal") return "Futsal";
-  return "Cricket";
-}
-
+// staff dashboard providing a central calendar view of all venue bookings and classes
 export default function StaffHome() {
-  // ✅ tiles (UI-only mock totals — later from backend)
-  const totals = useMemo(
-    () => ({
-      bookings: 38,
-      payments: 29,
-      classes: 12,
-    }),
-    []
-  );
+  const [events, setEvents] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [courtsData, setCourtsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // ✅ UI-only mock data for calendar
-  const [bookings] = useState([
-    {
-      id: "B-500001",
-      playerName: "Kavindi Silva",
-      court: "Badminton - A",
-      date: "2026-09-30",
-      time: "09:30-10:30",
-      status: "CONFIRMED",
-    },
-    {
-      id: "B-500002",
-      playerName: "Nuwan Perera",
-      court: "Cricket - A",
-      date: "2026-09-30",
-      time: "13:00-15:00",
-      status: "PENDING_PAYMENT",
-    },
-    {
-      id: "B-500003",
-      playerName: "Sahan Fernando",
-      court: "Futsal - A",
-      date: "2026-09-30",
-      time: "19:00-21:30",
-      status: "CONFIRMED",
-    },
-  ]);
+  const [courtFilter, setCourtFilter] = useState("ALL");
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  const [blockedSlots] = useState([
-    {
-      id: "BS-400001",
-      court: "Cricket - A",
-      date: "2026-09-30",
-      startTime: "11:00",
-      endTime: "12:30",
-      reason: "Maintenance",
-    },
-  ]);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const [classes] = useState([
-    {
-      id: "CL-300001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachName: "Sahan Fernando",
-      date: "2026-09-30",
-      startTime: "16:00",
-      endTime: "17:30",
-    },
-  ]);
+  // downloads comprehensive calendar data including bookings, classes, sports, and blocks
+  async function fetchData() {
+    setLoading(true);
+    setError("");
 
-  // ✅ Calendar controls
-  const [monthDate, setMonthDate] = useState(() => {
-    const t = new Date();
-    return new Date(t.getFullYear(), t.getMonth(), 1);
-  });
+    try {
+      // access admin data endpoints (now accessible to staff roles)
+      const [bookRes, sessRes, sportRes, courtRes, blockRes] = await Promise.all([
+        api.get("/api/admin/bookings"),
+        api.get("/api/admin/classes/sessions"),
+        api.get("/api/admin/sports"),
+        api.get("/api/admin/courts"),
+        api.get("/api/admin/blocked-slots")
+      ]);
 
-  const [selectedDateISO, setSelectedDateISO] = useState(() => toISODate(new Date()));
-  const [isDayOpen, setIsDayOpen] = useState(false);
+      setSports(sportRes.data.sports || []);
+      setCourtsData(courtRes.data.courts || []);
 
-  // ✅ Events counts for mini-bars inside month cells
-  const eventsByDate = useMemo(() => {
-    const map = {};
-
-    function ensure(dateISO) {
-      if (!map[dateISO]) {
-        map[dateISO] = { cricket: 0, badminton: 0, futsal: 0, classes: 0, blocked: 0 };
-      }
-      return map[dateISO];
-    }
-
-    bookings.forEach((b) => {
-      const key = ensure(b.date);
-      const sportKey = sportKeyFromCourtName(b.court);
-      if (sportKey === "cricket") key.cricket += 1;
-      if (sportKey === "badminton") key.badminton += 1;
-      if (sportKey === "futsal") key.futsal += 1;
-    });
-
-    blockedSlots.forEach((x) => {
-      const key = ensure(x.date);
-      key.blocked += 1;
-    });
-
-    classes.forEach((c) => {
-      const key = ensure(c.date);
-      key.classes += 1;
-    });
-
-    return map;
-  }, [bookings, blockedSlots, classes]);
-
-  // ✅ Data shown in day popup
-  const dayData = useMemo(() => {
-    const dateISO = selectedDateISO;
-
-    const dayBookings = bookings
-      .filter((b) => b.date === dateISO)
-      .map((b) => {
-        const sportKey = sportKeyFromCourtName(b.court);
+      // maps court bookings into standard calendar event objects
+      const bookingEvents = (bookRes.data.bookings || [])
+        .filter((b) => b.status !== "EXPIRED" && b.status !== "CANCELLED")
+        .map((b) => {
+        const [startT, endT] = b.time.split(" - ");
         return {
           id: b.id,
-          playerName: b.playerName,
-          court: b.court,
-          time: b.time,
-          statusKey: statusKeyBooking(b.status),
-          statusLabel: statusLabelBooking(b.status),
-          sportKey,
-          sportLabel: sportLabelFromKey(sportKey),
+          title: `Booking: ${b.playerName} (${b.court})`,
+          start: `${b.date}T${startT}:00`,
+          end: `${b.date}T${endT}:00`,
+          backgroundColor: b.sportColor || "#6366f1",
+          borderColor: b.sportColor || "#4f46e5",
+          extendedProps: {
+            type: "BOOKING",
+            playerName: b.playerName,
+            phoneNumber: b.phoneNumber,
+            sportName: b.sportName,
+            court: b.court,
+            time: b.time,
+            price: Number(b.pricePerHour) * ((new Date(b.endRaw) - new Date(b.startRaw)) / (1000 * 60 * 60)),
+            status: b.status,
+          },
         };
       });
 
-    const dayBlocked = blockedSlots.filter((x) => x.date === dateISO);
+      const sessionEvents = (sessRes.data.sessions || []);
 
-    const dayClasses = classes
-      .filter((c) => c.date === dateISO)
-      .map((c) => ({
-        ...c,
-        duration: fmtDuration(c.startTime, c.endTime),
-      }));
+      // maps administrative maintenance blocks into red-coded calendar events
+      const blockedEvents = (blockRes.data.slots || []).map((slot) => {
+        return {
+          id: `block-${slot.blockedSlotId}`,
+          title: `Blocked: ${slot.reason} (${slot.courtName})`,
+          start: slot.startDateTime,
+          end: slot.endDateTime,
+          backgroundColor: "#fee2e2", 
+          borderColor: "#ef4444",    
+          textColor: "#dc2626",      
+          classNames: ["blocked-calendar-event"], 
+          extendedProps: {
+            type: "BLOCKED",
+            court: slot.courtName,
+            reason: slot.reason,
+            createdBy: `${slot.createdByFirstName} ${slot.createdByLastName}`,
+            time: `${new Date(slot.startDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${new Date(slot.endDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`,
+            status: "BLOCKED"
+          }
+        };
+      });
 
-    return { bookings: dayBookings, blocked: dayBlocked, classes: dayClasses };
-  }, [selectedDateISO, bookings, blockedSlots, classes]);
-
-  // ✅ Availability panel (UI-only logic)
-  const availability = useMemo(() => {
-    const dateISO = selectedDateISO;
-
-    const courtList = [
-      { name: "Cricket - A", sportKey: "cricket" },
-      { name: "Cricket - B", sportKey: "cricket" },
-      { name: "Badminton - A", sportKey: "badminton" },
-      { name: "Futsal - A", sportKey: "futsal" },
-    ];
-
-    function isBlocked(courtName) {
-      return blockedSlots.some((x) => x.date === dateISO && x.court === courtName);
+      setEvents([...bookingEvents, ...sessionEvents, ...blockedEvents]);
+    } catch (err) {
+      console.error(err);
+      setError("Error loading calendar data. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    function isBooked(courtName) {
-      return bookings.some((b) => b.date === dateISO && b.court === courtName && b.status !== "CANCELLED");
-    }
-
-    return courtList.map((c) => {
-      if (isBlocked(c.name)) {
-        return { ...c, statusKey: "blocked", statusLabel: "Blocked" };
-      }
-      if (isBooked(c.name)) {
-        return { ...c, statusKey: "booked", statusLabel: "Booked" };
-      }
-      return { ...c, statusKey: "available", statusLabel: "Available" };
-    });
-  }, [selectedDateISO, bookings, blockedSlots]);
-
-  function handleSelectDate(dateISO) {
-    setSelectedDateISO(dateISO);
-    setIsDayOpen(true);
   }
 
+  // populates and opens the record detail modal when an event is clicked
+  function handleEventClick(info) {
+    const { extendedProps, title } = info.event;
+    setSelectedEvent({
+        id: info.event.id,
+        title: info.event.title,
+        ...extendedProps
+    });
+    setIsDetailModalOpen(true);
+  }
+
+  // dynamically filters the master event list by court name
+  const filteredEvents = useMemo(() => {
+    if (courtFilter === "ALL") return events;
+    return events.filter((e) => {
+      const courtStr = String(e.extendedProps.court || "").toLowerCase();
+      const filterStr = courtFilter.toLowerCase();
+      return courtStr.includes(filterStr);
+    });
+  }, [events, courtFilter]);
+
   return (
-    <div className="sh-page">
-      <h2 className="sh-title">Staff Home</h2>
-
-      {/* 3 tiles */}
-      <div className="sh-tiles">
-        <div className="sh-tile">
-          <div className="sh-tile-label">Total Bookings</div>
-          <div className="sh-tile-num">{totals.bookings}</div>
+    <div className="admin-content-inner">
+      {/* page header with court selection filters */}
+      <div className="flex-between mb-3">
+        <div>
+          <h1 className="page-title">Arena Schedule</h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>View and monitor all complex activities in real-time.</p>
         </div>
-
-        <div className="sh-tile">
-          <div className="sh-tile-label">Total Payments</div>
-          <div className="sh-tile-num">{totals.payments}</div>
-        </div>
-
-        <div className="sh-tile">
-          <div className="sh-tile-label">Total Classes</div>
-          <div className="sh-tile-num">{totals.classes}</div>
-        </div>
-      </div>
-
-      {/* Calendar + Right panel */}
-      <div className="sh-lower">
-        <div className="sh-left">
-          <CalendarPanel
-            monthDate={monthDate}
-            selectedDateISO={selectedDateISO}
-            onChangeMonth={setMonthDate}
-            onSelectDate={handleSelectDate}
-            eventsByDate={eventsByDate}
-          />
-        </div>
-
-        <div className="sh-right">
-          <AvailabilityPanel title={`Availability (${selectedDateISO})`} courts={availability} />
+        
+        <div className="flex-start" style={{ gap: '12px' }}>
+          <label className="form-label" style={{ marginBottom: 0 }}>Court:</label>
+          <select 
+            className="form-input"
+            style={{ width: '180px' }}
+            value={courtFilter} 
+            onChange={(e) => setCourtFilter(e.target.value)}
+          >
+            <option value="ALL">All Courts</option>
+            {courtsData.map(c => (
+              <option key={c.CourtID} value={c.CourtName}>{c.CourtName}</option>
+            ))}
+          </select>
         </div>
       </div>
+        
+            {/* color legend to help staff distinguish between sports and blocks */}
+            <div className="arena-legend">
+              {sports.map(s => (
+                <div key={s.SportID} className="arena-legend-item">
+                  <span className="arena-legend-dot" style={{ backgroundColor: s.ColorCode || "#1976d2" }}></span>
+                  <span className="arena-legend-name">{s.SportName}</span>
+                </div>
+              ))}
+              <div className="arena-legend-item">
+                <span className="arena-legend-dot" style={{ backgroundColor: "#6366f1" }}></span>
+                <span className="arena-legend-name">Bookings</span>
+              </div>
+              <div className="arena-legend-item">
+                <span className="arena-legend-dot" style={{ backgroundColor: "#dc2626" }}></span>
+                <span className="arena-legend-name">Blocked</span>
+              </div>
+            </div>
 
-      {isDayOpen && (
-        <DayDetailsModal dateISO={selectedDateISO} data={dayData} onClose={() => setIsDayOpen(false)} />
+      <div className="arena-card" style={{ padding: '20px' }}>
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '20px' }}>Loading...</div>
+        )}
+
+        {error && <div style={{ color: 'var(--primary)', marginBottom: '10px' }}>{error}</div>}
+
+        {/* full calendar grid with monthly, weekly, and daily views */}
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay",
+          }}
+          events={filteredEvents}
+          eventClick={handleEventClick}
+          height="800px"
+          eventTimeFormat={{
+            hour: "2-digit",
+            minute: "2-digit",
+            meridiem: false,
+            hour12: false,
+          }}
+          slotMinTime="06:00:00"
+          slotMaxTime="24:00:00"
+          allDaySlot={false}
+          dayMaxEvents={true}
+          nowIndicator={true}
+          themeSystem="standard"
+          eventDisplay="block"
+          // custom renderer for internal event cards with cancellation styling
+          eventContent={(arg) => {
+            const isCancelled = arg.event.extendedProps.status === 'CANCELLED';
+            const isBlocked = arg.event.extendedProps.type === 'BLOCKED';
+            const type = arg.event.extendedProps.type;
+            
+            let displayTitle = arg.event.title;
+            if (arg.view.type === 'dayGridMonth') {
+              if (type === 'BOOKING') displayTitle = arg.event.extendedProps.playerName;
+              if (type === 'SESSION') displayTitle = displayTitle.replace('[CANCELLED] ', '');
+            }
+
+            return (
+              <div className={`fc-event-main-inner ${isCancelled ? 'is-cancelled' : ''}`} style={{
+                padding: '2px 4px',
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                opacity: isCancelled ? 0.7 : 1,
+                textDecoration: isCancelled ? 'line-through' : 'none'
+              }}>
+                <span style={{ fontWeight: 700, fontSize: '0.7rem', opacity: 0.8 }}>
+                   {arg.timeText}
+                </span>
+                <span style={{ fontWeight: 500 }}>{displayTitle}</span>
+                {isCancelled && (
+                  <span style={{ 
+                    fontSize: '0.6rem', 
+                    background: 'rgba(220, 38, 38, 0.2)', 
+                    color: '#dc2626',
+                    padding: '0 4px',
+                    borderRadius: '2px',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'inline-block'
+                  }}>X</span>
+                )}
+              </div>
+            );
+          }}
+        />
+      </div>
+
+      {/* drill-down modal providing deep-dive details for any scheduled activity */}
+      {isDetailModalOpen && selectedEvent && (
+        <div className="detail-modal-backdrop" onClick={() => setIsDetailModalOpen(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="arena-card" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '500px', position: 'relative' }}>
+            <button onClick={() => setIsDetailModalOpen(false)} style={{
+              position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)'
+            }}>×</button>
+
+            <h2 className="mb-1" style={{ fontSize: '1.25rem' }}>
+              {selectedEvent.type === 'BOOKING' ? 'Booking Details' : 'Session Details'}
+            </h2>
+
+            <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
+
+            <div className="arena-list">
+              {selectedEvent.type === 'BOOKING' ? (
+                /* comprehensive view of individual player rentals */
+                <>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Customer:</span>
+                    <span style={{ fontWeight: 600 }}>[{selectedEvent.court}] {selectedEvent.playerName}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Phone:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.phoneNumber || 'N/A'}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Sport:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.sportName}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Court:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.court}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Time:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.time}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Price:</span>
+                    <span style={{ fontWeight: 600 }}>LKR {selectedEvent.price.toFixed(2)}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Status:</span>
+                    <span className={`status-pill ${selectedEvent.status === 'PAID' || selectedEvent.status === 'CONFIRMED' ? 'success' : 'warning'}`}>
+                      {selectedEvent.status}
+                    </span>
+                  </div>
+                </>
+              ) : selectedEvent.type === 'BLOCKED' ? (
+                /* technical breakdown of venue maintenance blocks */
+                <>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Blocked Court:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.court}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Reason:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.reason}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Time:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.time}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Blocked By:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.createdBy}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Status:</span>
+                    <span className="status-pill danger">
+                      {selectedEvent.status}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                /* professional overview of group coaching sessions */
+                <>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Class:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.title}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Coach:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.coach}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Phone:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.coachPhone}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Sport:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.sport}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Court:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.court}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Time:</span>
+                    <span style={{ fontWeight: 600 }}>{selectedEvent.time}</span>
+                  </div>
+                  <div className="arena-list-item">
+                    <span className="form-label" style={{ margin: 0 }}>Status:</span>
+                    <span className={`status-pill ${selectedEvent.status === 'CANCELLED' ? 'danger' : 'success'}`}>
+                      {selectedEvent.status}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex-between mt-2">
+              <button className="btn btn-primary" onClick={() => window.location.href = '/staff/payments'}>View Payments</button>
+              <button className="btn btn-secondary" onClick={() => setIsDetailModalOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

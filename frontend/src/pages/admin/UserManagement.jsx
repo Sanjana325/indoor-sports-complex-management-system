@@ -1,465 +1,359 @@
-import { useMemo, useState } from "react";
-import "../../styles/UserManagement.css";
+import { useEffect, useMemo, useState } from "react";
+import MultiSelectWithAdd from "../../components/MultiSelectWithAdd";
+import adminService from "../../services/adminService";
+import ArenaTable from "../../components/shared/ArenaTable";
+import StatusPill from "../../components/shared/StatusPill";
 
-const ROLES = ["PLAYER", "STAFF", "COACH"];
-
-function makeId(prefix = "U") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
+// splits a string of delimited qualifications into a clean array
+function splitQualificationsToList(q) {
+  if (!q) return [""];
+  const parts = String(q).split(/[,;|]/g).map(x => x.trim()).filter(Boolean);
+  return parts.length ? parts : [""];
 }
 
-function nowIso() {
-  return new Date().toISOString();
+// maps raw database records into the format used by the react UI
+function mapDbUserToUi(u) {
+  return {
+    userId: u.rawId || u.UserID,
+    idDisplay: u.id || `USR-${String(u.UserID).padStart(6, '0')}`,
+    role: u.Role,
+    firstName: u.FirstName || "",
+    lastName: u.LastName || "",
+    phone: u.PhoneNumber || "",
+    email: u.Email || "",
+    createdAt: u.CreatedAt,
+    specialization: u.Specialization || "",
+    qualifications: Array.isArray(u.Qualifications) ? u.Qualifications : splitQualificationsToList(u.Qualifications),
+    specializations: Array.isArray(u.Specializations) ? u.Specializations : splitQualificationsToList(u.Specializations),
+    isActive: Boolean(u.IsActive)
+  };
 }
 
+// combines user data into a single string for quick keyword searching
+function buildHaystack(u) {
+  const s = (v) => String(v ?? "").trim().toLowerCase();
+  const id = s(u.idDisplay);
+  const role = s(u.role);
+  const first = s(u.firstName);
+  const last = s(u.lastName);
+  const phone = s(u.phone);
+  const email = s(u.email);
+  const qual = Array.isArray(u.qualifications) ? u.qualifications.join(" ") : s(u.qualifications);
+  const spec = Array.isArray(u.specializations) ? u.specializations.join(" ") : s(u.specialization);
+  const status = u.isActive ? "active" : "inactive";
+  return `${id} ${role} ${first} ${last} ${phone} ${email} ${qual} ${spec} ${status}`.toLowerCase();
+}
+
+// main dashboard for managing all staff, coaches, and players
 export default function UserManagement() {
-  const [users, setUsers] = useState([
-    {
-      id: "U-100001",
-      role: "PLAYER",
-      firstName: "Kavindi",
-      lastName: "Silva",
-      phone: "0771234567",
-      email: "kavindi.player@sports.com",
-      createdAt: "2026-01-18T10:00:00.000Z",
-    },
-    {
-      id: "U-100002",
-      role: "STAFF",
-      firstName: "Nuwan",
-      lastName: "Perera",
-      phone: "0712345678",
-      email: "nuwan.staff@sports.com",
-      createdAt: "2026-01-18T11:00:00.000Z",
-    },
-    {
-      id: "U-100003",
-      role: "COACH",
-      firstName: "Sahan",
-      lastName: "Fernando",
-      phone: "0755555555",
-      email: "sahan.coach@sports.com",
-      qualifications: "Diploma in Sports Coaching",
-      specialization: "Cricket",
-      createdAt: "2026-01-18T12:00:00.000Z",
-    },
-    {
-      id: "U-100004",
-      role: "PLAYER",
-      firstName: "Tharushi",
-      lastName: "Sanjana",
-      phone: "0760000000",
-      email: "tharushi.player@sports.com",
-      createdAt: "2026-01-19T08:00:00.000Z",
-    },
-  ]);
+  const currentRole = localStorage.getItem("role") || "";
+  const isSuperAdmin = currentRole === "SUPER_ADMIN";
+  const ROLES = isSuperAdmin ? ["ADMIN", "PLAYER", "STAFF", "COACH"] : ["PLAYER", "STAFF", "COACH"];
 
+  const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState("ADD"); // ADD | EDIT
-  const [editingId, setEditingId] = useState(null);
-
-  const [role, setRole] = useState("PLAYER");
+  const [mode, setMode] = useState("ADD");
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [role, setRole] = useState(ROLES[0] || "PLAYER");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-
-  const [qualifications, setQualifications] = useState("");
-  const [specialization, setSpecialization] = useState("");
-
-  const [tempPassword, setTempPassword] = useState("");
-
+  const [qualifications, setQualifications] = useState([]);
+  const [specializations, setSpecializations] = useState([]);
+  const [allSports, setAllSports] = useState([]);
+  const [allQualifications, setAllQualifications] = useState([]);
   const [search, setSearch] = useState("");
-  const normalizedSearch = search.trim().toLowerCase();
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [tempModalOpen, setTempModalOpen] = useState(false);
+  const [createdTempPassword, setCreatedTempPassword] = useState("");
+  const [createdEmail, setCreatedEmail] = useState("");
+  const [expandedSections, setExpandedSections] = useState({});
 
+  // downloads the massive list of all system users
+  const fetchUsersFromDb = async () => {
+    setLoadingUsers(true);
+    try {
+      const data = await adminService.getUsers();
+      setUsers((data.users || []).map(mapDbUserToUi));
+    } catch (err) { 
+      console.error("Fetch users error:", err); 
+    } finally { 
+      setLoadingUsers(false); 
+    }
+  };
+
+  // warms up the dropdown lists for sports and qualifications
+  const fetchReferenceData = async () => {
+    try {
+      const [sportsData, qualData] = await Promise.all([
+        adminService.getSports(),
+        adminService.getQualifications()
+      ]);
+      
+      setAllSports((sportsData.sports || sportsData).map(s => s.SportName || s));
+      setAllQualifications((qualData.qualifications || qualData).map(q => q.QualificationName || q));
+    } catch (e) { 
+      console.error("Reference data fetch error:", e); 
+    }
+  };
+
+  useEffect(() => { fetchUsersFromDb(); fetchReferenceData(); }, []);
+
+  // manages active keyword filtering across all displayed user lists
   const filteredUsers = useMemo(() => {
-    if (!normalizedSearch) return users;
+    const term = search.trim().toLowerCase();
+    if (!term) return users;
+    return users.filter(u => buildHaystack(u).includes(term));
+  }, [users, search]);
 
-    return users.filter((u) => {
-      const haystack =
-        `${u.id} ${u.role} ${u.firstName} ${u.lastName} ${u.phone} ${u.email} ` +
-        `${u.qualifications ?? ""} ${u.specialization ?? ""}`.toLowerCase();
+  const toggleSection = (title) => {
+    setExpandedSections(prev => ({ ...prev, [title]: !prev[title] }));
+  };
 
-      return haystack.includes(normalizedSearch);
-    });
-  }, [users, normalizedSearch]);
+  // logical separation of user roles into distinct visual categories
+  const sections = [
+    { title: "Super Admins", roleKey: "SUPER_ADMIN", visible: isSuperAdmin },
+    { title: "Admins", roleKey: "ADMIN", visible: isSuperAdmin },
+    { title: "Players", roleKey: "PLAYER", visible: true },
+    { title: "Staff", roleKey: "STAFF", visible: true },
+    { title: "Coaches", roleKey: "COACH", visible: true, coach: true }
+  ];
 
-  const latestPlayers = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "PLAYER")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
-  }, [filteredUsers]);
+  const resetForm = () => {
+    setRole(ROLES[0] || "PLAYER"); setFirstName(""); setLastName(""); setPhone("");
+    setEmail(""); setQualifications([]); setSpecializations([]); setEditingUserId(null); setFormError("");
+  };
 
-  const latestStaff = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "STAFF")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
-  }, [filteredUsers]);
-
-  const latestCoaches = useMemo(() => {
-    return filteredUsers
-      .filter((u) => u.role === "COACH")
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
-  }, [filteredUsers]);
-
-  function resetForm() {
-    setRole("PLAYER");
-    setFirstName("");
-    setLastName("");
-    setPhone("");
-    setEmail("");
-    setQualifications("");
-    setSpecialization("");
-    setTempPassword("");
-    setEditingId(null);
-  }
-
-  function openAddModal() {
-    setMode("ADD");
-    resetForm();
+  const openAddModal = () => { setMode("ADD"); resetForm(); setIsModalOpen(true); };
+  const closeModal = () => setIsModalOpen(false);
+  
+  // pre-fills the registration form for editing an existing profile
+  const openEditModal = (u) => {
+    setMode("EDIT"); setEditingUserId(u.userId); setRole(u.role); setFirstName(u.firstName);
+    setLastName(u.lastName); setPhone(u.phone); setEmail(u.email);
+    setQualifications(u.qualifications || []); setSpecializations(u.specializations || []);
     setIsModalOpen(true);
-  }
+  };
 
-  function openEditModal(user) {
-    setMode("EDIT");
-    setEditingId(user.id);
-
-    setRole(user.role);
-    setFirstName(user.firstName || "");
-    setLastName(user.lastName || "");
-    setPhone(user.phone || "");
-    setEmail(user.email || "");
-
-    setQualifications(user.qualifications || "");
-    setSpecialization(user.specialization || "");
-
-    setTempPassword("");
-
-    setIsModalOpen(true);
-  }
-
-  function closeModal() {
-    setIsModalOpen(false);
-  }
-
-  function handleRemove(id) {
-    const ok = window.confirm("Remove this user?");
-    if (!ok) return;
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-  }
-
-  function validateForm() {
-    if (!firstName.trim()) return "First name is required";
-    if (!lastName.trim()) return "Last name is required";
-    if (!phone.trim()) return "Phone number is required";
-    if (!email.trim()) return "Email is required";
-    if (!email.includes("@")) return "Enter a valid email";
-    if (!ROLES.includes(role)) return "Role must be Player/Staff/Coach";
-
-    if (mode === "ADD") {
-      if (!tempPassword.trim()) return "Temporary password is required";
-      if (tempPassword.trim().length < 6) return "Temporary password must be at least 6 characters";
+  // toggles login permissions (active vs disabled) for a specific user
+  const handleDisableToggle = async (u) => {
+    if (!window.confirm(`${u.isActive ? "Disable" : "Enable"} user ${u.email}?`)) return;
+    try {
+      if (u.isActive) {
+        await adminService.disableUser(u.userId);
+      } else {
+        await adminService.enableUser(u.userId);
+      }
+      fetchUsersFromDb();
+    } catch (e) {
+      console.error(e);
+      alert(e.response?.data?.message || "Toggle failed");
     }
+  };
 
-    if (role === "COACH") {
-      if (!qualifications.trim()) return "Qualifications is required for Coach";
-      if (!specialization.trim()) return "Specialization is required for Coach";
+  // wipes a user record and all associated history from the database
+  const handleRemoveUser = async (u) => {
+    if (!window.confirm(`PERMANENTLY remove user ${u.email}?`)) return;
+    try {
+      await adminService.deleteUser(u.userId);
+      fetchUsersFromDb();
+    } catch (e) {
+      console.error(e);
+      alert(e.response?.data?.message || "Removal failed");
     }
+  };
 
-    return null;
-  }
-
-  function handleRoleChange(newRole) {
-    setRole(newRole);
-    if (newRole !== "COACH") {
-      setQualifications("");
-      setSpecialization("");
-    }
-  }
-
-  function handleSubmit(e) {
+  // sends profile updates or new user registration data to the backend
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const err = validateForm();
-    if (err) {
-      alert(err);
-      return;
+    setSubmitting(true);
+    const payload = { role, firstName, lastName, email, phoneNumber: phone, specializations, qualifications };
+    
+    try {
+      let res;
+      if (mode === "ADD") {
+        res = await adminService.createUser(payload);
+        setCreatedEmail(email); 
+        setCreatedTempPassword(res.tempPassword || ""); 
+        setTempModalOpen(true);
+      } else {
+        await adminService.updateUser(editingUserId, payload);
+      }
+      setIsModalOpen(false); 
+      fetchUsersFromDb();
+    } catch (e) {
+      console.error("Submit Error:", e);
+      setFormError(e.response?.data?.message || "Server error");
+    } finally {
+      setSubmitting(false);
     }
-
-    const base = {
-      role,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-    };
-
-    const coachExtra =
-      role === "COACH"
-        ? {
-            qualifications: qualifications.trim(),
-            specialization: specialization.trim(),
-          }
-        : {
-            qualifications: undefined,
-            specialization: undefined,
-          };
-
-    if (mode === "ADD") {
-      const newUser = {
-        id: makeId("U"),
-        ...base,
-        ...coachExtra,
-        tempPassword: tempPassword.trim(),
-        createdAt: nowIso(),
-      };
-      setUsers((prev) => [newUser, ...prev]);
-      closeModal();
-      resetForm();
-      return;
-    }
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === editingId
-          ? {
-              ...u,
-              ...base,
-              ...coachExtra,
-            }
-          : u
-      )
-    );
-
-    closeModal();
-    resetForm();
-  }
+  };
 
   return (
-    <div className="um-page">
-      <div className="um-header">
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
         <div>
-          <h2 className="um-title">User Management</h2>
+          <h2 className="page-title">User Management</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Control system access and user profiles</p>
         </div>
-
-        <button className="um-primary-btn" type="button" onClick={openAddModal}>
-          + Add User
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button className="btn btn-secondary" onClick={fetchUsersFromDb}>Refresh</button>
+          <button className="btn btn-primary" onClick={openAddModal}>+ Add User</button>
+        </div>
       </div>
 
-      <div className="um-toolbar">
-        <input
-          className="um-search"
-          placeholder="Search by name, email, phone, user id..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="arena-card mb-4" style={{ padding: "var(--space-1)" }}>
+        {/* search input for filtering the entire user database */}
+        <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Search users by name, email, ID..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      <section className="um-section">
-        <h3 className="um-section-title">Players</h3>
-        <UserTable rows={latestPlayers} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
+      {/* dynamically renders grouped lists for every logical user role */}
+      {sections.map(sec => {
+        const allRows = filteredUsers.filter(u => u.role === sec.roleKey);
+        const isExpanded = expandedSections[sec.title];
+        const displayRows = isExpanded ? allRows : allRows.slice(0, 3);
+        
+        if (!sec.visible || allRows.length === 0) return null;
 
-      <section className="um-section">
-        <h3 className="um-section-title">Staff</h3>
-        <UserTable rows={latestStaff} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
-      <section className="um-section">
-        <h3 className="um-section-title">Coaches</h3>
-        <UserTable rows={latestCoaches} onEdit={openEditModal} onRemove={handleRemove} showCoachCols />
-      </section>
-
-      {isModalOpen && (
-        <div className="um-modal-backdrop" onMouseDown={closeModal}>
-          <div className="um-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="um-modal-header">
-              <h3 className="um-modal-title">{mode === "ADD" ? "Add User" : "Edit User"}</h3>
-              <button className="um-icon-btn" type="button" onClick={closeModal} aria-label="Close">
-                ✕
-              </button>
+        return (
+          <div key={sec.title} className="mb-4">
+            <div className="flex-between mb-2">
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)" }}>
+                {sec.title} ({allRows.length})
+              </h3>
+              {/* allows expanding sections with many records to avoid clutter */}
+              {allRows.length > 3 && (
+                <button 
+                  className="btn-link" 
+                  onClick={() => toggleSection(sec.title)}
+                  style={{ color: "var(--primary)", fontWeight: 700, fontSize: "0.85rem", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  {isExpanded ? "Collapse View" : "See All"}
+                </button>
+              )}
             </div>
-
-            <form className="um-form" onSubmit={handleSubmit}>
-              <div className="um-grid">
-                <div className="um-field">
-                  <label>Role</label>
-                  <select value={role} onChange={(e) => handleRoleChange(e.target.value)}>
-                    <option value="PLAYER">Player</option>
-                    <option value="STAFF">Staff</option>
-                    <option value="COACH">Coach</option>
-                  </select>
-                </div>
-
-                <div className="um-field">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    placeholder="name@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-
-                <div className="um-field">
-                  <label>First Name</label>
-                  <input
-                    type="text"
-                    placeholder="First name"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                  />
-                </div>
-
-                <div className="um-field">
-                  <label>Last Name</label>
-                  <input
-                    type="text"
-                    placeholder="Last name"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                  />
-                </div>
-
-                <div className="um-field um-full">
-                  <label>Phone Number</label>
-                  <input
-                    type="tel"
-                    placeholder="07XXXXXXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-
-                {mode === "ADD" && (
-                  <div className="um-field um-full">
-                    <label>Temporary Password</label>
-                    <input
-                      type="password"
-                      placeholder="Enter temporary password"
-                      value={tempPassword}
-                      onChange={(e) => setTempPassword(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                {role === "COACH" && (
-                  <>
-                    <div className="um-field um-full">
-                      <label>Qualifications</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Diploma in Sports Coaching"
-                        value={qualifications}
-                        onChange={(e) => setQualifications(e.target.value)}
-                      />
+            <ArenaTable 
+              loading={loadingUsers}
+              data={displayRows}
+              columns={[
+                { header: "ID", style: { width: "120px" } },
+                { header: "User Identity", style: { width: "250px" } },
+                { header: "Contact", style: { width: "180px" } },
+                { header: "Joined Date", style: { width: "140px" } },
+                ...(sec.coach ? [{ header: "Qualifications & Specs" }] : []),
+                { header: "Status", style: { width: "110px" } },
+                { header: "Actions", style: { textAlign: "right", width: "180px" } }
+              ]}
+              renderRow={(u) => (
+                <tr key={u.userId}>
+                  <td><span className="table-id">{u.idDisplay}</span></td>
+                  <td>
+                    <div style={{ fontWeight: 700 }}>{u.firstName} {u.lastName}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: "0.875rem" }}>{u.phone}</div>
+                  </td>
+                  <td>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-main)" }}>
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "-"}
                     </div>
-
-                    <div className="um-field um-full">
-                      <label>Specialization</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Cricket / Badminton / Chess"
-                        value={specialization}
-                        onChange={(e) => setSpecialization(e.target.value)}
-                      />
+                  </td>
+                  {sec.coach && (
+                    <td style={{ maxWidth: "250px" }}>
+                      {/* shows detailed skills and certificates for coaching staff */}
+                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                        {u.specializations.map(s => <StatusPill key={s} status="ACTIVE" label={s} />)}
+                        {u.qualifications.map(q => <StatusPill key={q} status="PENDING" label={q} />)}
+                      </div>
+                    </td>
+                  )}
+                  <td>
+                    <StatusPill status={u.isActive ? "ACTIVE" : "DISABLED"} />
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                      <button className="btn btn-edit" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => openEditModal(u)}>Edit</button>
+                      <button className={`btn ${u.isActive ? "btn-secondary" : "btn-primary"}`} style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleDisableToggle(u)}>
+                        {u.isActive ? "Disable" : "Enable"}
+                      </button>
+                      {isSuperAdmin && <button className="btn btn-danger" style={{ padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => handleRemoveUser(u)}>Del</button>}
                     </div>
-                  </>
-                )}
+                  </td>
+                </tr>
+              )}
+            />
+          </div>
+        );
+      })}
+
+      {/* modal form with dynamic fields based on the chosen user role */}
+      {isModalOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
+          <div className="arena-card" style={{ width: "100%", maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
+            <h3 className="mb-2">{mode === "ADD" ? "Create New User" : "Update User Profile"}</h3>
+            {formError && <div className="status-pill danger mb-2" style={{ width: "100%", borderRadius: "8px" }}>{formError}</div>}
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Role</label>
+                <select className="form-input" value={role} onChange={e => setRole(e.target.value)} required>
+                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-group">
+                  <label className="form-label">First Name</label>
+                  <input className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Last Name</label>
+                  <input className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Phone Number</label>
+                <input className="form-input" value={phone} onChange={e => setPhone(e.target.value)} required />
               </div>
 
-              {/* ✅ Only these 2 modal buttons become white */}
-              <div className="um-form-actions">
-                <button className="um-modal-btn" type="button" onClick={closeModal}>
-                  Cancel
-                </button>
-                <button className="um-modal-btn" type="submit">
-                  {mode === "ADD" ? "Add User" : "Save Changes"}
-                </button>
+              {/* conditional section revealed only when registering a new coach */}
+              {role === "COACH" && (
+                <div className="mt-2" style={{ background: "#f8fafc", padding: "var(--space-2)", borderRadius: "var(--radius-md)" }}>
+                  <h4 className="mb-1" style={{ fontSize: "0.9rem" }}>Coach Professional Details</h4>
+                  <MultiSelectWithAdd label="Qualifications" options={allQualifications} value={qualifications} onChange={setQualifications} />
+                  <MultiSelectWithAdd label="Specializations" options={allSports} value={specializations} onChange={setSpecializations} />
+                </div>
+              )}
+
+              <div className="flex-between mt-3" style={{ justifyContent: "flex-end" }}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving..." : "Save User"}</button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function UserTable({ rows, onEdit, onRemove, showCoachCols = false }) {
-  return (
-    <div className="um-table-wrap">
-      <table className={`um-table ${showCoachCols ? "um-table--coach" : ""}`}>
-        <thead>
-          <tr>
-            <th className="um-col-id">User ID</th>
-            <th className="um-col-name">Name</th>
-
-            {showCoachCols ? (
-              <>
-                <th className="um-col-phone">Phone</th>
-                <th className="um-col-email">Email</th>
-                <th className="um-col-qual">Qualifications</th>
-                <th className="um-col-spec">Specialization</th>
-              </>
-            ) : (
-              <>
-                <th className="um-col-phone">Phone</th>
-                <th className="um-col-email">Email</th>
-              </>
-            )}
-
-            <th className="um-col-actions um-center">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={showCoachCols ? 7 : 5} className="um-empty">
-                No users found.
-              </td>
-            </tr>
-          ) : (
-            rows.map((u) => (
-              <tr key={u.id}>
-                <td className="um-col-id">{u.id}</td>
-                <td className="um-col-name">
-                  {u.firstName} {u.lastName}
-                </td>
-
-                {showCoachCols ? (
-                  <>
-                    <td className="um-col-phone">{u.phone}</td>
-                    <td className="um-col-email">{u.email}</td>
-                    <td className="um-col-qual">{u.qualifications || "-"}</td>
-                    <td className="um-col-spec">{u.specialization || "-"}</td>
-                  </>
-                ) : (
-                  <>
-                    <td className="um-col-phone">{u.phone}</td>
-                    <td className="um-col-email">{u.email}</td>
-                  </>
-                )}
-
-                <td className="um-col-actions um-center">
-                  <div className="um-actions">
-                    <button className="um-action-btn" type="button" onClick={() => onEdit(u)}>
-                      Edit
-                    </button>
-                    <button className="um-action-btn danger" type="button" onClick={() => onRemove(u.id)}>
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+      {/* critical popup showing the temporary password for a newly registered user */}
+      {tempModalOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100 }}>
+          <div className="arena-card" style={{ width: "100%", maxWidth: "400px", textAlign: "center" }}>
+            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔑</div>
+            <h3 className="mb-1">Temporary Password</h3>
+            <p className="mb-2" style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>A new account has been created for <strong>{createdEmail}</strong>.</p>
+            <div style={{ background: "var(--primary-light)", padding: "1rem", borderRadius: "12px", border: "2px dashed var(--primary)", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--primary-dark)", letterSpacing: "2px" }}>{createdTempPassword}</div>
+            </div>
+            <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setTempModalOpen(false)}>Done, I've Saved It</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

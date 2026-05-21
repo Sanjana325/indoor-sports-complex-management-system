@@ -1,27 +1,82 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { useAuth } from "../hooks/useAuth";
+import { profileRouteForRole, homeRouteForRole } from "../utils/navigation";
+import { normalizeEmail, isValidEmail } from "../utils/validation";
 import "../styles/Login.css";
 
+// the main login page for all system users
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("ADMIN"); // demo only
+  const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleLogin(e) {
+  const normalizedEmail = useMemo(() => normalizeEmail(email), [email]);
+
+  // check if user input is valid before sending request
+  function validateForm() {
+    const errs = {};
+
+    if (!normalizedEmail) errs.email = "Email is required";
+    else if (!isValidEmail(normalizedEmail)) errs.email = "Enter a valid email address";
+
+    if (!password) errs.password = "Password is required";
+
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  // send login request to the backend server
+  async function handleLogin(e) {
     e.preventDefault();
+    setError("");
 
-    if (role === "ADMIN") navigate("/admin");
-    if (role === "STAFF") navigate("/staff");
-    if (role === "COACH") navigate("/coach");
-    if (role === "PLAYER") navigate("/player");
+    const ok = validateForm();
+    if (!ok) return;
+
+    setLoading(true);
+
+    try {
+      const user = await login(normalizedEmail, password);
+
+      // force password change if the user has a temporary password
+      if (user.mustChangePassword) {
+        navigate(profileRouteForRole(user.role));
+        return;
+      }
+
+      // redirect to the correct dashboard based on user role
+      navigate(homeRouteForRole(user.role));
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Cannot connect to backend.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // helper function to get error text for a specific input field
+  function fieldErrorText(key) {
+    return fieldErrors && fieldErrors[key] ? fieldErrors[key] : "";
   }
 
   return (
     <div className="login-container">
+      {/* login form card with branding and credentials input */}
       <form className="login-card" onSubmit={handleLogin}>
-        <h2 className="login-title">Login Page</h2>
+        <div className="title-container">
+          <h2 className="brand-title">Arena<span>Pro</span></h2>
+          <h3 className="action-title">Sign In</h3>
+        </div>
+
+        {/* show global error messages at the top */}
+        {error ? <div className="login-error">{error}</div> : null}
 
         <label>Email</label>
         <input
@@ -31,39 +86,46 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+        {/* individual field error for the email input */}
+        {fieldErrorText("email") ? <div className="login-error-inline">{fieldErrorText("email")}</div> : null}
 
         <label>Password</label>
-        <input
-          type="password"
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        <div className="role-box">
-          <label>Select Role to Login As</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
+        <div className="password-input-wrapper">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="password-input"
+          />
+          {/* button to reveal/hide password text */}
+          <button
+            type="button"
+            className="password-toggle-btn"
+            onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            <option value="ADMIN">Admin</option>
-            <option value="STAFF">Staff</option>
-            <option value="COACH">Coach</option>
-            <option value="PLAYER">Player</option>
-          </select>
+            {showPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
+          </button>
+        </div>
+        {/* individual field error for the password input */}
+        {fieldErrorText("password") ? <div className="login-error-inline">{fieldErrorText("password")}</div> : null}
+
+        {/* link to password recovery flow */}
+        <div className="forgot-password-container">
+          <Link to="/forgot-password" className="forgot-password-link">
+            Forgot password?
+          </Link>
         </div>
 
-        <button type="submit" className="login-btn">
-          Login
+        <button type="submit" className="login-btn" disabled={loading}>
+          {loading ? "Signing in..." : "Sign In"}
         </button>
 
-        <button type="button" className="secondary-btn">
-          Forgot Password
-        </button>
-
+        {/* quick link for new players to register */}
         <p className="register-text">
-          Need an account? <Link to="/register">Register here</Link>
+          Don't have an account? <Link to="/register">Create Account</Link>
         </p>
       </form>
     </div>

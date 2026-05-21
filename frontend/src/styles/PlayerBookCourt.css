@@ -1,0 +1,779 @@
+/* Player Book Court - Clean Light Theme */
+
+.pbc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  animation: pbc-fade-in 0.4s ease-out;
+  color: var(--player-text-main);
+  padding: 2.5rem 5%;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  min-height: calc(100vh - 64px);
+}
+
+@keyframes pbc-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pbc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.pbc-title-glass {
+  font-size: 2.25rem;
+  font-weight: 900;
+  margin: 0;
+  color: var(--player-navy);
+  letter-spacing: -1px;
+}
+
+.pbc-back-btn {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: var(--player-text-muted);
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  box-shadow: var(--player-shadow);
+}
+
+.pbc-back-btn:hover {
+  background: #f8fafc;
+  border-color: var(--player-primary);
+  color: var(--player-primary);
+}
+
+.pbc-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.pbc-main-flow {
+  flex: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.pbc-sidebar {
+  flex: 3;
+}
+
+.sticky {
+  position: sticky;
+  top: 100px;
+}
+
+.pbc-section {
+  background: white;
+  border-radius: var(--player-radius);
+  padding: 2.5rem;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.04), 0 10px 20px -10px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f1f5f9;
+  border-top: 5px solid var(--player-primary);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pbc-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+}
+
+.pbc-section-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  margin-bottom: 2.5rem;
+  color: var(--player-navy);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  letter-spacing: -0.5px;
+}
+
+.pbc-step-badge {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--player-primary) 0%, var(--player-primary-dark) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+}
+
+/* STEP 1: SPORTS */
+.pbc-sports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1.25rem;
+}
+
+.pbc-sport-card {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: white;
+  border: 1px solid #eef2f6;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.sport-icon {
+  font-size: 2.5rem !important;
+  color: var(--player-text-muted);
+}
+
+.pbc-sport-card:hover {
+  border-color: var(--player-primary);
+  background: white;
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.pbc-sport-card.selected {
+  border-color: var(--player-primary);
+  background: white;
+  box-shadow: 0 8px 16px rgba(22, 163, 74, 0.1); /* Green shadow */
+}
+
+.pbc-sport-card.selected .sport-icon {
+  color: var(--player-primary);
+}
+
+/* STEP 2: CONTROLS */
+.pbc-inline-selectors {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.pbc-control {
+  flex: 1;
+}
+
+.pbc-control label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--player-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.pbc-input-glass {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-weight: 600;
+  background: #f8fafc;
+  transition: all 0.2s;
+}
+
+.pbc-input-glass:focus {
+  border-color: var(--player-primary);
+  background: white;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1); /* Green shadow */
+}
+
+/* STEP 3: SLOTS */
+.pbc-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.pbc-slot-card {
+  padding: 2rem 1.5rem;
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.pbc-slot-card.available:hover {
+  border-color: var(--primary);
+  background: white;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.pbc-slot-card.selected {
+  border-color: var(--primary) !important;
+  background: #d9f99d !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.1) !important;
+}
+
+.pbc-slot-card.booked {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  cursor: not-allowed !important;
+  opacity: 0.8;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+.pbc-slot-card.booked .slot-time {
+  color: var(--text-muted) !important;
+}
+
+.pbc-slot-card.booked .slot-price {
+  color: #94a3b8 !important;
+}
+
+.slot-time {
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  color: var(--text-main) !important;
+  line-height: 1.3;
+  margin-bottom: 0.75rem;
+}
+
+.slot-price-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.slot-price {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.slot-badge {
+  background: #16a34a !important;
+  color: white !important;
+  padding: 6px 16px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  width: auto;
+  min-width: 100px;
+  display: inline-block;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+.slot-badge.booked {
+  background: #ef4444 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
+}
+
+.pbc-slot-card.selected .slot-badge {
+  background: var(--primary-dark) !important;
+}
+
+/* SIDEBAR SUMMARY */
+.pbc-summary-card {
+  background: white;
+  border-radius: var(--player-radius);
+  padding: 2rem;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f1f5f9;
+  position: relative;
+  overflow: hidden;
+}
+
+.pbc-summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle at top right, rgba(22, 163, 74, 0.05), transparent);
+  pointer-events: none;
+}
+
+.summary-title {
+  font-weight: 900;
+  font-size: 1.35rem;
+  margin-bottom: 1.75rem;
+  color: var(--player-navy);
+  letter-spacing: -0.5px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.summary-label {
+  color: var(--player-text-muted);
+}
+
+.summary-value {
+  font-weight: 700;
+}
+
+.summary-total-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px dashed #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.summary-total-amount {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--player-primary);
+}
+
+.pbc-confirm-btn {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: var(--player-primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+}
+
+.pbc-confirm-btn:hover:not(:disabled) {
+  background: var(--player-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.3);
+}
+
+.pbc-confirm-btn:disabled {
+  background: #e2e8f0;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* --- ELITE GLASSMORPHIC MODALS --- */
+
+.pbc-payment-dialog {
+  background: rgba(17, 25, 40, 0.8) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+}
+
+.pbc-dialog-title {
+  font-weight: 800 !important;
+  font-size: 1.5rem !important;
+  letter-spacing: -0.5px !important;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  padding: 24px 24px 12px !important;
+}
+
+.pbc-dialog-content {
+  padding: 12px 24px 24px !important;
+  overflow-x: hidden;
+}
+
+/* OTP GRID (Always in dark modal) */
+.otp-input-container {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.otp-box {
+  width: 50px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: #00ff88;
+  font-size: 1.8rem;
+  font-weight: 800;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.otp-box:focus {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: #00ff88;
+  outline: none;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+  transform: translateY(-2px);
+}
+
+.pbc-payment-dialog h6, 
+.pbc-payment-dialog .pbc-dialog-subtext,
+.pbc-payment-dialog .MuiTypography-root,
+.pbc-payment-dialog .summary-label,
+.pbc-payment-dialog .summary-value {
+  color: white !important;
+}
+
+.pbc-payment-dialog .pbc-dialog-subtext strong {
+  color: #00ff88 !important;
+}
+
+.otp-box.filled {
+  border-color: rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.resend-timer-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.resend-link {
+  color: #00ff88;
+  background: none;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 5px;
+  text-decoration: underline;
+}
+
+.resend-link:disabled {
+  color: rgba(255, 255, 255, 0.3);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+/* PAYMENT OPTIONS */
+.pbc-payment-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.pbc-payment-card {
+  background: white !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 20px !important;
+  padding: 24px !important;
+  cursor: pointer;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  color: var(--text-main) !important;
+}
+
+.pbc-payment-card:hover {
+  background: #f8fafc !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-2px) !important;
+}
+
+.pbc-payment-card h6 {
+  color: var(--text-main) !important;
+}
+
+.pbc-payment-card .MuiTypography-body2 {
+  color: var(--text-muted) !important;
+}
+
+.pbc-dialog-subtext {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.pbc-dialog-subtext strong {
+  color: #00ff88 !important;
+}
+
+.pbc-cancel-btn {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.pbc-cancel-btn:hover {
+  color: #ff4d4d !important;
+}
+
+.pbc-payment-icon {
+  font-size: 2.5rem !important;
+  color: var(--text-muted) !important;
+  margin-bottom: 12px !important;
+  opacity: 0.4;
+}
+
+/* BANK CARD */
+.pbc-bank-details-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 15px 0;
+}
+
+.bank-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 15px;
+}
+
+.bank-info-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.bank-info-row .info-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.bank-info-row .info-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: right;
+}
+
+.pbc-expiry-notice {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #92400e;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  margin-top: 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.copy-btn {
+  background: #f1f5f9;
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+/* FILE UPLOAD */
+.file-upload-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.file-upload-zone:hover {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.03);
+}
+
+.pbc-submit-slip-btn {
+  background: linear-gradient(135deg, #00ff88 0%, #00cc6e 100%) !important;
+  color: #000 !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+}
+
+.pbc-submit-slip-btn:hover {
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4) !important;
+  transform: scale(1.02) !important;
+}
+
+.pbc-sidebar-payment-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  animation: pbc-fade-in 0.4s ease-out;
+}
+
+.pbc-sidebar-payment-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.pbc-sidebar-payment-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pbc-payment-card.sidebar-mode {
+  padding: 1rem !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  text-align: left !important;
+  background: white !important;
+  border: 1px solid var(--border-light) !important;
+  transition: all 0.2s !important;
+}
+
+.pbc-payment-card.sidebar-mode .pbc-payment-icon {
+  font-size: 1.5rem !important;
+  margin-bottom: 0 !important;
+  min-width: 24px;
+  color: var(--text-muted) !important;
+  opacity: 0.5;
+}
+
+.pbc-payment-card.sidebar-mode h6 {
+  font-size: 0.95rem !important;
+  margin-bottom: 0 !important;
+  color: var(--text-main) !important;
+}
+
+.pbc-payment-card.sidebar-mode .MuiTypography-body2 {
+  font-size: 0.75rem !important;
+  line-height: 1.2 !important;
+  color: var(--text-muted) !important;
+}
+
+.selected-payment .pbc-payment-icon {
+  color: var(--primary) !important;
+  opacity: 1 !important;
+}
+
+.pbc-payment-card.sidebar-mode.selected-payment {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+}
+
+/* PREMIUM METHOD CARDS (For Modal) */
+.pbc-method-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 20px !important;
+  padding: 30px 20px !important;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  color: white !important;
+}
+
+.pbc-method-card:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: #00ff88 !important;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 255, 136, 0.1) !important;
+}
+
+.pbc-method-icon {
+  font-size: 3rem !important;
+  margin-bottom: 12px !important;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.2));
+}
+
+/* REFINED BANK CARD (For Modal) */
+.pbc-bank-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pbc-bank-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.pbc-bank-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+.pbc-bank-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  text-align: right;
+}
+
+.pbc-bank-acc-row {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.pbc-acc-no {
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  font-family: 'Inter', monospace !important;
+  letter-spacing: 1.5px !important;
+  color: #fff !important;
+}
+
+/* FADE IN ANIMATION */
+@keyframes pbc-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

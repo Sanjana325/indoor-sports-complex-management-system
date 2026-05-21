@@ -1,142 +1,220 @@
 import { NavLink, Outlet, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import "../styles/AdminLayout.css"; // ✅ reuse same layout styles
+import { Snackbar, Alert } from "@mui/material";
+import { useAuth } from "../hooks/useAuth";
+import staffService from "../services/staffService";
+import adminService from "../services/adminService";
+import { getInitials } from "../utils/formatters";
 
-function getInitials(firstName = "", lastName = "") {
-  const a = (firstName || "").trim().charAt(0).toUpperCase();
-  const b = (lastName || "").trim().charAt(0).toUpperCase();
-  return (a + b) || "U";
-}
+// list of operational navigation items for staff members including attendance and payment tracking
+const STAFF_NAV_ITEMS = [
+  { path: "/staff", label: "Calendar", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+  )},
+  { path: "/staff/attendance", label: "Attendance", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+  )},
+  { path: "/staff/bookings", label: "Bookings", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l4-4-4-4h12a2 2 0 0 1 2 2z"></path><path d="M3 19V5"></path></svg>
+  )},
+  { path: "/staff/payments", label: "Payments", badge: true, icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+  )},
+  { path: "/staff/classes", label: "Classes", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+  )},
+  { path: "/staff/enrollments", label: "Enrollments", icon: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+  )},
+];
 
+// primary layout for the staff portal providing navigation and live system alerts
 export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ User from localStorage (same pattern)
-  const user = useMemo(() => {
-    const firstName = localStorage.getItem("firstName") || "Staff";
-    const lastName = localStorage.getItem("lastName") || "";
-    const role = localStorage.getItem("role") || "STAFF";
-    const email = localStorage.getItem("email") || "staff@sports.com";
-    const phone = localStorage.getItem("phone") || "07XXXXXXXX";
-
-    const qualifications = localStorage.getItem("qualifications") || "";
-    const specialization = localStorage.getItem("specialization") || "";
-
-    return { firstName, lastName, role, email, phone, qualifications, specialization };
-  }, []);
+  const { user, logout: authLogout } = useAuth();
 
   const displayName = `${user.firstName} ${user.lastName}`.trim();
   const initials = getInitials(user.firstName, user.lastName);
 
-  // Dropdown
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const profileRef = useRef(null);
+  const notifRef = useRef(null);
 
+  const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  const [recentCancellations, setRecentCancellations] = useState([]);
+  const [showLockToast, setShowLockToast] = useState(false);
+
+  // monitor global click events to shut open dropdowns when clicking away
   useEffect(() => {
     function handleOutsideClick(e) {
-      if (!profileRef.current) return;
-      if (!profileRef.current.contains(e.target)) setIsProfileOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setIsProfileOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setIsNotifOpen(false);
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  // background sync for pending payment notifications and session cancellations
   useEffect(() => {
-    // Close dropdown on route change
-    setIsProfileOpen(false);
-  }, [location.pathname]);
+    const fetchNotifs = async () => {
+      try {
+        const countData = await adminService.getPendingPaymentsCount();
+        setPendingPaymentsCount(countData.count);
 
-  function handleLogout() {
-    localStorage.removeItem("email");
-    localStorage.removeItem("role");
-    localStorage.removeItem("firstName");
-    localStorage.removeItem("lastName");
-    localStorage.removeItem("phone");
-    localStorage.removeItem("qualifications");
-    localStorage.removeItem("specialization");
+        const cancelData = await staffService.getRecentCancellations();
+        setRecentCancellations(cancelData.cancellations || []);
+      } catch (e) {
+        console.error("Staff fetch error:", e);
+      }
+    };
+    fetchNotifs();
+    const interval = setInterval(fetchNotifs, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
+  // marks a cancellation alert as read to remove it from the staff's tray
+  const handleAcknowledge = async (sessionId) => {
+    try {
+      await staffService.acknowledgeCancellation(sessionId);
+      setRecentCancellations(prev => prev.filter(c => c.id !== sessionId));
+    } catch (e) {
+      console.error("Acknowledge error:", e);
+    }
+  };
+
+  // intercepts navigation attempts if the account requires a mandatory password update
+  const handleRestrictedClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowLockToast(true);
+  };
+
+  const logout = () => {
+    authLogout();
     navigate("/");
-  }
+  };
 
   return (
     <div className="admin-layout">
-      {/* SIDEBAR */}
+      {/* sidebar navigation menu for quick access to operational modules */}
       <aside className="admin-sidebar">
-        <h2 className="sidebar-title">Staff Panel</h2>
+        <div className="sidebar-main">
+          <h2 className="sidebar-title">Arena<span>Pro</span></h2>
+          <nav 
+            className={`sidebar-nav ${user.mustChangePassword ? "is-restricted" : ""}`}
+            onClickCapture={user.mustChangePassword ? handleRestrictedClick : undefined}
+          >
+            {STAFF_NAV_ITEMS.map(item => (
+              <NavLink key={item.path} to={item.path} end={item.path === "/staff"}>
+                {item.icon}
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.badge && pendingPaymentsCount > 0 && (
+                  /* dynamic notification badge for unverified payment slips */
+                  <span style={{ background: "var(--primary)", color: "white", fontSize: "0.7rem", padding: "2px 6px", borderRadius: "10px", fontWeight: 700 }}>{pendingPaymentsCount}</span>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
 
-        <nav className="sidebar-nav">
-          <NavLink to="/staff" end className={({ isActive }) => (isActive ? "active" : "")}>
-            Home
-          </NavLink>
+        {/* user identification and system termination cluster */}
+        <footer className="sidebar-footer" ref={profileRef}>
+          {isProfileOpen && (
+            /* context menu for account settings and session exit */
+            <div className="sidebar-popup-menu">
+              <Link to="/staff/profile" className="sidebar-popup-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                My Profile
+              </Link>
 
-          <NavLink to="/staff/attendance" className={({ isActive }) => (isActive ? "active" : "")}>
-            Attendance
-          </NavLink>
+              <button 
+                type="button" 
+                className="sidebar-popup-item logout" 
+                onClick={logout}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                Logout
+              </button>
+            </div>
+          )}
 
-          <NavLink to="/staff/payments" className={({ isActive }) => (isActive ? "active" : "")}>
-            Payments
-          </NavLink>
-        </nav>
+          <div 
+            className={`sidebar-user ${isProfileOpen ? 'is-active' : ''}`}
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+          >
+            <div className="sidebar-avatar">{initials}</div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{displayName}</div>
+              <div className="sidebar-user-role">{user.role}</div>
+            </div>
+            <span className="sidebar-user-caret">▾</span>
+          </div>
+        </footer>
       </aside>
 
-      {/* MAIN */}
+      {/* main content viewport with notification overlay center */}
       <main className="admin-main">
-        {/* TOP BAR */}
-        <div className="admin-topbar">
-          <strong>Staff Dashboard</strong>
-
-          <div className="topbar-right" ref={profileRef}>
-            <button
-              type="button"
-              className="profile-trigger"
-              onClick={() => setIsProfileOpen((p) => !p)}
-              aria-haspopup="menu"
-              aria-expanded={isProfileOpen}
-            >
-              <span className="profile-avatar">{initials}</span>
-              <span className="profile-name-mini">{displayName || "User"}</span>
-              <span className="profile-caret">▾</span>
-            </button>
-
-            {isProfileOpen && (
-              <div className="profile-menu" role="menu">
-                <div className="profile-menu-head">
-                  <div className="profile-menu-left">
-                    <div className="profile-menu-avatar">{initials}</div>
-                    <div className="profile-menu-meta">
-                      <div className="profile-menu-name">{displayName || "User"}</div>
-                      <div className="profile-menu-email">{user.email}</div>
-                    </div>
-                  </div>
-                  <div className="profile-role-pill">{user.role}</div>
-                </div>
-
-                <div className="profile-menu-list">
-                  <Link className="profile-menu-item" to="/staff/profile" role="menuitem">
-                    My Profile
-                  </Link>
-
-                  <Link className="profile-menu-item" to="/staff/settings" role="menuitem">
-                    Settings
-                  </Link>
-                </div>
-
-                <div className="profile-menu-footer">
-                  <button type="button" className="profile-logout-btn" onClick={handleLogout}>
-                    Logout
-                  </button>
-                </div>
-              </div>
+        {/* floating notification bell for urgent session cancel alerts */}
+        <div className="floating-notif-container" ref={notifRef}>
+          <button 
+            className="floating-notif-bell" 
+            onClick={() => setIsNotifOpen(!isNotifOpen)}
+          >
+            🔔
+            {recentCancellations.length > 0 && (
+              <span className="floating-notif-badge">{recentCancellations.length}</span>
             )}
-          </div>
+          </button>
+          
+          {isNotifOpen && (
+            /* toggleable list of recent system alerts and session statuses */
+            <div className="floating-notif-dropdown">
+              <div style={{ fontWeight: 800, marginBottom: "12px", fontSize: "0.95rem", color: "var(--text-main)" }}>Recent Alerts</div>
+              {recentCancellations.length === 0 ? (
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "center", padding: "10px" }}>No new alerts</p>
+              ) : (
+                recentCancellations.map(c => (
+                  <div key={c.id} style={{ fontSize: "0.8rem", padding: "10px", background: "#fef2f2", borderRadius: "10px", marginBottom: "8px", position: "relative", border: "1px solid #fee2e2" }}>
+                    <button 
+                      onClick={() => handleAcknowledge(c.id)} 
+                      style={{ position: "absolute", right: 6, top: 6, border: "none", background: "none", cursor: "pointer", fontSize: "1.2rem", color: "#991b1b", opacity: 0.5 }}
+                    >×</button>
+                    <div style={{ fontWeight: 700, color: "#991b1b", marginBottom: "2px" }}>CANCELLED: {c.className}</div>
+                    <div style={{ color: "#7f1d1d", opacity: 0.8 }}>{c.date} • {c.startTime}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
-        {/* PAGE CONTENT */}
-        <div className="admin-content">
-          <Outlet />
-        </div>
+        {/* content area where specific portal modules are injected */}
+        <section className="admin-content">
+          <div className="admin-content-inner">
+            <Outlet />
+          </div>
+        </section>
       </main>
+
+      {/* global prompt for mandatory password rotation and account security */}
+      <Snackbar 
+        open={showLockToast} 
+        autoHideDuration={6000} 
+        onClose={() => setShowLockToast(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowLockToast(false)} 
+          severity="warning" 
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 600 }}
+        >
+          Access Restricted: Please update your temporary password to unlock all dashboard features.
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

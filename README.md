@@ -1,4 +1,17 @@
-# Indoor Sports Complex Management System
+# ArenaPro
+
+A modern indoor sports complex management system.
+## Tech Stack
+- Frontend: React
+- Backend: Node.js + Express
+- Database: MySQL
+
+## How to run
+1. Install dependencies
+2. Create .env file using .env.example
+3. Run backend
+4. Run frontend
+
 
 A full-stack web-based management platform developed to streamline and digitize the daily operations of an indoor sports complex.
 

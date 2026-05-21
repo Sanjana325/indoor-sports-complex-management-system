@@ -1,349 +1,229 @@
-import { useMemo, useState } from "react";
-import "../../styles/Courts.css";
+import { useMemo, useState, useEffect } from "react";
+import adminService from "../../services/adminService";
+import { formatLKR } from "../../utils/formatters";
 
-const SPORTS = ["CRICKET", "BADMINTON", "FUTSAL"];
-const STATUSES = ["AVAILABLE", "BOOKED", "MAINTENANCE"];
-
-function makeId(prefix = "C") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function statusLabel(s) {
-  if (s === "AVAILABLE") return "Available";
-  if (s === "BOOKED") return "Booked";
-  if (s === "MAINTENANCE") return "Maintenance";
-  return s;
-}
-
+// management page for creating and updating court profiles
 export default function Courts() {
-  const [courts, setCourts] = useState([
-    {
-      id: "C-200001",
-      sport: "CRICKET",
-      name: "Cricket - A",
-      capacity: 22,
-      status: "AVAILABLE",
-      createdAt: "2026-01-18T10:00:00.000Z",
-    },
-    {
-      id: "C-200002",
-      sport: "CRICKET",
-      name: "Cricket - B",
-      capacity: 22,
-      status: "MAINTENANCE",
-      createdAt: "2026-01-18T12:00:00.000Z",
-    },
-    {
-      id: "C-200003",
-      sport: "BADMINTON",
-      name: "Badminton - A",
-      capacity: 4,
-      status: "AVAILABLE",
-      createdAt: "2026-01-19T08:00:00.000Z",
-    },
-    {
-      id: "C-200004",
-      sport: "FUTSAL",
-      name: "Futsal - A",
-      capacity: 12,
-      status: "BOOKED",
-      createdAt: "2026-01-19T09:30:00.000Z",
-    },
-  ]);
+  const [courts, setCourts] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [rawSports, setRawSports] = useState([]);
+  const [loadingSports, setLoadingSports] = useState(false);
+  const [loadingCourts, setLoadingCourts] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState("ADD"); // ADD | EDIT
+  const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
 
-  const [sport, setSport] = useState("CRICKET");
+  const [selectedSports, setSelectedSports] = useState([]);
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
-  const [status, setStatus] = useState("AVAILABLE");
+  const [pricePerHour, setPricePerHour] = useState("");
 
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
 
+  useEffect(() => {
+    fetchSports();
+    fetchCourts();
+  }, []);
+
+  // downloads the master list of all sports available in the system
+  async function fetchSports() {
+    try {
+      setLoadingSports(true);
+      const data = await adminService.getSports();
+      const list = data.sports || data || [];
+      setRawSports(list);
+      setSports(list.map(s => String(s.SportName || "").toUpperCase()).filter(Boolean));
+      setSelectedSports([]);
+    } catch (err) {
+      console.error("Failed to fetch sports", err);
+    } finally {
+      setLoadingSports(false);
+    }
+  }
+
+  // downloads the full list of court profiles from the api
+  async function fetchCourts() {
+    try {
+      setLoadingCourts(true);
+      const data = await adminService.getCourts();
+      const rows = data.courts || data || [];
+      setCourts(rows.map(r => ({
+        id: r.id,
+        rawId: r.rawId,
+        sportsList: String(r.Sports || "").split(",").map(s => s.trim().toUpperCase()).filter(Boolean),
+        sportsText: String(r.Sports || ""),
+        name: r.CourtName,
+        capacity: r.Capacity,
+        pricePerHour: r.PricePerHour
+      })));
+    } catch (err) {
+      console.error("Failed to fetch courts", err);
+    } finally {
+      setLoadingCourts(false);
+    }
+  }
+
+  // real-time search logic for finding specific courts or sports
   const filteredCourts = useMemo(() => {
     if (!normalizedSearch) return courts;
-
-    return courts.filter((c) => {
-      const hay = `${c.id} ${c.sport} ${c.name} ${c.capacity} ${c.status}`.toLowerCase();
+    return courts.filter(c => {
+      const hay = `${c.id} ${c.sportsText} ${c.name} ${c.capacity} ${c.pricePerHour ?? ""}`.toLowerCase();
       return hay.includes(normalizedSearch);
     });
   }, [courts, normalizedSearch]);
 
-  const latestCricket = useMemo(
-    () =>
-      filteredCourts
-        .filter((c) => c.sport === "CRICKET")
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5),
-    [filteredCourts]
-  );
+  // clears form input states for a new entry
+  const resetForm = () => {
+    setSelectedSports([]); setName(""); setCapacity(""); setPricePerHour(""); setEditingId(null);
+  };
 
-  const latestBadminton = useMemo(
-    () =>
-      filteredCourts
-        .filter((c) => c.sport === "BADMINTON")
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5),
-    [filteredCourts]
-  );
+  const openAddModal = () => { setMode("ADD"); resetForm(); setIsModalOpen(true); };
+  
+  // pre-loads the modal with existing data for editing
+  const openEditModal = (court) => {
+    setMode("EDIT"); setEditingId(court.rawId); setSelectedSports(court.sportsList || []);
+    setName(court.name || ""); setCapacity(String(court.capacity ?? ""));
+    setPricePerHour(String(court.pricePerHour ?? "")); setIsModalOpen(true);
+  };
+  const closeModal = () => setIsModalOpen(false);
 
-  const latestFutsal = useMemo(
-    () =>
-      filteredCourts
-        .filter((c) => c.sport === "FUTSAL")
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 5),
-    [filteredCourts]
-  );
-
-  function resetForm() {
-    setSport("CRICKET");
-    setName("");
-    setCapacity("");
-    setStatus("AVAILABLE");
-    setEditingId(null);
+  // deletes a court record permanently from the database
+  async function handleRemove(id) {
+    if (!window.confirm("Are you sure you want to remove this court?")) return;
+    try {
+      await adminService.deleteCourt(id);
+      fetchCourts();
+    } catch (err) { 
+      alert(err.response?.data?.message || "Failed to delete court"); 
+    }
   }
 
-  function openAddModal() {
-    setMode("ADD");
-    resetForm();
-    setIsModalOpen(true);
-  }
-
-  function openEditModal(court) {
-    setMode("EDIT");
-    setEditingId(court.id);
-    setSport(court.sport);
-    setName(court.name);
-    setCapacity(String(court.capacity));
-    setStatus(court.status);
-    setIsModalOpen(true);
-  }
-
-  function closeModal() {
-    setIsModalOpen(false);
-  }
-
-  function handleRemove(id) {
-    const ok = window.confirm("Are you sure you want to remove this court?");
-    if (!ok) return;
-    setCourts((prev) => prev.filter((c) => c.id !== id));
-  }
-
-  function validateForm() {
-    if (!SPORTS.includes(sport)) return "Select a valid sport";
-    if (!name.trim()) return "Court name is required (e.g., Cricket - A)";
-    const capNum = Number(capacity);
-    if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
-    if (!STATUSES.includes(status)) return "Select a valid status";
-    return null;
-  }
-
-  function handleSubmit(e) {
+  // sends the court profile data (new or update) to the backend
+  async function handleSubmit(e) {
     e.preventDefault();
-
-    const err = validateForm();
-    if (err) {
-      alert(err);
-      return;
-    }
-
-    const capNum = Number(capacity);
-
-    if (mode === "ADD") {
-      const newCourt = {
-        id: makeId("C"),
-        sport,
-        name: name.trim(),
-        capacity: capNum,
-        status,
-        createdAt: nowIso(),
-      };
-      setCourts((prev) => [newCourt, ...prev]);
+    if (selectedSports.length === 0) return alert("Select at least one sport");
+    const sportIds = selectedSports.map(s => rawSports.find(r => String(r.SportName).toUpperCase() === s)?.SportID).filter(Boolean);
+    const body = { name: name.trim(), capacity: Number(capacity), pricePerHour: Number(pricePerHour), sportIds };
+    
+    try {
+      if (mode === "ADD") {
+        await adminService.createCourt(body);
+      } else {
+        await adminService.updateCourt(editingId, body);
+      }
       closeModal();
-      resetForm();
-      return;
-    }
-
-    if (mode === "EDIT") {
-      setCourts((prev) =>
-        prev.map((c) =>
-          c.id === editingId
-            ? {
-                ...c,
-                sport,
-                name: name.trim(),
-                capacity: capNum,
-                status,
-              }
-            : c
-        )
-      );
-      closeModal();
-      resetForm();
+      fetchCourts();
+    } catch (err) { 
+      alert(err.response?.data?.message || "Failed to save court"); 
     }
   }
 
   return (
-    <div className="courts-page">
-      <div className="courts-header">
+    <div className="admin-content-inner">
+      <div className="flex-between mb-2">
         <div>
-          <h2 className="courts-title">Courts</h2>
+          <h2 className="page-title">Courts Management</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Detailed inventory of all available playing fields</p>
         </div>
-
-        <button className="courts-primary-btn" type="button" onClick={openAddModal}>
-          + Add Court
+        <button className="btn btn-primary" onClick={openAddModal}>
+          <span>+ Add Court</span>
         </button>
       </div>
 
-      <div className="courts-toolbar">
-        <input
-          className="courts-search"
-          placeholder="Search by id, name, sport, status..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+      <div className="arena-card mb-2" style={{ padding: "var(--space-1)" }}>
+        <input 
+          className="form-input" 
+          placeholder="Search by name, sport, or ID..." 
+          value={search} 
+          onChange={e => setSearch(e.target.value)}
+          style={{ maxWidth: "400px" }}
         />
       </div>
 
-      <section className="courts-section">
-        <h3 className="courts-section-title">Cricket Courts (Last 5 Added)</h3>
-        <CourtTable rows={latestCricket} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
+      {/* displays either a loading state or the population list of courts */}
+      {loadingCourts ? (
+        <div className="arena-card" style={{ textAlign: "center", padding: "var(--space-4)" }}>Loading...</div>
+      ) : (
+        <div className="arena-table-container">
+          <table className="arena-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Court Name</th>
+                <th>Sports</th>
+                <th>Capacity</th>
+                <th>Price / Hr</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCourts.map(c => (
+                <tr key={c.id}>
+                  <td><span className="table-id">{c.id}</span></td>
+                  <td style={{ fontWeight: 700 }}>{c.name}</td>
+                  <td>
+                    {/* shows all sports supported by this specific court */}
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {c.sportsList.map(s => <span key={s} className="status-pill success" style={{ fontSize: "0.7rem" }}>{s}</span>)}
+                    </div>
+                  </td>
+                  <td>{c.capacity} Players</td>
+                  <td style={{ fontWeight: 600, color: "var(--primary-dark)" }}>{formatLKR(c.pricePerHour)}</td>
+                    <td>
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                        <button className="btn btn-edit" style={{ padding: "6px 12px" }} onClick={() => openEditModal(c)}>Edit</button>
+                        <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => handleRemove(c.rawId)}>Delete</button>
+                      </div>
+                    </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <section className="courts-section">
-        <h3 className="courts-section-title">Badminton Courts (Last 5 Added)</h3>
-        <CourtTable rows={latestBadminton} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
-      <section className="courts-section">
-        <h3 className="courts-section-title">Futsal Courts (Last 5 Added)</h3>
-        <CourtTable rows={latestFutsal} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
+      {/* popup modal for adding or modifying a court record */}
       {isModalOpen && (
-        <div className="courts-modal-backdrop" onMouseDown={closeModal}>
-          <div className="courts-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="courts-modal-header">
-              <h3>{mode === "ADD" ? "Add Court" : "Edit Court"}</h3>
-              <button className="courts-icon-btn" type="button" onClick={closeModal} aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            <form className="courts-form" onSubmit={handleSubmit}>
-              <div className="courts-grid">
-                <div className="courts-field">
-                  <label>Sport</label>
-                  <select value={sport} onChange={(e) => setSport(e.target.value)}>
-                    <option value="CRICKET">Cricket</option>
-                    <option value="BADMINTON">Badminton</option>
-                    <option value="FUTSAL">Futsal</option>
-                  </select>
-                </div>
-
-                <div className="courts-field">
-                  <label>Status</label>
-                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="AVAILABLE">Available</option>
-                    <option value="BOOKED">Booked</option>
-                    <option value="MAINTENANCE">Maintenance</option>
-                  </select>
-                </div>
-
-                <div className="courts-field courts-full">
-                  <label>Court Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Cricket - A"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-
-                <div className="courts-field courts-full">
-                  <label>Capacity</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 22"
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value)}
-                  />
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
+          <div className="arena-card" style={{ width: "100%", maxWidth: "500px", boxShadow: "var(--shadow-lg)" }}>
+            <h3 className="mb-2">{mode === "ADD" ? "Create New Court" : "Update Court Details"}</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">Court Name</label>
+                <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Cricket Arena A" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Select Sports</label>
+                {/* allows selecting which sports activities this court physically supports */}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", padding: "var(--space-1)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)" }}>
+                  {sports.map(s => (
+                    <label key={s} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", cursor: "pointer", padding: "4px 8px", background: selectedSports.includes(s) ? "var(--primary-light)" : "transparent", borderRadius: "10px", border: "1px solid", borderColor: selectedSports.includes(s) ? "var(--primary)" : "transparent" }}>
+                      <input type="checkbox" checked={selectedSports.includes(s)} onChange={e => e.target.checked ? setSelectedSports([...selectedSports, s]) : setSelectedSports(selectedSports.filter(x => x !== s))} />
+                      {s}
+                    </label>
+                  ))}
                 </div>
               </div>
-
-              <div className="courts-form-actions">
-                <button className="courts-secondary-btn" type="button" onClick={closeModal}>
-                  Cancel
-                </button>
-
-                <button className="courts-primary-btn courts-modal-primary" type="submit">
-                  {mode === "ADD" ? "Add Court" : "Save Changes"}
-                </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-group">
+                  <label className="form-label">Capacity</label>
+                  <input type="number" className="form-input" value={capacity} onChange={e => setCapacity(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Price / Hr</label>
+                  <input type="number" className="form-input" value={pricePerHour} onChange={e => setPricePerHour(e.target.value)} required />
+                </div>
+              </div>
+              <div className="flex-between mt-2" style={{ justifyContent: "flex-end" }}>
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function CourtTable({ rows, onEdit, onRemove }) {
-  return (
-    <div className="courts-table-wrap">
-      <table className="courts-table">
-        <thead>
-          <tr>
-            <th className="courts-col-id">Court ID</th>
-            <th className="courts-col-name">Name</th>
-            <th className="courts-col-capacity">Capacity</th>
-            <th className="courts-col-status">Status</th>
-            <th className="courts-col-actions courts-center">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan="5" className="courts-empty">
-                No courts to show.
-              </td>
-            </tr>
-          ) : (
-            rows.map((c) => (
-              <tr key={c.id}>
-                <td className="courts-col-id">{c.id}</td>
-                <td className="courts-col-name">{c.name}</td>
-                <td className="courts-col-capacity">{c.capacity}</td>
-                <td className="courts-col-status">
-                  <span className={`courts-badge ${c.status.toLowerCase()}`}>
-                    {statusLabel(c.status)}
-                  </span>
-                </td>
-
-                <td className="courts-col-actions courts-center">
-                  <div className="courts-actions">
-                    <button className="courts-action-btn" type="button" onClick={() => onEdit(c)}>
-                      Edit
-                    </button>
-                    <button className="courts-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
     </div>
   );
 }

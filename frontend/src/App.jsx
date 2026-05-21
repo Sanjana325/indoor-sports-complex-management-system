@@ -1,10 +1,6 @@
-import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
 
+// the main app component that loads all routes
 export default function App() {
-  return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
-  );
+  return <AppRoutes />;
 }

@@ -1,514 +1,428 @@
-import { useMemo, useState } from "react";
-import "../../styles/ClassManagement.css";
+import { useMemo, useState, useEffect } from "react";
+import adminService from "../../services/adminService";
 
-const SPORTS = ["CRICKET", "KARATE", "FUTSAL", "CHESS", "BADMINTON"];
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// list of weekdays for scheduling weekly classes
+const DAYS = [
+  { label: "Mon", value: 1 }, { label: "Tue", value: 2 }, { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 }, { label: "Fri", value: 5 }, { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 }
+];
 
-function makeId(prefix = "CL") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
+// converts numeric day values into readable short strings
 function formatDays(days) {
-  if (!days || days.length === 0) return "-";
-  return days.join(", ");
+  if (!days || !Array.isArray(days)) return [];
+  const dayMap = { 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 0: "Sun" };
+  return days.map(d => dayMap[d] || d);
 }
 
+// converts "HH:mm" time strings into total minutes for easier calculation
 function timeToMinutes(t) {
   if (!t || !t.includes(":")) return null;
   const [hh, mm] = t.split(":").map(Number);
-  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
   return hh * 60 + mm;
 }
 
+// calculates the duration between start and end times in a readable format
 function durationLabel(startTime, endTime) {
-  const s = timeToMinutes(startTime);
-  const e = timeToMinutes(endTime);
-  if (s === null || e === null) return "-";
-  const diff = e - s;
-  if (diff <= 0) return "-";
-
-  const h = Math.floor(diff / 60);
-  const m = diff % 60;
-
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
+  const s = timeToMinutes(startTime); const e = timeToMinutes(endTime);
+  if (s === null || e === null || e <= s) return "-";
+  const diff = e - s; const h = Math.floor(diff / 60); const m = diff % 60;
+  return h > 0 ? `${h}h ${m > 0 ? m + 'm' : ''}` : `${m}m`;
 }
 
-function formatDate(dateStr) {
-  // dateStr: "YYYY-MM-DD"
-  if (!dateStr) return "-";
-  return dateStr;
-}
-
+// main management page for coaching classes and sessions
 export default function ClassManagement() {
-  const [classes, setClasses] = useState([
-    {
-      id: "CL-300001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachName: "Sahan Fernando",
-      scheduleType: "WEEKLY",
-      days: ["Mon", "Wed"],
-      oneTimeDate: "",
-      startTime: "18:00",
-      endTime: "19:30",
-      capacity: 20,
-      createdAt: "2026-01-18T10:00:00.000Z",
-    },
-    {
-      id: "CL-300002",
-      sport: "KARATE",
-      className: "Karate Basics",
-      coachName: "Nimal Perera",
-      scheduleType: "WEEKLY",
-      days: ["Tue", "Thu"],
-      oneTimeDate: "",
-      startTime: "17:30",
-      endTime: "19:00",
-      capacity: 25,
-      createdAt: "2026-01-18T12:00:00.000Z",
-    },
-    {
-      id: "CL-300003",
-      sport: "FUTSAL",
-      className: "Futsal Training",
-      coachName: "Kasun Silva",
-      scheduleType: "WEEKLY",
-      days: ["Sat"],
-      oneTimeDate: "",
-      startTime: "16:00",
-      endTime: "18:00",
-      capacity: 18,
-      createdAt: "2026-01-19T08:00:00.000Z",
-    },
-    {
-      id: "CL-300004",
-      sport: "CHESS",
-      className: "Chess for Beginners",
-      coachName: "Ishan Fernando",
-      scheduleType: "WEEKLY",
-      days: ["Sun"],
-      oneTimeDate: "",
-      startTime: "09:00",
-      endTime: "11:00",
-      capacity: 30,
-      createdAt: "2026-01-19T09:30:00.000Z",
-    },
-    {
-      id: "CL-300005",
-      sport: "BADMINTON",
-      className: "Badminton Intermediate",
-      coachName: "Dilani Jayasinghe",
-      scheduleType: "WEEKLY",
-      days: ["Fri"],
-      oneTimeDate: "",
-      startTime: "18:00",
-      endTime: "19:30",
-      capacity: 16,
-      createdAt: "2026-01-19T10:15:00.000Z",
-    },
-  ]);
-
+  const [classes, setClasses] = useState([]);
+  const [sportsList, setSportsList] = useState([]);
+  const [coachesList, setCoachesList] = useState([]);
+  const [availableCourts, setAvailableCourts] = useState([]);
+  const [loadingInitial, setLoadingInitial] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [isConflict, setIsConflict] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [mode, setMode] = useState("ADD"); // ADD | EDIT
+  const [mode, setMode] = useState("ADD");
   const [editingId, setEditingId] = useState(null);
-
-  const [sport, setSport] = useState("CRICKET");
+  const [sport, setSport] = useState("");
   const [className, setClassName] = useState("");
-  const [coachName, setCoachName] = useState("");
+  const [coachId, setCoachId] = useState("");
+  const [courtIds, setCourtIds] = useState([]);
   const [capacity, setCapacity] = useState("");
-
-  const [scheduleType, setScheduleType] = useState("WEEKLY"); // WEEKLY | ONETIME
+  const [fee, setFee] = useState("");
+  const [scheduleType, setScheduleType] = useState("WEEKLY");
   const [days, setDays] = useState([]);
   const [oneTimeDate, setOneTimeDate] = useState("");
-
+  const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-
   const [search, setSearch] = useState("");
-  const normalizedSearch = search.trim().toLowerCase();
+  const [activeTab, setActiveTab] = useState("ACTIVE");
+  const [cancelledHistory, setCancelledHistory] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => { fetchInitialData(); }, []);
+
+  // fetches all required dropdown data and class records at once
+  async function fetchInitialData() {
+    try {
+      setLoadingInitial(true);
+      const [spRes, cRes, clsRes, histRes] = await Promise.all([
+        adminService.getSports(),
+        adminService.getCoaches(),
+        adminService.getClasses(),
+        adminService.getClassCancellationsHistory()
+      ]);
+      const spList = spRes.sports || spRes || [];
+      setSportsList(spList); 
+      if (spList.length > 0) setSport(spList[0].SportName);
+      setCoachesList(cRes.coaches || cRes || []);
+      setClasses(clsRes.classes || clsRes || []);
+      setCancelledHistory(histRes.history || histRes || []);
+    } catch (err) { console.error(err); } finally { setLoadingInitial(false); }
+  }
+
+  const selectedSportObj = useMemo(() => sportsList.find(s => s.SportName === sport) || null, [sport, sportsList]);
+  
+  // filters coaches so that only those who teach the selected sport are shown
+  const filteredCoaches = useMemo(() => sport ? coachesList.filter(c => c.sports.includes(sport)) : coachesList, [coachesList, sport]);
+
+  // validation state to check if enough time/date info exists to check court availability
+  const hasSlotInputs = useMemo(() => {
+    if (!startTime || !endTime || !selectedSportObj) return false;
+    return scheduleType === "WEEKLY" ? (days.length > 0 && !!startDate) : !!oneTimeDate;
+  }, [startTime, endTime, scheduleType, days, oneTimeDate, startDate, selectedSportObj]);
+
+  // dynamically checks the database for non-conflicting courts based on the current form inputs
+  useEffect(() => {
+    async function fetchCourts() {
+      if (!hasSlotInputs) { setAvailableCourts([]); return; }
+      try {
+        const q = {
+          startTime,
+          endTime,
+          sportId: selectedSportObj?.SportID,
+        };
+        if (mode === "EDIT" && editingId) q.excludeClassId = String(editingId);
+        if (scheduleType === "ONE_TIME") q.oneTimeDate = oneTimeDate;
+        else { q.startDate = startDate; q.weekdays = days; }
+
+        const res = await adminService.getAvailableCourts(q);
+        setAvailableCourts(res.availableCourts || []);
+      } catch (err) { console.error(err); }
+    }
+    const timer = setTimeout(fetchCourts, 300);
+    return () => clearTimeout(timer);
+  }, [hasSlotInputs, selectedSportObj, scheduleType, startTime, endTime, oneTimeDate, startDate, days, mode, editingId]);
+
+  // real-time search logic for the classes table
   const filteredClasses = useMemo(() => {
-    if (!normalizedSearch) return classes;
-    return classes.filter((c) => {
-      const hay =
-        `${c.id} ${c.sport} ${c.className} ${c.coachName} ` +
-        `${(c.days || []).join(" ")} ${c.oneTimeDate || ""} ${c.startTime} ${c.endTime} ${c.capacity}`.toLowerCase();
-      return hay.includes(normalizedSearch);
-    });
-  }, [classes, normalizedSearch]);
+    const q = search.trim().toLowerCase();
+    return q ? classes.filter((c) => `${c.className} ${c.coachName} ${c.sport}`.toLowerCase().includes(q)) : classes;
+  }, [classes, search]);
 
-  function bySport(sportKey) {
-    return filteredClasses
-      .filter((c) => c.sport === sportKey)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
-
-  const cricketRows = useMemo(() => bySport("CRICKET"), [filteredClasses]);
-  const karateRows = useMemo(() => bySport("KARATE"), [filteredClasses]);
-  const futsalRows = useMemo(() => bySport("FUTSAL"), [filteredClasses]);
-  const chessRows = useMemo(() => bySport("CHESS"), [filteredClasses]);
-  const badmintonRows = useMemo(() => bySport("BADMINTON"), [filteredClasses]);
-
+  // resets the registration form fields to their defaults
   function resetForm() {
-    setSport("CRICKET");
-    setClassName("");
-    setCoachName("");
-    setCapacity("");
-
-    setScheduleType("WEEKLY");
-    setDays([]);
-    setOneTimeDate("");
-
-    setStartTime("");
-    setEndTime("");
-
-    setEditingId(null);
+    setClassName(""); setCoachId(""); setCourtIds([]); setCapacity(""); setFee(""); setScheduleType("WEEKLY");
+    setDays([]); setOneTimeDate(""); setStartDate(""); setStartTime(""); setEndTime(""); setFormError(""); setIsConflict(false);
   }
 
-  function openAddModal() {
-    setMode("ADD");
-    resetForm();
-    setIsModalOpen(true);
+  function openAddModal() { setMode("ADD"); resetForm(); if (sportsList.length > 0) setSport(sportsList[0].SportName); setIsModalOpen(true); }
+
+  // pre-fills the form with existing record data for updating
+  function openEditModal(item) { setMode("EDIT"); setEditingId(item.rawId); setSport(item.sport); setClassName(item.className); setCoachId(String(item.coachId)); setCourtIds(item.courtIds || []); setCapacity(String(item.capacity)); setFee(String(item.fee || "")); setScheduleType(item.scheduleType || "WEEKLY"); setDays(item.days || []); setOneTimeDate(item.oneTimeDate || ""); setStartDate(item.startDate?.split('T')[0] || ""); setStartTime(item.startTime || ""); setEndTime(item.endTime || ""); setIsModalOpen(true); }
+
+  // toggles a class between active and deactivated states
+  async function handleToggleStatus(item) {
+    const isDeactivating = item.status !== "DEACTIVATED";
+    if (!window.confirm(`Are you sure you want to ${isDeactivating ? "deactivate" : "activate"} this class?`)) return;
+    try {
+      if (isDeactivating) {
+        await adminService.deactivateClass(item.rawId);
+      } else {
+        await adminService.activateClass(item.rawId);
+      }
+      fetchInitialData();
+    } catch (err) { console.error(err); }
   }
 
-  function openEditModal(item) {
-    setMode("EDIT");
-    setEditingId(item.id);
-
-    setSport(item.sport);
-    setClassName(item.className);
-    setCoachName(item.coachName);
-    setCapacity(String(item.capacity));
-
-    setScheduleType(item.scheduleType || "WEEKLY");
-    setDays(Array.isArray(item.days) ? item.days : []);
-    setOneTimeDate(item.oneTimeDate || "");
-
-    setStartTime(item.startTime || "");
-    setEndTime(item.endTime || "");
-
-    setIsModalOpen(true);
-  }
-
-  function closeModal() {
-    setIsModalOpen(false);
-  }
-
-  function handleRemove(id) {
-    const ok = window.confirm("Are you sure you want to remove this class?");
-    if (!ok) return;
-    setClasses((prev) => prev.filter((c) => c.id !== id));
-  }
-
-  function toggleDay(d) {
-    setDays((prev) => {
-      if (prev.includes(d)) return prev.filter((x) => x !== d);
-      return [...prev, d];
-    });
-  }
-
-  function handleOneTimeToggle(checked) {
-    if (checked) {
-      setScheduleType("ONETIME");
-      setDays([]);
-    } else {
-      setScheduleType("WEEKLY");
-      setOneTimeDate("");
+  // sends class data (new or update) to the server after validation
+  async function handleSubmit(e) {
+    e.preventDefault(); setFormError(""); setSubmitting(true);
+    const payload = { title: className.trim(), sportId: selectedSportObj.SportID, coachId: Number(coachId), courtIds: courtIds.map(Number), capacity: Number(capacity), fee: Number(fee), billingType: scheduleType === "WEEKLY" ? "MONTHLY" : "ONE_TIME", scheduleType, startDate: scheduleType === "WEEKLY" ? startDate : oneTimeDate, oneTimeDate: scheduleType === "ONE_TIME" ? oneTimeDate : "", startTime, endTime, weekdays: scheduleType === "WEEKLY" ? days : [] };
+    try {
+      if (mode === "ADD") {
+        await adminService.createClass(payload);
+      } else {
+        await adminService.updateClass(editingId, payload);
+      }
+      setIsModalOpen(false); 
+      fetchInitialData();
+    } catch (err) { 
+      setFormError(err.response?.data?.message || "Connection failed"); 
+      setIsConflict(err.response?.status === 409);
     }
-  }
-
-  function validateForm() {
-    if (!SPORTS.includes(sport)) return "Select a valid sport";
-    if (!className.trim()) return "Class name is required";
-    if (!coachName.trim()) return "Coach name is required";
-
-    const capNum = Number(capacity);
-    if (!Number.isFinite(capNum) || capNum <= 0) return "Capacity must be a positive number";
-
-    if (scheduleType === "WEEKLY") {
-      if (!Array.isArray(days) || days.length === 0) return "Select at least one day";
-    } else {
-      if (!oneTimeDate) return "Select a date for the one-time class";
-    }
-
-    if (!startTime) return "Start time is required";
-    if (!endTime) return "End time is required";
-
-    const s = timeToMinutes(startTime);
-    const e = timeToMinutes(endTime);
-    if (s === null || e === null) return "Select valid start/end time";
-    if (e <= s) return "End time must be after start time";
-
-    return null;
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault();
-
-    const err = validateForm();
-    if (err) {
-      alert(err);
-      return;
-    }
-
-    const capNum = Number(capacity);
-
-    const payload = {
-      sport,
-      className: className.trim(),
-      coachName: coachName.trim(),
-      scheduleType,
-      days: scheduleType === "WEEKLY" ? [...days] : [],
-      oneTimeDate: scheduleType === "ONETIME" ? oneTimeDate : "",
-      startTime,
-      endTime,
-      capacity: capNum,
-    };
-
-    if (mode === "ADD") {
-      const newClass = {
-        id: makeId("CL"),
-        ...payload,
-        createdAt: nowIso(),
-      };
-      setClasses((prev) => [newClass, ...prev]);
-      closeModal();
-      resetForm();
-      return;
-    }
-
-    if (mode === "EDIT") {
-      setClasses((prev) => prev.map((c) => (c.id === editingId ? { ...c, ...payload } : c)));
-      closeModal();
-      resetForm();
-    }
+    finally { setSubmitting(false); }
   }
 
   return (
-    <div className="cm-page">
-      <div className="cm-header">
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
         <div>
-          <h2 className="cm-title">Class Management</h2>
+          <h2 className="page-title">Classes</h2>
+          {/* switch between the current schedule and the history of cancelled sessions */}
+          <div className="flex-start mt-2" style={{ gap: "12px" }}>
+            <button className={`btn ${activeTab === "ACTIVE" ? "btn-primary" : "btn-secondary"}`} style={{ borderRadius: "20px", padding: "6px 16px", fontSize: "0.8rem" }} onClick={() => setActiveTab("ACTIVE")}>Active Schedules</button>
+            <button className={`btn ${activeTab === "HISTORY" ? "btn-danger" : "btn-secondary"}`} style={{ borderRadius: "20px", padding: "6px 16px", fontSize: "0.8rem" }} onClick={() => setActiveTab("HISTORY")}>Cancellation Log</button>
+          </div>
         </div>
-
-        <button className="cm-primary-btn" type="button" onClick={openAddModal}>
-          + Add Class
-        </button>
+        {activeTab === "ACTIVE" && localStorage.getItem("role") === "ADMIN" && (
+          <button className="btn btn-primary" onClick={openAddModal}>+ Register Class</button>
+        )}
       </div>
 
-      <div className="cm-toolbar">
-        <input
-          className="cm-search"
-          placeholder="Search by class name, coach, sport, day, date..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      {activeTab === "ACTIVE" ? (
+        <>
+          <div className="arena-card mb-3" style={{ padding: "var(--space-1)" }}>
+            <input className="form-input" style={{ maxWidth: "400px" }} placeholder="Search classes, coaches, or sports..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
 
-      <section className="cm-section">
-        <h3 className="cm-section-title">Cricket Classes</h3>
-        <ClassTable rows={cricketRows} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
+          <div className="arena-table-container">
+            <table className="arena-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Class Name</th>
+                  <th>Coach</th>
+                  <th>Arena Courts</th>
+                  <th>Schedule Pattern</th>
+                  <th>Timeline</th>
+                  <th>Capacity (E/T)</th>
+                  <th>Class Fee</th>
+                  {localStorage.getItem("role") === "ADMIN" && <th style={{ textAlign: "right" }}>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {/* manage various list states such as loading or empty results */}
+                {loadingInitial ? (
+                  <tr><td colSpan="9" style={{ textAlign: "center", padding: "2rem" }}>Analyzing educational framework...</td></tr>
+                ) : filteredClasses.length === 0 ? (
+                  <tr><td colSpan="9" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No class records match your search.</td></tr>
+                ) : (
+                  filteredClasses.map(c => (
+                    <tr key={c.id} style={{ opacity: c.status === "DEACTIVATED" ? 0.6 : 1 }}>
+                      <td><span className="table-id">{c.id}</span></td>
+                      <td>
+                        <div style={{ fontWeight: 800, fontSize: "1rem" }}>{c.className}</div>
+                        <div className="status-pill info" style={{ marginTop: "4px" }}>{c.sport}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700 }}>{c.coachName}</div>
+                        <div style={{ marginTop: "4px" }}><span className="table-id" style={{ fontSize: '0.7rem', opacity: 0.8 }}>{c.coachIdStr}</span></div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: "0.85rem", color: "var(--text-main)", fontWeight: 600 }}>{c.courtName || "Unassigned"}</div>
+                      </td>
+                      <td>
+                        {/* shows either weekly days or the specific date for one-time classes */}
+                        {c.scheduleType === "WEEKLY" ? (
+                          <>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>Starts: {c.startDate?.split('T')[0]}</div>
+                            <div style={{ display: "flex", gap: "4px" }}>
+                              {formatDays(c.days).map(d => <span key={d} style={{ background: "var(--bg-main)", padding: "2px 6px", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700 }}>{d}</span>)}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>{c.oneTimeDate?.split('T')[0]}</div>
+                            <span className="status-pill warning">One-Time Event</span>
+                          </>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: "var(--primary-dark)" }}>{c.startTime} - {c.endTime}</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{durationLabel(c.startTime, c.endTime)}</div>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+                          <span style={{ fontWeight: 800, fontSize: "1.1rem", color: c.enrolledCount >= c.capacity ? "var(--danger)" : "var(--success)" }}>
+                            {c.enrolledCount || 0}
+                          </span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>/</span>
+                          <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>{c.capacity}</span>
+                        </div>
+                        <div style={{ fontSize: "0.6rem", textTransform: "uppercase", color: "var(--text-muted)", marginTop: "2px" }}>Spots Filled</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: "var(--primary-dark)" }}>LKR {c.fee?.toLocaleString()}</div>
+                        <div style={{ fontSize: "0.6rem", textTransform: "uppercase", color: "var(--text-muted)" }}>Per Cycle</div>
+                      </td>
+                      {localStorage.getItem("role") === "ADMIN" && (
+                        <td>
+                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                            <button className="btn btn-edit" style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => openEditModal(c)}>Edit</button>
+                            <button className={`btn ${c.status === "DEACTIVATED" ? "btn-primary" : "btn-danger"}`} style={{ padding: "4px 8px", fontSize: "0.75rem" }} onClick={() => handleToggleStatus(c)}>{c.status === "DEACTIVATED" ? "Re-activate" : "Deactivate"}</button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <div className="arena-table-container">
+          <table className="arena-table">
+            <thead>
+              <tr>
+                <th>Date of Session</th>
+                <th>Target Session</th>
+                <th>Class ID</th>
+                <th>Sport</th>
+                <th>Conducting Coach</th>
+                <th style={{ textAlign: "right" }}>Review Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* historical record of all class sessions that were cancelled */}
+              {cancelledHistory.length === 0 ? (
+                <tr><td colSpan="6" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No historical cancellations on record.</td></tr>
+              ) : (
+                cancelledHistory.map(h => (
+                  <tr key={h.id}>
+                    <td style={{ fontWeight: 700 }}>{new Date(h.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                        <span className="table-id" style={{ fontSize: '0.7rem' }}>SES-{String(h.id).padStart(6, '0')}</span>
+                        <div style={{ fontWeight: 800 }}>{h.className}</div>
+                      </div>
+                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{h.startTime} - {h.endTime}</div>
+                    </td>
+                    <td>
+                      <span className="table-id" style={{ fontSize: '0.7rem' }}>CLS-{String(h.class_id).padStart(6, '0')}</span>
+                    </td>
+                    <td><span className="status-pill info">{h.sport}</span></td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{h.coachFirst} {h.coachLast}</div>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <span className={`status-pill ${h.IsAcknowledged ? "success" : "danger"}`} style={{ fontSize: "0.65rem" }}>
+                        {h.IsAcknowledged ? "Reviewed" : "Requires Review"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <section className="cm-section">
-        <h3 className="cm-section-title">Karate Classes</h3>
-        <ClassTable rows={karateRows} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
-      <section className="cm-section">
-        <h3 className="cm-section-title">Futsal Classes</h3>
-        <ClassTable rows={futsalRows} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
-      <section className="cm-section">
-        <h3 className="cm-section-title">Chess Classes</h3>
-        <ClassTable rows={chessRows} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
-      <section className="cm-section">
-        <h3 className="cm-section-title">Badminton Classes</h3>
-        <ClassTable rows={badmintonRows} onEdit={openEditModal} onRemove={handleRemove} />
-      </section>
-
+      {/* modal form for creating or updating a class profile */}
       {isModalOpen && (
-        <div className="cm-modal-backdrop" onMouseDown={closeModal}>
-          <div className="cm-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="cm-modal-header">
-              <h3>{mode === "ADD" ? "Add Class" : "Edit Class"}</h3>
-              <button className="cm-icon-btn" type="button" onClick={closeModal} aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            <form className="cm-form" onSubmit={handleSubmit}>
-              <div className="cm-grid">
-                <div className="cm-field">
-                  <label>Sport</label>
-                  <select value={sport} onChange={(e) => setSport(e.target.value)}>
-                    <option value="CRICKET">Cricket</option>
-                    <option value="KARATE">Karate</option>
-                    <option value="FUTSAL">Futsal</option>
-                    <option value="CHESS">Chess</option>
-                    <option value="BADMINTON">Badminton</option>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "var(--space-2)" }}>
+          <div className="arena-card" style={{ width: "100%", maxWidth: "700px", maxHeight: "90vh", overflowY: "auto" }}>
+            <h3 className="mb-2">{mode === "ADD" ? "Create Academic Program" : "Modify Class Schedule"}</h3>
+            <form onSubmit={handleSubmit}>
+              <div className="cm-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+                <div className="form-group">
+                  <label className="form-label">Sport Selection</label>
+                  <select className="form-input" value={sport} onChange={e => {setSport(e.target.value); setCoachId(""); setCourtIds([]); }}>
+                    {sportsList.map(s => <option key={s.SportName} value={s.SportName}>{s.SportName}</option>)}
                   </select>
                 </div>
-
-                <div className="cm-field">
-                  <label>Capacity</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 20"
-                    value={capacity}
-                    onChange={(e) => setCapacity(e.target.value)}
-                  />
+                <div className="form-group">
+                  <label className="form-label">Pricing (LKR)</label>
+                  <input className="form-input" type="number" value={fee} onChange={e => setFee(e.target.value)} required />
                 </div>
-
-                <div className="cm-field cm-full">
-                  <label>Class Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Beginner Cricket"
-                    value={className}
-                    onChange={(e) => setClassName(e.target.value)}
-                  />
+                <div className="form-group" style={{ gridColumn: "span 2" }}>
+                  <label className="form-label">Official Class Title</label>
+                  <input className="form-input" placeholder="e.g. Advanced Badminton Workshop" value={className} onChange={e => setClassName(e.target.value)} required />
                 </div>
-
-                <div className="cm-field cm-full">
-                  <label>Coach Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Sahan Fernando"
-                    value={coachName}
-                    onChange={(e) => setCoachName(e.target.value)}
-                  />
+                <div className="form-group" style={{ gridColumn: "span 2" }}>
+                  <label className="form-label">Assigned Specialist (Coach)</label>
+                  <select className="form-input" value={coachId} onChange={e => setCoachId(e.target.value)} required>
+                    <option value="">-- Choose Coach --</option>
+                    {filteredCoaches.map(c => <option key={c.id} value={c.id}>{c.name} (ID: {c.id})</option>)}
+                  </select>
                 </div>
-
-                <div className="cm-field cm-full">
-                  <label>Day / Days (Every week)</label>
-
-                  <div className={`cm-days ${scheduleType === "ONETIME" ? "is-disabled" : ""}`}>
-                    {DAYS.map((d) => (
-                      <label key={d} className="cm-day">
-                        <input
-                          type="checkbox"
-                          checked={days.includes(d)}
-                          onChange={() => toggleDay(d)}
-                          disabled={scheduleType === "ONETIME"}
-                        />
-                        <span>{d}</span>
+                
+                <div className="form-group" style={{ gridColumn: "span 2" }}>
+                  <label className="flex-between mb-1" style={{ cursor: "pointer" }}>
+                    <span className="form-label">Schedule Type</span>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.85rem" }}>
+                        <input type="radio" checked={scheduleType === "WEEKLY"} onChange={() => {setScheduleType("WEEKLY"); setOneTimeDate(""); setCourtIds([]);}} /> Weekly
                       </label>
-                    ))}
-                  </div>
-
-                  <label className="cm-onetime">
-                    <input
-                      type="checkbox"
-                      checked={scheduleType === "ONETIME"}
-                      onChange={(e) => handleOneTimeToggle(e.target.checked)}
-                    />
-                    One-time class / No fixed schedule
+                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.85rem" }}>
+                        <input type="radio" checked={scheduleType === "ONE_TIME"} onChange={() => {setScheduleType("ONE_TIME"); setDays([]); setCourtIds([]);}} /> One-Time
+                      </label>
+                    </div>
                   </label>
+                  {/* allows choosing multiple days for the weekly frequency */}
+                  {scheduleType === "WEEKLY" ? (
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "8px" }}>
+                      {DAYS.map(d => (
+                        <button key={d.value} type="button" 
+                          className={`btn ${days.includes(d.value) ? "btn-primary" : "btn-secondary"}`} 
+                          style={{ padding: "4px 8px", fontSize: "0.7rem", borderRadius: "6px" }}
+                          onClick={() => { setDays(prev => prev.includes(d.value) ? prev.filter(x => x !== d.value) : [...prev, d.value]); setCourtIds([]); }}
+                        >{d.label}</button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
 
-                {scheduleType === "ONETIME" && (
-                  <div className="cm-field cm-full">
-                    <label>Select Date</label>
-                    <input
-                      type="date"
-                      value={oneTimeDate}
-                      onChange={(e) => setOneTimeDate(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                <div className="cm-field">
-                  <label>Start Time</label>
-                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <div className="form-group">
+                  <label className="form-label">{scheduleType === "WEEKLY" ? "Activation Date" : "Execution Date"}</label>
+                  <input className="form-input" type="date" value={scheduleType === "WEEKLY" ? startDate : oneTimeDate} onChange={e => {if(scheduleType === "WEEKLY") setStartDate(e.target.value); else setOneTimeDate(e.target.value); setCourtIds([]);}} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Target Capacity</label>
+                  <input className="form-input" type="number" value={capacity} onChange={e => setCapacity(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Start Time</label>
+                  <input className="form-input" type="time" value={startTime} onChange={e => {setStartTime(e.target.value); setCourtIds([]);}} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">End Time</label>
+                  <input className="form-input" type="time" value={endTime} onChange={e => {setEndTime(e.target.value); setCourtIds([]);}} required />
                 </div>
 
-                <div className="cm-field">
-                  <label>End Time</label>
-                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-                </div>
-
-                <div className="cm-field cm-full">
-                  <div className="cm-duration">
-                    Duration: <strong>{durationLabel(startTime, endTime)}</strong>
-                  </div>
+                <div className="form-group" style={{ gridColumn: "span 2" }}>
+                  <label className="form-label">Arena Court Assignment</label>
+                  {/* dynamically reveals which courts are physically available for the chosen time */}
+                  {!hasSlotInputs ? (
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", padding: "10px", background: "var(--bg-main)", borderRadius: "8px" }}>Configure schedule parameters to view available courts.</div>
+                  ) : availableCourts.length === 0 ? (
+                    <div style={{ fontSize: "0.8rem", color: "var(--danger)", padding: "10px", background: "var(--danger-light)", borderRadius: "8px" }}>No courts available for this specific timeframe.</div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", padding: "10px", background: "var(--bg-main)", borderRadius: "8px", maxHeight: "120px", overflowY: "auto" }}>
+                      {availableCourts.map(c => (
+                        <label key={c.CourtID} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", cursor: "pointer" }}>
+                          <input type="checkbox" checked={courtIds.includes(c.CourtID)} onChange={e => {
+                            if(e.target.checked) setCourtIds(prev => [...prev, c.CourtID]);
+                            else setCourtIds(prev => prev.filter(id => id !== c.CourtID));
+                          }} />
+                          {c.CourtName}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="cm-form-actions">
-                <button className="cm-modal-btn" type="button" onClick={closeModal}>
-                  Cancel
-                </button>
-                <button className="cm-modal-btn" type="submit">
-                  {mode === "ADD" ? "Add Class" : "Save Changes"}
-                </button>
+              {formError && <div className={`status-pill ${isConflict ? "warning" : "danger"} mt-2`} style={{ width: "100%", textAlign: "center" }}>{formError}</div>}
+
+              <div className="flex-between mt-3" style={{ justifyContent: "flex-end" }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting || availableCourts.length === 0}>{submitting ? "Processing..." : mode === "ADD" ? "Register Class" : "Save Changes"}</button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function ClassTable({ rows, onEdit, onRemove }) {
-  return (
-    <div className="cm-table-wrap">
-      <table className="cm-table">
-        <thead>
-          <tr>
-            <th className="cm-col-class">Class Name</th>
-            <th className="cm-col-coach">Coach Name</th>
-            <th className="cm-col-days">Day(s)</th>
-            <th className="cm-col-date">Date</th>
-            <th className="cm-col-duration">Duration</th>
-            <th className="cm-col-capacity">Capacity</th>
-            <th className="cm-col-actions cm-center">Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan="7" className="cm-empty">
-                No classes to show.
-              </td>
-            </tr>
-          ) : (
-            rows.map((c) => (
-              <tr key={c.id}>
-                <td className="cm-col-class">{c.className}</td>
-                <td className="cm-col-coach">{c.coachName}</td>
-                <td className="cm-col-days">{formatDays(c.days)}</td>
-                <td className="cm-col-date">{formatDate(c.oneTimeDate)}</td>
-                <td className="cm-col-duration">{durationLabel(c.startTime, c.endTime)}</td>
-                <td className="cm-col-capacity">{c.capacity}</td>
-
-                <td className="cm-col-actions cm-center">
-                  <div className="cm-actions">
-                    <button className="cm-action-btn" type="button" onClick={() => onEdit(c)}>
-                      Edit
-                    </button>
-                    <button className="cm-action-btn danger" type="button" onClick={() => onRemove(c.id)}>
-                      Remove
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
     </div>
   );
 }

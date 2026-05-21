@@ -1,22 +1,16 @@
-import { useMemo, useState } from "react";
-import "../../styles/AdminHome.css";
+import { useMemo, useState, useEffect } from "react";
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Cell
+} from 'recharts';
+import adminService from "../../services/adminService";
 
-import CalendarPanel from "../../components/CalendarPanel";
-import DayDetailsModal from "../../components/DayDetailsModal";
-import AvailabilityPanel from "../../components/AvailabilityPanel";
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-function toISODate(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
+// calculates the time difference between two strings (HH:mm)
 function fmtDuration(start, end) {
-  // start/end: "HH:mm"
   if (!start || !end) return "-";
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
-  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  const mins = eh * 60 + em - (sh * 60 + sm);
   if (!Number.isFinite(mins) || mins <= 0) return "-";
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -25,17 +19,22 @@ function fmtDuration(start, end) {
   return `${m}m`;
 }
 
+// turns technical status codes into user-friendly labels
 function statusLabelBooking(s) {
   if (s === "PENDING_PAYMENT") return "Pending";
   if (s === "CONFIRMED") return "Confirmed";
   if (s === "CANCELLED") return "Cancelled";
   return s;
 }
+
+// gets the CSS class name for a booking status
 function statusKeyBooking(s) {
   if (s === "CONFIRMED") return "confirmed";
   if (s === "CANCELLED") return "cancelled";
   return "pending";
 }
+
+// determines which sport a court belongs to based on its name
 function sportKeyFromCourtName(court) {
   const lower = court.toLowerCase();
   if (lower.includes("cricket")) return "cricket";
@@ -43,6 +42,8 @@ function sportKeyFromCourtName(court) {
   if (lower.includes("futsal")) return "futsal";
   return "cricket";
 }
+
+// helper to format sport names correctly
 function sportLabelFromKey(k) {
   if (k === "cricket") return "Cricket";
   if (k === "badminton") return "Badminton";
@@ -50,227 +51,289 @@ function sportLabelFromKey(k) {
   return "Cricket";
 }
 
+// the main dashboard page for administrative oversight
 export default function AdminHome() {
-  // ✅ tiles (UI-only mock totals — later from backend)
-  const totals = useMemo(
-    () => ({
-      users: 124,
-      bookings: 38,
-      payments: 29,
-      classes: 12,
-    }),
-    []
-  );
-
-  // ✅ UI-only mock data for calendar
-  const [bookings] = useState([
-    {
-      id: "B-500001",
-      playerName: "Kavindi Silva",
-      court: "Badminton - A",
-      date: "2026-09-30",
-      time: "09:30-10:30",
-      status: "CONFIRMED",
+  const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState("MONTH");
+  const [data, setData] = useState({
+    totals: {
+      users: 0,
+      bookings: 0,
+      revenue: 0,
+      pendingActions: 0,
+      classes: 0
     },
-    {
-      id: "B-500002",
-      playerName: "Nuwan Perera",
-      court: "Cricket - A",
-      date: "2026-09-30",
-      time: "13:00-15:00",
-      status: "PENDING_PAYMENT",
+    charts: {
+      revenueTrend: [],
+      revenueBySport: [],
+      revenueByCourt: []
     },
-    {
-      id: "B-500003",
-      playerName: "Sahan Fernando",
-      court: "Futsal - A",
-      date: "2026-09-30",
-      time: "19:00-21:30",
-      status: "CONFIRMED",
-    },
-  ]);
-
-  const [blockedSlots] = useState([
-    {
-      id: "BS-400001",
-      court: "Cricket - A",
-      date: "2026-09-30",
-      startTime: "11:00",
-      endTime: "12:30",
-      reason: "Maintenance",
-    },
-  ]);
-
-  const [classes] = useState([
-    {
-      id: "CL-300001",
-      sport: "CRICKET",
-      className: "Beginner Cricket",
-      coachName: "Sahan Fernando",
-      date: "2026-09-30",
-      startTime: "16:00",
-      endTime: "17:30",
-    },
-  ]);
-
-  // ✅ Calendar controls
-  const [monthDate, setMonthDate] = useState(() => {
-    const t = new Date();
-    return new Date(t.getFullYear(), t.getMonth(), 1);
+    cancellations: []
   });
 
-  const [selectedDateISO, setSelectedDateISO] = useState(() => toISODate(new Date()));
-  const [isDayOpen, setIsDayOpen] = useState(false);
-
-  // ✅ Events counts for mini-bars inside month cells
-  const eventsByDate = useMemo(() => {
-    const map = {};
-
-    function ensure(dateISO) {
-      if (!map[dateISO]) {
-        map[dateISO] = { cricket: 0, badminton: 0, futsal: 0, classes: 0, blocked: 0 };
-      }
-      return map[dateISO];
+  // calculates date ranges (start/end) for filtering dashboard stats
+  const computeRange = (val) => {
+    const today = new Date();
+    const toISO = (d) => d.toISOString().split('T')[0];
+    
+    switch(val) {
+      case "TODAY": 
+        return { start: toISO(today), end: toISO(today), label: "Today" };
+      case "MONTH":
+        return { start: toISO(new Date(today.getFullYear(), today.getMonth(), 1)), end: toISO(today), label: "This Month" };
+      case "3_MONTHS":
+        const t3 = new Date(); t3.setMonth(today.getMonth() - 3);
+        return { start: toISO(t3), end: toISO(today), label: "Last 3 Months" };
+      case "YEAR":
+        const ty = new Date(); ty.setFullYear(today.getFullYear() - 1);
+        return { start: toISO(ty), end: toISO(today), label: "Last 1 Year" };
+      case "5_YEARS":
+        const t5 = new Date(); t5.setFullYear(today.getFullYear() - 5);
+        return { start: toISO(t5), end: toISO(today), label: "Last 5 Years" };
+      default:
+        return { start: toISO(new Date(today.getFullYear(), today.getMonth(), 1)), end: toISO(today), label: "This Month" };
     }
+  };
 
-    bookings.forEach((b) => {
-      const key = ensure(b.date);
-      const sportKey = sportKeyFromCourtName(b.court);
-      if (sportKey === "cricket") key.cricket += 1;
-      if (sportKey === "badminton") key.badminton += 1;
-      if (sportKey === "futsal") key.futsal += 1;
-    });
+  const [activeRange, setActiveRange] = useState(() => computeRange("MONTH"));
 
-    blockedSlots.forEach((x) => {
-      const key = ensure(x.date);
-      key.blocked += 1;
-    });
-
-    classes.forEach((c) => {
-      const key = ensure(c.date);
-      key.classes += 1;
-    });
-
-    return map;
-  }, [bookings, blockedSlots, classes]);
-
-  // ✅ Data shown in day popup
-  const dayData = useMemo(() => {
-    const dateISO = selectedDateISO;
-
-    const dayBookings = bookings
-      .filter((b) => b.date === dateISO)
-      .map((b) => {
-        const sportKey = sportKeyFromCourtName(b.court);
-        return {
-          id: b.id,
-          playerName: b.playerName,
-          court: b.court,
-          time: b.time,
-          statusKey: statusKeyBooking(b.status),
-          statusLabel: statusLabelBooking(b.status),
-          sportKey,
-          sportLabel: sportLabelFromKey(sportKey),
-        };
-      });
-
-    const dayBlocked = blockedSlots.filter((x) => x.date === dateISO);
-
-    const dayClasses = classes
-      .filter((c) => c.date === dateISO)
-      .map((c) => ({
-        ...c,
-        duration: fmtDuration(c.startTime, c.endTime),
-      }));
-
-    return { bookings: dayBookings, blocked: dayBlocked, classes: dayClasses };
-  }, [selectedDateISO, bookings, blockedSlots, classes]);
-
-  // ✅ Availability panel (UI-only logic)
-  const availability = useMemo(() => {
-    const dateISO = selectedDateISO;
-
-    const courtList = [
-      { name: "Cricket - A", sportKey: "cricket" },
-      { name: "Cricket - B", sportKey: "cricket" },
-      { name: "Badminton - A", sportKey: "badminton" },
-      { name: "Futsal - A", sportKey: "futsal" },
-    ];
-
-    function isBlocked(courtName) {
-      return blockedSlots.some((x) => x.date === dateISO && x.court === courtName);
-    }
-    function isBooked(courtName) {
-      return bookings.some((b) => b.date === dateISO && b.court === courtName && b.status !== "CANCELLED");
-    }
-
-    return courtList.map((c) => {
-      if (isBlocked(c.name)) {
-        return { ...c, statusKey: "blocked", statusLabel: "Blocked" };
+  // fetches summary totals and chart data whenever a date range is selected
+  useEffect(() => {
+    async function fetchStats() {
+      setLoading(true);
+      try {
+        const [d, c] = await Promise.all([
+          adminService.getDashboardStats(activeRange.start, activeRange.end),
+          adminService.getRecentCancellations()
+        ]);
+        if (d.totals) {
+          setData({
+            totals: d.totals,
+            charts: d.charts || { revenueTrend: [], revenueBySport: [], revenueByCourt: [] },
+            cancellations: c.cancellations || []
+          });
+        }
+      } catch (err) {
+        console.error("Dashboard stats fetch failed:", err);
+      } finally {
+        setLoading(false);
       }
-      if (isBooked(c.name)) {
-        return { ...c, statusKey: "booked", statusLabel: "Booked" };
-      }
-      return { ...c, statusKey: "available", statusLabel: "Available" };
-    });
-  }, [selectedDateISO, bookings, blockedSlots]);
+    }
+    fetchStats();
+  }, [activeRange]);
 
-  function handleSelectDate(dateISO) {
-    setSelectedDateISO(dateISO);
-    setIsDayOpen(true);
-  }
+  // updates both the UI button state and the date filters
+  const handleRangeChange = (val) => {
+    setRange(val);
+    setActiveRange(computeRange(val));
+  };
+
+  const totals = data.totals;
+  const charts = data.charts;
 
   return (
-    <div className="ah-page">
-      <h2 className="ah-title">Admin Home</h2>
-
-      {/* 4 tiles */}
-      <div className="ah-tiles">
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Users</div>
-          <div className="ah-tile-num">{totals.users}</div>
+    <div className="admin-content-inner">
+      <div className="flex-between mb-4" style={{ alignItems: 'flex-start' }}>
+        <div>
+          <h2 className="page-title">Management Overview</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Real-time business intelligence for ArenaPro Operations</p>
         </div>
-
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Bookings</div>
-          <div className="ah-tile-num">{totals.bookings}</div>
-        </div>
-
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Payments</div>
-          <div className="ah-tile-num">{totals.payments}</div>
-        </div>
-
-        <div className="ah-tile">
-          <div className="ah-tile-label">Total Classes</div>
-          <div className="ah-tile-num">{totals.classes}</div>
-        </div>
-      </div>
-
-      {/* Calendar + Right panel */}
-      <div className="ah-lower">
-        <div className="ah-left">
-          <CalendarPanel
-            monthDate={monthDate}
-            selectedDateISO={selectedDateISO}
-            onChangeMonth={setMonthDate}
-            onSelectDate={handleSelectDate}
-            eventsByDate={eventsByDate}
-          />
-        </div>
-
-        <div className="ah-right">
-          <AvailabilityPanel title={`Availability (${selectedDateISO})`} courts={availability} />
+        
+        {/* time range quick-selection buttons */}
+        <div style={{ display: 'flex', gap: '8px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}>
+          {['TODAY', 'MONTH', '3_MONTHS', 'YEAR', '5_YEARS'].map((r) => (
+            <button 
+              key={r}
+              onClick={() => handleRangeChange(r)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: range === r ? 'var(--primary-gradient)' : 'transparent',
+                color: range === r ? 'white' : 'var(--text-muted)'
+              }}
+            >
+              {r.replace('_', ' ')}
+            </button>
+          ))}
         </div>
       </div>
 
-      {isDayOpen && (
-        <DayDetailsModal
-          dateISO={selectedDateISO}
-          data={dayData}
-          onClose={() => setIsDayOpen(false)}
-        />
+      {/* dashboard widgets showing top-level totals */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
+        <div className="arena-card dashboard-stat-card indigo-flat">
+           <span className="stat-label-simple">Total Bookings</span>
+           <h3 className="stat-value-simple">{loading ? "..." : totals.bookings}</h3>
+        </div>
+
+        <div className="arena-card dashboard-stat-card green-flat">
+           <span className="stat-label-simple">Total Revenue</span>
+           <h3 className="stat-value-simple">{loading ? "..." : `LKR ${totals.revenue.toLocaleString()}`}</h3>
+        </div>
+
+        <div className="arena-card dashboard-stat-card rose-flat">
+           <span className="stat-label-simple">Pending Actions</span>
+           <h3 className="stat-value-simple">{loading ? "..." : totals.pendingActions}</h3>
+        </div>
+      </div>
+
+      {/* cancellation alerts section */}
+      {data.cancellations.length > 0 && (
+        <div className="arena-card mb-4" style={{ borderLeft: '4px solid var(--danger)', padding: '20px' }}>
+          <div className="flex-between mb-3">
+            <h4 style={{ color: 'var(--danger)', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              Urgent Cancellation Alerts
+            </h4>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>{data.cancellations.length} Pending Review</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+            {data.cancellations.map(c => (
+              <div key={c.id} className="arena-card" style={{ padding: '16px', background: '#fff1f2', border: '1px solid #fecdd3' }}>
+                <div style={{ fontWeight: 800, color: '#9f1239', fontSize: '0.9rem' }}>{c.className}</div>
+                <div style={{ fontSize: '0.75rem', color: '#be123c', marginTop: '4px' }}>
+                  {new Date(c.date).toLocaleDateString()} • {c.startTime} - {c.endTime}
+                </div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '8px' }}>Coach: {c.coachFirst} {c.coachLast}</div>
+                <button 
+                  onClick={async () => {
+                    if(window.confirm("Acknowledge this cancellation?")) {
+                      await adminService.acknowledgeCancellation(c.id);
+                      // reload stats
+                      window.location.reload(); 
+                    }
+                  }}
+                  style={{ marginTop: '12px', width: '100%', padding: '6px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px', border: '1px solid #9f1239', color: '#9f1239', background: 'transparent', cursor: 'pointer' }}
+                >
+                  Acknowledge & Clear
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
+
+      {/* visual line chart showing revenue performance over time */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginBottom: '24px' }}>
+        <div className="arena-card" style={{ padding: '24px' }}>
+          <div className="flex-between mb-4">
+            <h4 style={{ fontSize: '1rem', fontWeight: 800 }}>Revenue Trend (LKR)</h4>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Daily performance overview</span>
+          </div>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={charts.revenueTrend}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} dy={10} />
+                <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rs ${value}`} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                  formatter={(value) => [`Rs ${parseFloat(value).toLocaleString()}`, 'Revenue']}
+                />
+                <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* breakdown charts for specialized data analysis */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+        <div className="arena-card" style={{ padding: '24px' }}>
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '20px' }}>Revenue by Sport</h4>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer>
+              <BarChart data={charts.revenueBySport} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                <Tooltip 
+                  cursor={{fill: 'transparent'}}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                  formatter={(value) => [`Rs ${parseFloat(value).toLocaleString()}`, 'Revenue']}
+                />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                  {charts.revenueBySport.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color || '#6366f1'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="arena-card" style={{ padding: '24px' }}>
+          <h4 style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '20px' }}>Revenue by Court</h4>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer>
+              <BarChart data={charts.revenueByCourt}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="name" 
+                  fontSize={10} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  angle={-45} 
+                  textAnchor="end"
+                  height={80}
+                  interval={0}
+                />
+                <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rs ${value}`} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                  formatter={(value) => [`Rs ${parseFloat(value).toLocaleString()}`, 'Revenue']}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={30}>
+                  {charts.revenueByCourt.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color || '#8b5cf6'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        .dashboard-stat-card {
+           padding: 32px;
+           display: flex;
+           flex-direction: column;
+           gap: 8px;
+           border: none !important;
+           border-radius: 20px !important;
+           transition: all 0.3s;
+        }
+        .dashboard-stat-card:hover { transform: scale(1.02); }
+        
+        .stat-label-simple {
+           font-size: 0.85rem;
+           font-weight: 700;
+           text-transform: uppercase;
+           letter-spacing: 0.05em;
+           opacity: 0.9;
+        }
+        .stat-value-simple {
+           font-size: 2.5rem;
+           font-weight: 900;
+           margin: 0;
+        }
+        .indigo-flat { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe !important; }
+        .indigo-flat .stat-value-simple { color: #3730a3; }
+        
+        .green-flat { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0 !important; }
+        .green-flat .stat-value-simple { color: #166534; }
+        
+        .rose-flat { background: #ffe4e6; color: #be123c; border: 1px solid #fbcfe8 !important; }
+        .rose-flat .stat-value-simple { color: #9f1239; }
+        
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .mb-4 { margin-bottom: 32px; }
+      `}</style>
     </div>
   );
 }

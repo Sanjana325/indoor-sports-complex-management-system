@@ -1,0 +1,181 @@
+const { pool } = require("../config/db");
+
+// find a single user record by their unique email
+async function findByEmail(email) {
+  const [rows] = await pool.query(
+    `SELECT UserID, FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, IsActive, CreatedAt, MustChangePassword
+     FROM UserAccount
+     WHERE Email = ?`,
+    [email]
+  );
+  return rows.length ? rows[0] : null;
+}
+
+// get user details by their database ID
+async function findById(userId) {
+  const [rows] = await pool.query(
+    `SELECT UserID, FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, IsActive, CreatedAt, MustChangePassword
+     FROM UserAccount
+     WHERE UserID = ?`,
+    [userId]
+  );
+  return rows.length ? rows[0] : null;
+}
+
+// check if an email is already registered in the system
+async function emailExists(email, conn = pool) {
+  const [rows] = await conn.query(`SELECT 1 FROM UserAccount WHERE Email = ? LIMIT 1`, [email]);
+  return rows.length > 0;
+}
+
+// check if email is used by any other user (for profile updates)
+async function emailExistsExceptUser(email, userId, conn = pool) {
+  const [rows] = await conn.query(`SELECT 1 FROM UserAccount WHERE Email = ? AND UserID <> ? LIMIT 1`, [
+    email,
+    userId
+  ]);
+  return rows.length > 0;
+}
+
+// insert a new user record into the database
+async function createUser({ firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword = false }, conn = pool) {
+  const [result] = await conn.query(
+    `INSERT INTO UserAccount (FirstName, LastName, Email, PasswordHash, PhoneNumber, Role, MustChangePassword)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [firstName, lastName, email, passwordHash, phoneNumber, role, mustChangePassword ? 1 : 0]
+  );
+  return result.insertId;
+}
+
+// update basic user details
+async function updateUserById(userId, { firstName, lastName, email, phoneNumber, role }, conn = pool) {
+  await conn.query(
+    `UPDATE UserAccount
+     SET FirstName = ?, LastName = ?, Email = ?, PhoneNumber = ?, Role = ?
+     WHERE UserID = ?`,
+    [firstName, lastName, email, phoneNumber, role, userId]
+  );
+}
+
+// get all users with coach specializations and qualifications for the admin list
+async function listAllForAdmin() {
+  const [rows] = await pool.query(
+    `SELECT 
+        ua.UserID,
+        ua.FirstName,
+        ua.LastName,
+        ua.Email,
+        ua.PhoneNumber,
+        ua.Role,
+        ua.IsActive,
+        ua.CreatedAt,
+        ua.MustChangePassword,
+        GROUP_CONCAT(DISTINCT s.SportName ORDER BY s.SportName SEPARATOR ', ') AS Specializations,
+        GROUP_CONCAT(DISTINCT q.QualificationName ORDER BY q.QualificationName SEPARATOR ', ') AS Qualifications
+     FROM UserAccount ua
+     LEFT JOIN Coach c ON c.UserID = ua.UserID
+     LEFT JOIN CoachQualification cq ON cq.CoachID = c.CoachID
+     LEFT JOIN Qualification q ON q.QualificationID = cq.QualificationID
+     LEFT JOIN CoachSport cs ON cs.CoachID = c.CoachID
+     LEFT JOIN Sport s ON s.SportID = cs.SportID
+     GROUP BY
+        ua.UserID, ua.FirstName, ua.LastName, ua.Email, ua.PhoneNumber, ua.Role,
+        ua.IsActive, ua.CreatedAt, ua.MustChangePassword
+     ORDER BY ua.CreatedAt DESC`
+  );
+  return rows;
+}
+
+// enable or disable a user account
+async function setActiveById(userId, isActive) {
+  await pool.query(`UPDATE UserAccount SET IsActive = ? WHERE UserID = ?`, [isActive ? 1 : 0, userId]);
+}
+
+// check how many super admins are active (to prevent disabling the last one)
+async function countActiveSuperAdmins() {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS C
+     FROM UserAccount
+     WHERE Role = 'SUPER_ADMIN' AND IsActive = 1`
+  );
+  return Number(rows?.[0]?.C || 0);
+}
+
+// completely remove a user and their coach profile from the database
+async function deleteUserHardById(userId) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // remove coach links first to handle foreign key dependencies
+    const [coachRows] = await conn.query(`SELECT CoachID FROM Coach WHERE UserID = ? LIMIT 1`, [userId]);
+    if (coachRows.length) {
+      const coachId = coachRows[0].CoachID;
+      await conn.query(`DELETE FROM CoachQualification WHERE CoachID = ?`, [coachId]);
+      await conn.query(`DELETE FROM Coach WHERE CoachID = ?`, [coachId]);
+    }
+
+    await conn.query(`DELETE FROM UserAccount WHERE UserID = ?`, [userId]);
+
+    await conn.commit();
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch (e) { }
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+/* Forgot Password token methods */
+
+// store a secure token for password reset requests
+async function createPasswordResetToken({ userId, tokenHash, expiresAt }) {
+  await pool.query(
+    `INSERT INTO PasswordResetToken (UserID, TokenHash, ExpiresAt)
+     VALUES (?, ?, ?)`,
+    [userId, tokenHash, expiresAt]
+  );
+}
+
+// find a reset token that hasn't been used and hasn't expired
+async function findValidPasswordResetTokenByHash(tokenHash) {
+  const [rows] = await pool.query(
+    `SELECT ResetID, UserID, TokenHash, ExpiresAt, UsedAt
+     FROM PasswordResetToken
+     WHERE TokenHash = ?
+       AND UsedAt IS NULL
+       AND ExpiresAt > NOW()
+     LIMIT 1`,
+    [tokenHash]
+  );
+  return rows.length ? rows[0] : null;
+}
+
+// mark a token as used to prevent replay attacks
+async function markPasswordResetTokenUsed(resetId) {
+  await pool.query(
+    `UPDATE PasswordResetToken
+     SET UsedAt = NOW()
+     WHERE ResetID = ?`,
+    [resetId]
+  );
+}
+
+module.exports = {
+  findByEmail,
+  findById,
+  emailExists,
+  emailExistsExceptUser,
+  createUser,
+  updateUserById,
+  listAllForAdmin,
+  setActiveById,
+  countActiveSuperAdmins,
+  deleteUserHardById,
+  createPasswordResetToken,
+  findValidPasswordResetTokenByHash,
+  markPasswordResetTokenUsed
+};
+

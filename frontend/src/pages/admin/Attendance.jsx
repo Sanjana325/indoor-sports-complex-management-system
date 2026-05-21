@@ -1,229 +1,198 @@
-import { useMemo, useState } from "react";
-import "../../styles/Attendance.css";
+import { useEffect, useMemo, useState } from "react";
+import adminService from "../../services/adminService";
 
-function makeId(prefix = "AT") {
-  const n = Math.floor(100000 + Math.random() * 900000);
-  return `${prefix}-${n}`;
-}
-
+// the main component for tracking player attendance in classes
 export default function Attendance() {
-  // UI-only: available classes
-  const classes = useMemo(
-    () => [
-      "Beginner Cricket",
-      "Karate Basics",
-      "Futsal Training",
-      "Chess for Beginners",
-      "Badminton Intermediate",
-    ],
-    []
-  );
-
-  // UI-only: enrollments list (normally from DB)
-  const [enrollments] = useState([
-    { id: "ENR-1", className: "Beginner Cricket", playerName: "Kavindi Silva" },
-    { id: "ENR-2", className: "Beginner Cricket", playerName: "Nuwan Perera" },
-    { id: "ENR-3", className: "Beginner Cricket", playerName: "Saman Silva" },
-
-    { id: "ENR-4", className: "Karate Basics", playerName: "Ishan Fernando" },
-    { id: "ENR-5", className: "Karate Basics", playerName: "Tharushi Sanjana" },
-
-    { id: "ENR-6", className: "Badminton Intermediate", playerName: "Kasun Silva" },
-    { id: "ENR-7", className: "Badminton Intermediate", playerName: "Dilani Jayasinghe" },
-
-    { id: "ENR-8", className: "Chess for Beginners", playerName: "Sahan Fernando" },
-  ]);
-
-  // Form state
-  const [selectedClass, setSelectedClass] = useState("");
+  const [classes, setClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [nameSearch, setNameSearch] = useState("");
+  const [session, setSession] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [marks, setMarks] = useState({});
+  const [noSession, setNoSession] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
-  // Attendance records (UI-only)
-  // key: `${date}__${className}__${playerName}` => "PRESENT" | "ABSENT"
-  const [records, setRecords] = useState({});
+  // loads the list of available classes when the page first opens
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingClasses(true);
+        const data = await adminService.getAttendanceClasses();
+        setClasses(data.classes || []);
+      } catch (err) { console.error(err); }
+      finally { setLoadingClasses(false); }
+    })();
+  }, []);
 
-  const canShowStudents = selectedClass && selectedDate;
+  // fetches student enrollment for a specific class on a specific date
+  useEffect(() => {
+    if (!selectedClassId || !selectedDate) {
+      setSession(null); setStudents([]); setMarks({}); setNoSession(false); return;
+    }
+    (async () => {
+      try {
+        setLoadingStudents(true); setNoSession(false); setSuccessMsg("");
+        const data = await adminService.getAttendance(selectedClassId, selectedDate);
+        if (!data.session) {
+          setSession(null); setStudents([]); setMarks({}); setNoSession(true);
+        } else {
+          setSession(data.session); setStudents(data.students || []);
+          const existing = {};
+          // pre-loads any existing attendance data already saved on the server
+          (data.students || []).forEach((s) => {
+            if (s.status === "PRESENT" || s.status === "ABSENT") existing[s.rawEnrollmentId] = s.status;
+          });
+          setMarks(existing); setNoSession(false);
+        }
+      } catch (err) { console.error(err); }
+      finally { setLoadingStudents(false); }
+    })();
+  }, [selectedClassId, selectedDate]);
 
-  const studentsForSelectedClass = useMemo(() => {
+  const canShowStudents = session && students.length > 0;
+
+  // filters the student list based on real-time search input
+  const filteredStudents = useMemo(() => {
     if (!canShowStudents) return [];
     const q = nameSearch.trim().toLowerCase();
+    return students.filter((s) => (q ? s.name.toLowerCase().includes(q) : true));
+  }, [students, nameSearch, canShowStudents]);
 
-    return enrollments
-      .filter((e) => e.className === selectedClass)
-      .filter((e) => (q ? e.playerName.toLowerCase().includes(q) : true))
-      .sort((a, b) => a.playerName.localeCompare(b.playerName));
-  }, [enrollments, selectedClass, nameSearch, canShowStudents]);
+  // updates the local state with a student's attendance status
+  const mark = (rawEnrollmentId, status) => {
+    setMarks((prev) => ({ ...prev, [rawEnrollmentId]: status }));
+    setSuccessMsg("");
+  };
 
-  function keyFor(playerName) {
-    return `${selectedDate}__${selectedClass}__${playerName}`;
-  }
+  // resets all attendance marks in the current view
+  const clearMarksForThisSession = () => {
+    if (!canShowStudents || !window.confirm("Clear all marks for this session?")) return;
+    setMarks({}); setSuccessMsg("");
+  };
 
-  function getStatus(playerName) {
-    return records[keyFor(playerName)] || "NOT_MARKED";
-  }
+  // sends the local attendance marks to the database
+  const saveAttendance = async () => {
+    if (!session) return;
+    const marksArray = Object.entries(marks)
+      .filter(([, status]) => status === "PRESENT" || status === "ABSENT")
+      .map(([rawEnrollmentId, status]) => ({ enrollmentId: Number(rawEnrollmentId), status }));
 
-  function mark(playerName, status) {
-    const k = keyFor(playerName);
-    setRecords((prev) => ({ ...prev, [k]: status }));
-  }
+    if (marksArray.length === 0) {
+      alert("Please mark at least one student."); return;
+    }
 
-  function clearMarksForThisSession() {
-    if (!canShowStudents) return;
-
-    const ok = window.confirm("Clear all marks for this class and date?");
-    if (!ok) return;
-
-    setRecords((prev) => {
-      const next = { ...prev };
-      enrollments
-        .filter((e) => e.className === selectedClass)
-        .forEach((e) => {
-          delete next[`${selectedDate}__${selectedClass}__${e.playerName}`];
-        });
-      return next;
-    });
-  }
-
-  function saveAttendance() {
-    if (!canShowStudents) return;
-    alert("Attendance saved (UI only)");
-  }
+    try {
+      setSaving(true); setSuccessMsg("");
+      await adminService.saveAttendance(session.rawSessionId || session.SessionID, marksArray);
+      setSuccessMsg("Attendance saved successfully.");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to save attendance.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="att-page">
-      <div className="att-header">
+    <div className="admin-content-inner">
+      <div className="flex-between mb-3">
         <div>
-          <h2 className="att-title">Attendance</h2>
-          <p className="att-subtitle">
-            Select class and date, then mark students as present or absent.
-          </p>
+          <h2 className="page-title">Attendance</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Select a class session to record participation</p>
+        </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button className="btn btn-secondary" onClick={clearMarksForThisSession} disabled={!canShowStudents || saving}>Clear All</button>
+          <button className="btn btn-primary" onClick={saveAttendance} disabled={!canShowStudents || saving}>{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       </div>
 
-      {/* FORM */}
-      <div className="att-form-card">
-        <div className="att-form-row">
-          <div className="att-field">
-            <label>Select Class</label>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-            >
-              <option value="">-- Select --</option>
+      <div className="arena-card mb-3">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-2)" }}>
+          <div className="form-group">
+            <label className="form-label">Active Classes</label>
+            <select className="form-input" value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} disabled={loadingClasses}>
+              <option value="">{loadingClasses ? "Loading classes..." : "-- Select Class --"}</option>
               {classes.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
+                <option key={c.classId} value={c.classId}>{c.title} — {c.sport} ({c.coach})</option>
               ))}
             </select>
           </div>
-
-          <div className="att-field">
-            <label>Select Date</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            />
-          </div>
-
-          <div className="att-actions">
-            <button
-              className="att-secondary-btn"
-              type="button"
-              onClick={clearMarksForThisSession}
-              disabled={!canShowStudents}
-            >
-              Clear Marks
-            </button>
-
-            <button
-              className="att-primary-btn"
-              type="button"
-              onClick={saveAttendance}
-              disabled={!canShowStudents}
-            >
-              Save Attendance
-            </button>
+          <div className="form-group">
+            <label className="form-label">Session Date</label>
+            <input className="form-input" type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
           </div>
         </div>
-
-        <p className="att-hint">
-          Note: UI-only. In the final system, attendance will be stored per class session date.
-        </p>
+        {/* show success or alert messages beneath search filters */}
+        {successMsg && <div className="status-pill success mt-2" style={{ width: "100%", textAlign: "center" }}>{successMsg}</div>}
+        {session && session.status === "CANCELLED" && <div className="status-pill danger mt-2" style={{ width: "100%", textAlign: "center" }}>⚠ This session is cancelled.</div>}
       </div>
 
-      {/* STUDENT LIST */}
-      <div className="att-list-card">
-        <div className="att-list-header">
-          <h3 className="att-list-title">Students</h3>
-
-          <input
-            className="att-search"
-            placeholder="Search student name..."
-            value={nameSearch}
-            onChange={(e) => setNameSearch(e.target.value)}
-            disabled={!canShowStudents}
-          />
+      <div className="arena-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="flex-between" style={{ padding: "var(--space-2)", borderBottom: "1px solid var(--bg-main)" }}>
+          <h3 style={{ fontSize: "1rem", fontWeight: 700 }}>Roll Call</h3>
+          <input className="form-input" style={{ maxWidth: "300px" }} placeholder="Filter by student name..." value={nameSearch} onChange={(e) => setNameSearch(e.target.value)} disabled={!canShowStudents} />
         </div>
 
-        {!canShowStudents ? (
-          <div className="att-empty">
-            Select a class and date to view enrolled students.
-          </div>
-        ) : studentsForSelectedClass.length === 0 ? (
-          <div className="att-empty">No students found for this class.</div>
-        ) : (
-          <div className="att-table-wrap">
-            <table className="att-table">
-              <thead>
-                <tr>
-                  <th>Student Name</th>
-                  <th className="att-center">Status</th>
-                  <th className="att-center">Mark</th>
-                </tr>
-              </thead>
-              <tbody>
-                {studentsForSelectedClass.map((s) => {
-                  const status = getStatus(s.playerName);
+        <div className="arena-table-container">
+          <table className="arena-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Student Profile</th>
+                <th style={{ textAlign: "center" }}>Current Status</th>
+                <th style={{ textAlign: "right" }}>Mark Attendance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* handle different data states like loading or empty results */}
+              {loadingStudents ? (
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem" }}>Synchronizing enrollment data...</td></tr>
+              ) : noSession ? (
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No session scheduled for this date.</td></tr>
+              ) : !selectedClassId || !selectedDate ? (
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>Select parameters to view students.</td></tr>
+              ) : session && students.length === 0 ? (
+                <tr><td colSpan="4" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No participants enrolled in this class.</td></tr>
+              ) : (
+                filteredStudents.map((s) => {
+                  const status = marks[s.rawEnrollmentId] || "NOT_MARKED";
                   return (
-                    <tr key={`${selectedClass}-${s.playerName}`}>
-                      <td>{s.playerName}</td>
-
-                      <td className="att-center">
-                        <span className={`att-badge ${status.toLowerCase()}`}>
-                          {status === "NOT_MARKED" ? "Not Marked" : status}
+                    <tr key={s.rawEnrollmentId}>
+                      <td><span className="table-id" style={{ fontSize: '0.75rem' }}>{s.enrollmentId}</span></td>
+                      <td style={{ fontWeight: 700 }}>{s.name}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <span className={`status-pill ${status === "PRESENT" ? "success" : status === "ABSENT" ? "danger" : ""}`}>
+                          {status === "NOT_MARKED" ? "Not Recorded" : status}
                         </span>
                       </td>
-
-                      <td className="att-center">
-                        <button
-                          type="button"
-                          className={`att-mark-btn ${status === "PRESENT" ? "active" : ""}`}
-                          onClick={() => mark(s.playerName, "PRESENT")}
-                        >
-                          Present
-                        </button>
-
-                        <button
-                          type="button"
-                          className={`att-mark-btn ${status === "ABSENT" ? "active" : ""}`}
-                          onClick={() => mark(s.playerName, "ABSENT")}
-                        >
-                          Absent
-                        </button>
+                      <td>
+                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                          <button 
+                            className={`btn ${status === "PRESENT" ? "btn-primary" : "btn-secondary"}`} 
+                            style={{ padding: "4px 12px", fontSize: "0.8rem" }} 
+                            onClick={() => mark(s.rawEnrollmentId, "PRESENT")}
+                            disabled={saving}
+                          >Present</button>
+                          <button 
+                            className={`btn ${status === "ABSENT" ? "btn-danger" : "btn-secondary"}`} 
+                            style={{ padding: "4px 12px", fontSize: "0.8rem" }} 
+                            onClick={() => mark(s.rawEnrollmentId, "ABSENT")}
+                            disabled={saving}
+                          >Absent</button>
+                        </div>
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-
-      
     </div>
+
   );
 }

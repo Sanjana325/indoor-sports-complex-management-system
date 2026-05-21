@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import "../styles/CancelClassModal.css";
+import api from "../services/api";
 
+// converts an ISO date string to a short 3-letter weekday label
 function dayShortFromISO(iso) {
   const d = new Date(iso + "T00:00:00");
-  const idx = d.getDay(); // 0 Sun ... 6 Sat
+  const idx = d.getDay(); 
   const map = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return map[idx] || "Mon";
 }
 
+// calculates and formats human-readable duration between two clock times
 function durationLabel(start, end) {
   if (!start || !end) return "-";
   const [sh, sm] = start.split(":").map(Number);
@@ -21,6 +23,7 @@ function durationLabel(start, end) {
   return `${m}m`;
 }
 
+// interactive modal that allows coaches to select and cancel a specific teaching session
 export default function CancelClassModal({ coachName, classes, onClose, onSubmit }) {
   const [dateISO, setDateISO] = useState(() => {
     const t = new Date();
@@ -30,10 +33,11 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
     return `${yyyy}-${mm}-${dd}`;
   });
 
+  const [sessionsForDate, setSessionsForDate] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState("");
-  const [reason, setReason] = useState("");
 
-  // close on Escape
+  // accessibility listener to handle modal closure via the escape key
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Escape") onClose();
@@ -42,118 +46,95 @@ export default function CancelClassModal({ coachName, classes, onClose, onSubmit
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const sessionsForDate = useMemo(() => {
-    const dayShort = dayShortFromISO(dateISO);
-
-    return (classes || [])
-      .filter((c) => c.coachName === coachName)
-      .flatMap((c) => {
-        // weekly match: if days includes dayShort
-        if (c.scheduleType === "WEEKLY") {
-          const days = Array.isArray(c.days) ? c.days : [];
-          if (!days.includes(dayShort)) return [];
-          return [
-            {
-              sessionId: `${c.id}__${dateISO}`,
-              classId: c.id,
-              dateISO,
-              label: `${c.className} (${c.sport}) • ${c.startTime}-${c.endTime}`,
-              startTime: c.startTime,
-              endTime: c.endTime,
-            },
-          ];
-        }
-
-        // one-time match: if oneTimeDate equals date
-        if (c.scheduleType === "ONETIME") {
-          if (c.oneTimeDate !== dateISO) return [];
-          return [
-            {
-              sessionId: `${c.id}__${dateISO}`,
-              classId: c.id,
-              dateISO,
-              label: `${c.className} (${c.sport}) • ${c.startTime}-${c.endTime}`,
-              startTime: c.startTime,
-              endTime: c.endTime,
-            },
-          ];
-        }
-
-        return [];
-      });
-  }, [classes, coachName, dateISO]);
-
-  // Reset selection if date changes
+  // triggers a fresh session lookup whenever the coach picks a different calendar date
   useEffect(() => {
-    setSelectedSessionId("");
+    if (!dateISO) return;
+    fetchSessions();
   }, [dateISO]);
 
+  // queries the backend for active coaching sessions scheduled on the selected date
+  const fetchSessions = async () => {
+    try {
+      setLoadingSessions(true);
+      const res = await api.get(`/api/coach/sessions`, { params: { date: dateISO } });
+      setSessionsForDate(res.data.sessions || []);
+    } catch (err) {
+      console.error(err);
+      setSessionsForDate([]);
+    } finally {
+      setLoadingSessions(false);
+      setSelectedSessionId("");
+    }
+  };
+
+  // validates the selection and passes the cancellation details up to the parent handler
   function handleSubmit(e) {
     e.preventDefault();
 
     if (!dateISO) return alert("Please select a date");
     if (!selectedSessionId) return alert("Please select a class for that date");
-    if (!reason.trim()) return alert("Please enter a reason");
 
-    const session = sessionsForDate.find((s) => s.sessionId === selectedSessionId);
+    const session = sessionsForDate.find((s) => String(s.id) === String(selectedSessionId));
     if (!session) return alert("Invalid session selection");
 
     onSubmit({
-      sessionId: session.sessionId,
+      sessionId: session.id,
       classId: session.classId,
-      dateISO: session.dateISO,
-      reason: reason.trim(),
-      duration: durationLabel(session.startTime, session.endTime),
+      dateISO: dateISO,
+      label: `${session.className} (${session.sport})`
     });
   }
 
   return (
-    <div className="ccm-backdrop" onMouseDown={onClose}>
-      <div className="ccm-modal" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="ccm-head">
-          <h3 className="ccm-title">Cancel Class Session</h3>
-          <button type="button" className="ccm-x" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        </div>
+    /* full-screen semi-transparent overlay to focus user attention on the modal */
+    <div className="detail-modal-backdrop" onMouseDown={onClose} style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+    }}>
+      <div className="arena-card" onMouseDown={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', position: 'relative' }}>
+        {/* standard dismiss button for exiting the cancellation workflow */}
+        <button type="button" onClick={onClose} style={{
+          position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)'
+        }}>×</button>
 
-        <form className="ccm-form" onSubmit={handleSubmit}>
-          <div className="ccm-field">
-            <label>Date</label>
-            <input type="date" value={dateISO} onChange={(e) => setDateISO(e.target.value)} />
+        <h3 className="mb-2" style={{ fontSize: '1.25rem' }}>Cancel Session</h3>
+        <div style={{ height: '1px', background: 'var(--border-light)', margin: '15px 0' }}></div>
+
+        <form onSubmit={handleSubmit}>
+          {/* date picker input to narrow down which day's sessions to view */}
+          <div className="form-group">
+            <label className="form-label">Date</label>
+            <input className="form-input" type="date" value={dateISO} onChange={(e) => setDateISO(e.target.value)} />
           </div>
 
-          <div className="ccm-field">
-            <label>Class (for selected date)</label>
-            <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)}>
-              <option value="">Select a class session</option>
-              {sessionsForDate.map((s) => (
-                <option key={s.sessionId} value={s.sessionId}>
-                  {s.label}
-                </option>
-              ))}
+          {/* dynamic dropdown list that updates based on the selected date above */}
+          <div className="form-group">
+            <label className="form-label">Select Class Session</label>
+            <select className="form-input" value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} disabled={loadingSessions}>
+              {loadingSessions ? (
+                <option>Loading sessions...</option>
+              ) : (
+                <>
+                  <option value="">Select a class session</option>
+                  {sessionsForDate.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.className} ({s.sport}) • {s.startTime}-{s.endTime} {s.status === 'CANCELLED' ? '[CANCELLED]' : ''}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
-            {sessionsForDate.length === 0 && (
-              <div className="ccm-hint">No classes found for this date.</div>
+            {/* simple feedback for empty states when no sessions exist for a day */}
+            {!loadingSessions && sessionsForDate.length === 0 && (
+              <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '4px' }}>No classes found for this date.</div>
             )}
           </div>
 
-          <div className="ccm-field">
-            <label>Reason</label>
-            <textarea
-              rows="3"
-              placeholder="e.g. Coach unavailable / tournament / emergency..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </div>
-
-          <div className="ccm-actions">
-            <button type="button" className="ccm-btn" onClick={onClose}>
-              Cancel
+          <div className="flex-between mt-2">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Back
             </button>
-            <button type="submit" className="ccm-btn">
-              Submit
+            <button type="submit" className="btn btn-primary">
+              Confirm Cancellation
             </button>
           </div>
         </form>
