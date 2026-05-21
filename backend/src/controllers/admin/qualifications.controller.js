@@ -1,5 +1,6 @@
 const coachModel = require("../../models/coach.model");
 
+// get list of all coach qualifications
 exports.listQualifications = async (req, res, next) => {
     try {
         const search = String(req.query.search || "").trim();
@@ -10,6 +11,7 @@ exports.listQualifications = async (req, res, next) => {
     }
 };
 
+// add a new qualification name if it doesn't exist
 exports.createQualification = async (req, res, next) => {
     try {
         const { qualificationName } = req.body || {};
@@ -20,3 +22,4 @@ exports.createQualification = async (req, res, next) => {
         next(err);
     }
 };
+

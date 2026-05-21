@@ -186,6 +186,7 @@ export default function MyClasses() {
         <table className="arena-table">
           <thead>
             <tr>
+              <th className="mc-col-id">ID</th>
               <th className="mc-col-name">Name</th>
               <th className="mc-col-class">Class</th>
               <th className="mc-col-dates">Date/Dates</th>
@@ -200,25 +201,26 @@ export default function MyClasses() {
             {/* conditional rendering for class log database loading state */}
             {loading ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '3rem' }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '3rem' }}>
                   Loading classes...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: "var(--primary)" }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: "var(--primary)" }}>
                   {error}
                 </td>
               </tr>
             ) : myClasses.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: "var(--text-muted)" }}>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: "var(--text-muted)" }}>
                   No classes assigned to you.
                 </td>
               </tr>
             ) : (
               myClasses.map((c) => (
                 <tr key={c.id}>
+                  <td><span className="table-id">CLS-{String(c.id).padStart(6, '0')}</span></td>
                   <td>{coachName}</td>
 
                   <td>

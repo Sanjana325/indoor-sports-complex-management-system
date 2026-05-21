@@ -1,7 +1,9 @@
 const crypto = require("crypto");
 
+// generate a random secure temporary password for new accounts
 function generateTempPassword() {
   const raw = crypto.randomBytes(9).toString("base64");
+  // remove non-alphanumeric characters for clean password string
   const cleaned = raw.replace(/[^a-zA-Z0-9]/g, "");
   return `Temp${cleaned.slice(0, 8)}!`;
 }
@@ -9,3 +11,4 @@ function generateTempPassword() {
 module.exports = {
   generateTempPassword
 };
+

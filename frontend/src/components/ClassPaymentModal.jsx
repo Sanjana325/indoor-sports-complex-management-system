@@ -26,8 +26,30 @@ const ClassPaymentModal = ({ open, onClose, classData, onPaymentSuccess }) => {
         console.error("Failed to load bank details", err);
       }
     }
-    if (open) fetchBankDetails();
-  }, [open]);
+    if (open) {
+      fetchBankDetails();
+
+      // setup payhere callbacks
+      if (window.payhere) {
+        window.payhere.onCompleted = (orderId) => {
+          console.log("Class Payment completed. OrderID:" + orderId);
+          alert("Payment successful! You are now enrolled in the class.");
+          onClose();
+          if (onPaymentSuccess) onPaymentSuccess();
+        };
+
+        window.payhere.onDismissed = () => {
+          console.log("Class Payment dismissed");
+          alert("Payment window closed. Please complete the payment to finalize enrollment.");
+        };
+
+        window.payhere.onError = (error) => {
+          console.error("Class Payment Error:", error);
+          alert("Payment failed: " + error);
+        };
+      }
+    }
+  }, [open, onClose, onPaymentSuccess]);
 
   // initiates the PayHere gateway flow for instant credit card / online transactions
   const handleOnlinePayment = async () => {

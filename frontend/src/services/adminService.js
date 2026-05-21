@@ -61,10 +61,10 @@ const adminService = {
   },
 
   // reject a payment if the slip is invalid or incorrect
-  rejectPayment: async (paymentId) => {
+  rejectPayment: async (paymentId, reason) => {
     const role = localStorage.getItem("role");
     const prefix = role === "STAFF" ? "/api/staff" : "/api/admin";
-    const response = await api.patch(`${prefix}/payments/${paymentId}/reject`);
+    const response = await api.patch(`${prefix}/payments/${paymentId}/reject`, { reason });
     return response.data;
   },
 

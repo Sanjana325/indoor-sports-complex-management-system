@@ -1,4 +1,5 @@
 // provides public configuration data like bank details
+// get public bank account information for manual deposits
 exports.getBankDetails = async (req, res, next) => {
   try {
     // keeping bank details centralized in the backend for security and maintainability

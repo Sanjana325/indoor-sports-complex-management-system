@@ -7,6 +7,7 @@ const { sendPasswordResetEmail, sendWelcomeEmail } = require("../services/email.
 
 const RESET_EXP_MINUTES = 30;
 
+// simple rate limiting storage
 const forgotLimiter = new Map();
 const FORGOT_LIMIT_WINDOW_MS = 60 * 1000;
 const FORGOT_LIMIT_MAX = 5;
@@ -19,11 +20,13 @@ function nowMs() {
     return Date.now();
 }
 
+// trim and lowercase email for consistency
 function normalizeEmail(email) {
     if (typeof email !== "string") return "";
     return email.trim().toLowerCase();
 }
 
+// validate email format and length
 function isValidEmail(email) {
     if (typeof email !== "string") return false;
     const e = email.trim();
@@ -32,21 +35,20 @@ function isValidEmail(email) {
     return re.test(e);
 }
 
+// strip spaces from phone number
 function normalizePhone(phone) {
     if (typeof phone !== "string") return "";
-    return phone.replace(/\s+/g, "").trim();
+    return phone.replace(/[^\d+]/g, "").trim();
 }
 
+// check if phone matches Sri Lankan or international formats
 function isValidPhoneNumber(phone) {
     const p = normalizePhone(phone);
-
     if (!p) return false;
-
     if (/^\+94\d{9}$/.test(p)) return true;
     if (/^94\d{9}$/.test(p)) return true;
     if (/^0\d{9}$/.test(p)) return true;
     if (/^\d{9,12}$/.test(p)) return true;
-
     return false;
 }
 
@@ -54,6 +56,7 @@ function passwordPolicyMessage() {
     return "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
 }
 
+// enforce security rules for passwords
 function isStrongPassword(pw) {
     if (typeof pw !== "string") return false;
     if (pw.length < 8) return false;
@@ -63,10 +66,12 @@ function isStrongPassword(pw) {
     return true;
 }
 
+// create secure hash for tokens
 function sha256Hex(input) {
     return crypto.createHash("sha256").update(input).digest("hex");
 }
 
+// generate a unique token for password recovery
 function makeResetToken() {
     const raw = crypto.randomBytes(32).toString("hex");
     const secret = process.env.RESET_TOKEN_SECRET || "";
@@ -80,6 +85,7 @@ function isValidResetToken(rawToken) {
     return /^[a-f0-9]{64}$/i.test(t);
 }
 
+// check if user is making too many reset requests (rate limiting)
 function hitForgotLimit(key) {
     const t = nowMs();
     const rec = forgotLimiter.get(key);
@@ -94,6 +100,7 @@ function hitForgotLimit(key) {
     return rec.count > FORGOT_LIMIT_MAX;
 }
 
+// check for brute force login attempts
 function hitLoginLimit(key) {
     const t = nowMs();
     const rec = loginLimiter.get(key);
@@ -108,6 +115,7 @@ function hitLoginLimit(key) {
     return rec.count > LOGIN_LIMIT_MAX;
 }
 
+// create a new player account and send welcome email
 exports.register = async (req, res, next) => {
     try {
         const body = req.body || {};
@@ -148,6 +156,7 @@ exports.register = async (req, res, next) => {
             mustChangePassword: false
         });
 
+        // send notification but don't block registration on failure
         try {
             await sendWelcomeEmail({
                 toEmail: email,
@@ -177,6 +186,7 @@ exports.register = async (req, res, next) => {
     }
 };
 
+// verify credentials and return JWT for authenticated access
 exports.login = async (req, res, next) => {
     try {
         const body = req.body || {};
@@ -188,6 +198,7 @@ exports.login = async (req, res, next) => {
             req.ip ||
             "unknown";
 
+        // basic brute force protection
         if (hitLoginLimit(`ip:${ip}`)) {
             return res.status(429).json({ message: "Too many login attempts. Please try again later." });
         }
@@ -215,6 +226,7 @@ exports.login = async (req, res, next) => {
         let specializations = "";
         let qualifications = "";
         
+        // fetch extra details if user is a coach
         if (user.Role === "COACH") {
             const [coachRows] = await pool.query(
                 `SELECT 
@@ -254,6 +266,7 @@ exports.login = async (req, res, next) => {
     }
 };
 
+// get current user profile details from the token
 exports.getMe = async (req, res) => {
     res.json({
         user: {
@@ -268,6 +281,7 @@ exports.getMe = async (req, res) => {
     });
 };
 
+// update password for the currently logged-in user
 exports.changePassword = async (req, res, next) => {
     try {
         const body = req.body || {};
@@ -302,11 +316,13 @@ exports.changePassword = async (req, res, next) => {
     }
 };
 
+// send a password reset link to user email if it exists
 exports.forgotPassword = async (req, res, next) => {
     try {
         const body = req.body || {};
         const email = normalizeEmail(body.email);
 
+        // generic response to prevent email harvesting
         const generic = { message: "If that email exists, we sent a reset link." };
 
         const ip =
@@ -335,9 +351,10 @@ exports.forgotPassword = async (req, res, next) => {
             return res.json(generic);
         }
 
+        // generate one-time link with 30-minute expiry
         const { raw, tokenHash } = makeResetToken();
-
         const expiresAt = new Date(Date.now() + RESET_EXP_MINUTES * 60 * 1000);
+        
         await userModel.createPasswordResetToken({
             userId: user.UserID,
             tokenHash,
@@ -363,6 +380,7 @@ exports.forgotPassword = async (req, res, next) => {
     }
 };
 
+// update password using a valid reset token
 exports.resetPassword = async (req, res, next) => {
     try {
         const body = req.body || {};
@@ -388,6 +406,7 @@ exports.resetPassword = async (req, res, next) => {
 
         const tokenHash = sha256Hex(`${token}.${secret}`);
 
+        // check if link exists and hasn't expired
         const row = await userModel.findValidPasswordResetTokenByHash(tokenHash);
         if (!row) {
             return res.status(400).json({ message: "Reset link is invalid or expired" });
@@ -400,6 +419,7 @@ exports.resetPassword = async (req, res, next) => {
             [newHash, row.UserID]
         );
 
+        // invalidates the token so it can't be reused
         await userModel.markPasswordResetTokenUsed(row.ResetID);
 
         res.json({ message: "Password reset successful" });
@@ -408,6 +428,7 @@ exports.resetPassword = async (req, res, next) => {
     }
 };
 
+// update basic profile info like name and phone
 exports.updateProfile = async (req, res, next) => {
     try {
         const userId = req.user.UserID;
@@ -426,6 +447,7 @@ exports.updateProfile = async (req, res, next) => {
             return res.status(404).json({ message: "User not found" });
         }
 
+        // update record in database
         await userModel.updateUserById(userId, {
             firstName,
             lastName,
@@ -446,3 +468,4 @@ exports.updateProfile = async (req, res, next) => {
         next(err);
     }
 };
+

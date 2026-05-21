@@ -1,27 +1,15 @@
-const { pool } = require("../../config/db");
+const bookingModel = require("../../models/booking.model");
 
-// Get all bookings for admin
+// get all court bookings with player and payment details
 exports.listBookings = async (req, res, next) => {
     try {
-        const [rows] = await pool.query(
-            `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, b.Status, b.CreatedAt,
-                    c.CourtName, c.PricePerHour, u.FirstName, u.LastName, u.PhoneNumber, u.Email,
-                    s.SportName, s.ColorCode,
-                    p.PaymentID, p.Method as PaymentMethod
-             FROM booking b
-             JOIN court c ON b.CourtID = c.CourtID
-             JOIN useraccount u ON b.UserID = u.UserID
-             JOIN sport s ON b.SportID = s.SportID
-             LEFT JOIN bookingpayment bp ON b.BookingID = bp.BookingID
-             LEFT JOIN payment p ON bp.PaymentID = p.PaymentID
-             ORDER BY b.CreatedAt DESC`
-        );
+        const rows = await bookingModel.listAllForAdmin();
 
         const bookings = rows.map(r => {
             const startDate = new Date(r.StartDateTime);
             const endDate = new Date(r.EndDateTime);
             
-            // Format manually to avoid timezone shifting
+            // format dates and times for the dashboard view
             const yyyy = startDate.getFullYear();
             const mm = String(startDate.getMonth() + 1).padStart(2, '0');
             const dd = String(startDate.getDate()).padStart(2, '0');
@@ -60,29 +48,25 @@ exports.listBookings = async (req, res, next) => {
     }
 };
 
-// Cancel a booking
+// cancel a court booking and update its status
 exports.cancelBooking = async (req, res, next) => {
-    let connection;
     try {
-        const bookingId = req.params.id;
-        connection = await pool.getConnection();
-
-        // Check if booking exists
-        const [bookRes] = await connection.query("SELECT * FROM booking WHERE BookingID = ?", [bookingId]);
-        if (bookRes.length === 0) {
-            connection.release();
-            return res.status(404).json({ message: "Booking not found" });
-        }
+        const bookingId = Number(req.params.id);
         
-        await connection.query(
-            "UPDATE booking SET Status = 'CANCELLED' WHERE BookingID = ?",
-            [bookingId]
-        );
+        if (!Number.isFinite(bookingId)) {
+            return res.status(400).json({ message: "Invalid booking ID" });
+        }
 
-        connection.release();
+        // update status to cancelled
+        const success = await bookingModel.updateStatus(bookingId, 'CANCELLED');
+
+        if (!success) {
+            return res.status(404).json({ message: "Booking not found or already cancelled" });
+        }
+
         res.json({ message: "Booking cancelled successfully" });
     } catch (err) {
-        if (connection) connection.release();
         next(err);
     }
 };
+

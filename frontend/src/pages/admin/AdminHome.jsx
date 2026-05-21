@@ -67,7 +67,8 @@ export default function AdminHome() {
       revenueTrend: [],
       revenueBySport: [],
       revenueByCourt: []
-    }
+    },
+    cancellations: []
   });
 
   // calculates date ranges (start/end) for filtering dashboard stats
@@ -101,11 +102,15 @@ export default function AdminHome() {
     async function fetchStats() {
       setLoading(true);
       try {
-        const d = await adminService.getDashboardStats(activeRange.start, activeRange.end);
+        const [d, c] = await Promise.all([
+          adminService.getDashboardStats(activeRange.start, activeRange.end),
+          adminService.getRecentCancellations()
+        ]);
         if (d.totals) {
           setData({
             totals: d.totals,
-            charts: d.charts || { revenueTrend: [], revenueBySport: [], revenueByCourt: [] }
+            charts: d.charts || { revenueTrend: [], revenueBySport: [], revenueByCourt: [] },
+            cancellations: c.cancellations || []
           });
         }
       } catch (err) {
@@ -175,6 +180,42 @@ export default function AdminHome() {
            <h3 className="stat-value-simple">{loading ? "..." : totals.pendingActions}</h3>
         </div>
       </div>
+
+      {/* cancellation alerts section */}
+      {data.cancellations.length > 0 && (
+        <div className="arena-card mb-4" style={{ borderLeft: '4px solid var(--danger)', padding: '20px' }}>
+          <div className="flex-between mb-3">
+            <h4 style={{ color: 'var(--danger)', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              Urgent Cancellation Alerts
+            </h4>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>{data.cancellations.length} Pending Review</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+            {data.cancellations.map(c => (
+              <div key={c.id} className="arena-card" style={{ padding: '16px', background: '#fff1f2', border: '1px solid #fecdd3' }}>
+                <div style={{ fontWeight: 800, color: '#9f1239', fontSize: '0.9rem' }}>{c.className}</div>
+                <div style={{ fontSize: '0.75rem', color: '#be123c', marginTop: '4px' }}>
+                  {new Date(c.date).toLocaleDateString()} • {c.startTime} - {c.endTime}
+                </div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, marginTop: '8px' }}>Coach: {c.coachFirst} {c.coachLast}</div>
+                <button 
+                  onClick={async () => {
+                    if(window.confirm("Acknowledge this cancellation?")) {
+                      await adminService.acknowledgeCancellation(c.id);
+                      // reload stats
+                      window.location.reload(); 
+                    }
+                  }}
+                  style={{ marginTop: '12px', width: '100%', padding: '6px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px', border: '1px solid #9f1239', color: '#9f1239', background: 'transparent', cursor: 'pointer' }}
+                >
+                  Acknowledge & Clear
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* visual line chart showing revenue performance over time */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginBottom: '24px' }}>

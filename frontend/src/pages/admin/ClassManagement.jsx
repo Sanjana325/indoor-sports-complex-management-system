@@ -275,36 +275,39 @@ export default function ClassManagement() {
           <table className="arena-table">
             <thead>
               <tr>
-                <th>Incident Date</th>
+                <th>Date of Session</th>
                 <th>Target Session</th>
-                <th>Sport Discipline</th>
-                <th>Coach Acknowledged</th>
-                <th style={{ textAlign: "right" }}>System Logging</th>
+                <th>Class ID</th>
+                <th>Sport</th>
+                <th>Conducting Coach</th>
+                <th style={{ textAlign: "right" }}>Review Status</th>
               </tr>
             </thead>
             <tbody>
               {/* historical record of all class sessions that were cancelled */}
               {cancelledHistory.length === 0 ? (
-                <tr><td colSpan="5" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No historical cancellations on record.</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)" }}>No historical cancellations on record.</td></tr>
               ) : (
                 cancelledHistory.map(h => (
                   <tr key={h.id}>
-                    <td style={{ fontWeight: 700 }}>{h.date}</td>
+                    <td style={{ fontWeight: 700 }}>{new Date(h.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                        <span className="table-id" style={{ fontSize: '0.7rem', opacity: 0.8 }}>{h.id}</span>
+                        <span className="table-id" style={{ fontSize: '0.7rem' }}>SES-{String(h.id).padStart(6, '0')}</span>
                         <div style={{ fontWeight: 800 }}>{h.className}</div>
                       </div>
                       <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{h.startTime} - {h.endTime}</div>
                     </td>
+                    <td>
+                      <span className="table-id" style={{ fontSize: '0.7rem' }}>CLS-{String(h.class_id).padStart(6, '0')}</span>
+                    </td>
                     <td><span className="status-pill info">{h.sport}</span></td>
                     <td>
                       <div style={{ fontWeight: 700 }}>{h.coachFirst} {h.coachLast}</div>
-                      <div style={{ marginTop: "4px" }}><span className="table-id" style={{ fontSize: '0.7rem' }}>{h.coachIdStr}</span></div>
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <span className={`status-pill ${h.IsAcknowledged ? "success" : "danger"}`} style={{ fontSize: "0.65rem" }}>
-                        {h.IsAcknowledged ? "Verified" : "Pending"}
+                        {h.IsAcknowledged ? "Reviewed" : "Requires Review"}
                       </span>
                     </td>
                   </tr>

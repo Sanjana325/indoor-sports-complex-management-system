@@ -118,7 +118,10 @@ export default function Register() {
           <input
             placeholder="First name"
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => {
+              setFirstName(e.target.value);
+              if (fieldErrors.firstName) setFieldErrors(prev => ({ ...prev, firstName: null }));
+            }}
             required
           />
           {fieldErrorText("firstName") ? <div className="reg-error-inline">{fieldErrorText("firstName")}</div> : null}
@@ -129,7 +132,10 @@ export default function Register() {
           <input
             placeholder="Last name"
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(e) => {
+              setLastName(e.target.value);
+              if (fieldErrors.lastName) setFieldErrors(prev => ({ ...prev, lastName: null }));
+            }}
             required
           />
           {fieldErrorText("lastName") ? <div className="reg-error-inline">{fieldErrorText("lastName")}</div> : null}
@@ -140,7 +146,10 @@ export default function Register() {
           <input
             placeholder="07X XXX XXXX"
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            onChange={(e) => {
+              setPhoneNumber(e.target.value);
+              if (fieldErrors.phoneNumber) setFieldErrors(prev => ({ ...prev, phoneNumber: null }));
+            }}
             required
           />
           {fieldErrorText("phoneNumber") ? <div className="reg-error-inline">{fieldErrorText("phoneNumber")}</div> : null}
@@ -152,7 +161,10 @@ export default function Register() {
             placeholder="example@email.com"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: null }));
+            }}
             required
           />
           {fieldErrorText("email") ? <div className="reg-error-inline">{fieldErrorText("email")}</div> : null}
@@ -164,7 +176,10 @@ export default function Register() {
             type="password"
             placeholder="Enter password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: null }));
+            }}
             required
           />
           {fieldErrorText("password") ? <div className="reg-error-inline">{fieldErrorText("password")}</div> : null}
@@ -176,7 +191,10 @@ export default function Register() {
             type="password"
             placeholder="Re-enter password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: null }));
+            }}
             required
           />
           {fieldErrorText("confirmPassword") ? (

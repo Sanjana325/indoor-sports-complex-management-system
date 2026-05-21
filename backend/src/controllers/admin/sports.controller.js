@@ -1,9 +1,11 @@
 const sportModel = require("../../models/sport.model");
 
+// get all sports for admin list
 exports.listSports = async (req, res, next) => {
     try {
         const search = String(req.query.search || "").trim();
         const rows = await sportModel.listSports(search);
+        // format output for frontend display
         const mapped = rows.map(r => ({
             ...r,
             id: `SPT-${String(r.SportID).padStart(6, '0')}`,
@@ -15,6 +17,7 @@ exports.listSports = async (req, res, next) => {
     }
 };
 
+// add a new sport type to the system
 exports.createSport = async (req, res, next) => {
     try {
         const { sportName, colorCode, isBookable } = req.body || {};
@@ -23,6 +26,7 @@ exports.createSport = async (req, res, next) => {
         if (!row) return res.status(400).json({ message: "Sport name is required" });
         res.status(201).json({ sport: row });
     } catch (err) {
+        // prevent duplicate sport names
         if (err.code === "ER_DUP_ENTRY") {
             return res.status(400).json({ message: "A sport with this name already exists." });
         }
@@ -30,6 +34,7 @@ exports.createSport = async (req, res, next) => {
     }
 };
 
+// remove a sport (if not in use)
 exports.deleteSport = async (req, res, next) => {
     try {
         const sportId = Number(req.params.sportId);
@@ -40,6 +45,7 @@ exports.deleteSport = async (req, res, next) => {
 
         res.json({ message: "Sport deleted" });
     } catch (err) {
+        // check if sport is linked to other records before deleting
         if (err.code === "ER_ROW_IS_REFERENCED_2") {
             return res.status(400).json({ message: "Cannot delete sport because it is used by one or more courts or coaches." });
         }
@@ -47,6 +53,7 @@ exports.deleteSport = async (req, res, next) => {
     }
 };
 
+// modify an existing sport's details
 exports.updateSport = async (req, res, next) => {
     try {
         const sportId = Number(req.params.sportId);
@@ -59,7 +66,7 @@ exports.updateSport = async (req, res, next) => {
         const success = await sportModel.updateSport(sportId, sportName, colorCode, isBookableVal);
         if (!success) return res.status(404).json({ message: "Sport not found or update failed" });
 
-        // Fetch updated sport to return
+        // fetch updated sport to return
         const updatedSport = await sportModel.getSportById(sportId);
 
         res.json({ message: "Sport updated successfully", sport: updatedSport });
@@ -70,3 +77,4 @@ exports.updateSport = async (req, res, next) => {
         next(err);
     }
 };
+

@@ -2,11 +2,12 @@ const { saveOTP, verifyAndConsumeOTP } = require("../../models/otp.model");
 const emailService = require("../../services/email.service");
 const { findById } = require("../../models/user.model");
 
-// Generate a random 6-character string containing digits
+// generate a random 6-digit numeric code
 function generateRandomCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// send a 6-digit verification code to the player's email
 async function requestBookingOtp(req, res, next) {
     try {
         const userId = req.user?.UserID;
@@ -14,21 +15,21 @@ async function requestBookingOtp(req, res, next) {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        // Fetch user from DB to get the correct email to send to
+        // fetch user from DB to get the correct email
         const user = await findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
         const otpCode = generateRandomCode();
-        // Set expiry for 10 minutes from now
+        // set OTP to expire in 10 minutes
         const expiresAt = new Date();
         expiresAt.setMinutes(expiresAt.getMinutes() + 10);
 
-        // Save into Database
+        // save code into database for verification later
         await saveOTP(userId, user.Email, otpCode, expiresAt);
 
-        // Send Email via Brevo
+        // send the email
         await emailService.sendBookingOtpEmail({
             toEmail: user.Email,
             toName: user.FirstName ? `${user.FirstName} ${user.LastName}` : "Player",
@@ -41,6 +42,7 @@ async function requestBookingOtp(req, res, next) {
     }
 }
 
+// check if the provided OTP is correct and not expired
 async function verifyBookingOtp(req, res, next) {
     try {
         const userId = req.user?.UserID;
@@ -53,6 +55,7 @@ async function verifyBookingOtp(req, res, next) {
             return res.status(400).json({ message: "Invalid OTP code provided." });
         }
 
+        // check if OTP matches and is still valid
         const result = await verifyAndConsumeOTP(userId, otpCode);
         if (!result.valid) {
             return res.status(400).json({ message: result.message });
@@ -68,3 +71,4 @@ module.exports = {
     requestBookingOtp,
     verifyBookingOtp
 };
+

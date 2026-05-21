@@ -1,5 +1,6 @@
 const { pool } = require("../config/db");
 
+// check if a court name is already taken
 async function existsByName(name, excludeId = null, conn = pool) {
     let sql = `SELECT 1 FROM court WHERE CourtName = ?`;
     const params = [name];
@@ -11,6 +12,7 @@ async function existsByName(name, excludeId = null, conn = pool) {
     return rows.length > 0;
 }
 
+// insert a new court record
 async function createCourt({ name, capacity, pricePerHour }, conn = pool) {
     const [result] = await conn.query(
         `INSERT INTO court (CourtName, Capacity, PricePerHour)
@@ -20,6 +22,7 @@ async function createCourt({ name, capacity, pricePerHour }, conn = pool) {
     return result.insertId;
 }
 
+// link specific sports to a court (many-to-many)
 async function addSportsToCourt(courtId, sportIds, conn = pool) {
     if (!sportIds || sportIds.length === 0) return;
 
@@ -30,6 +33,7 @@ async function addSportsToCourt(courtId, sportIds, conn = pool) {
     );
 }
 
+// get all courts with their supported sports
 async function listCourts(search = "", conn = pool) {
     const q = `%${String(search || "").trim()}%`;
     const [rows] = await conn.query(
@@ -48,10 +52,12 @@ async function listCourts(search = "", conn = pool) {
     return rows;
 }
 
+// update court capacity, price, or name
 async function updateCourt(courtId, fields, conn = pool) {
     const sets = [];
     const params = [];
 
+    // dynamically build update query based on fields provided
     if (fields.name !== undefined) {
         sets.push("CourtName = ?");
         params.push(fields.name);
@@ -79,6 +85,7 @@ async function updateCourt(courtId, fields, conn = pool) {
     return result.affectedRows > 0;
 }
 
+// sync the list of supported sports for a court
 async function replaceCourtSports(courtId, sportIds, conn = pool) {
     await conn.query(`DELETE FROM court_sport WHERE CourtID = ?`, [courtId]);
 
@@ -91,11 +98,24 @@ async function replaceCourtSports(courtId, sportIds, conn = pool) {
     );
 }
 
+// completely remove a court and its sport links
 async function deleteCourtHard(courtId, conn = pool) {
     await conn.query(`DELETE FROM court_sport WHERE CourtID = ?`, [courtId]);
 
     const [result] = await conn.query(`DELETE FROM court WHERE CourtID = ?`, [courtId]);
     return result.affectedRows > 0;
+}
+
+// get all courts that support a specific sport (e.g. for booking)
+async function listBySport(sportId, conn = pool) {
+    const [rows] = await conn.query(
+        `SELECT c.CourtID, c.CourtName, c.Capacity, c.PricePerHour
+         FROM court c
+         JOIN court_sport cs ON c.CourtID = cs.CourtID
+         WHERE cs.SportID = ?`,
+        [sportId]
+    );
+    return rows;
 }
 
 module.exports = {
@@ -105,5 +125,7 @@ module.exports = {
     listCourts,
     updateCourt,
     replaceCourtSports,
-    deleteCourtHard
+    deleteCourtHard,
+    listBySport
 };
+

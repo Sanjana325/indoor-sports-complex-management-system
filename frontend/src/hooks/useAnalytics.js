@@ -13,6 +13,8 @@ export function useAnalytics(type) {
   const [activeCategory, setActiveCategory] = useState("ALL");
   const [classIdOptions, setClassIdOptions] = useState("ALL");
   const [activeClassId, setActiveClassId] = useState("ALL");
+  const [statusOptions, setStatusOptions] = useState("ALL");
+  const [activeStatus, setActiveStatus] = useState("ALL");
   
   const [data, setData] = useState({
     reports: [],
@@ -57,11 +59,11 @@ export function useAnalytics(type) {
   const [activeRange, setActiveRange] = useState(() => computePresetRange("MONTH"));
 
   // central API controller for pulling filtered datasets based on the current view state
-  const fetchData = useCallback(async (range, method, category, classId) => {
+  const fetchData = useCallback(async (range, method, category, classId, status) => {
     setLoading(true);
     try {
       const res = await api.get(`/api/admin/reports/${type}`, {
-        params: { start: range.start, end: range.end, method, category, classId }
+        params: { start: range.start, end: range.end, method, category, classId, status }
       });
       const json = res.data;
       setData({
@@ -79,8 +81,8 @@ export function useAnalytics(type) {
 
   // refreshes dashboard data whenever any core filter toggle changes
   useEffect(() => {
-    fetchData(activeRange, activeMethod, activeCategory, activeClassId);
-  }, [fetchData, activeRange, activeMethod, activeCategory, activeClassId]);
+    fetchData(activeRange, activeMethod, activeCategory, activeClassId, activeStatus);
+  }, [fetchData, activeRange, activeMethod, activeCategory, activeClassId, activeStatus]);
 
   // manual trigger for syncing local UI state with the active API range
   const updateRange = () => {
@@ -95,6 +97,7 @@ export function useAnalytics(type) {
     setActiveMethod(methodOptions);
     setActiveCategory(categoryOptions);
     setActiveClassId(classIdOptions);
+    setActiveStatus(statusOptions);
   };
 
   return {
@@ -117,6 +120,8 @@ export function useAnalytics(type) {
       setCategoryOptions,
       classIdOptions,
       setClassIdOptions,
+      statusOptions,
+      setStatusOptions,
       updateRange
     }
   };

@@ -30,7 +30,7 @@ export const AnalyticHeader = ({ title, subtitle, onExportPDF }) => {
 };
 
 // global filter bar for analytics with date range presets and dynamic categorical selects
-export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, hasTargetClassFilter, metadata }) => {
+export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, hasTargetClassFilter, hasStatusFilter, metadata }) => {
   return (
     <div className="arena-card mb-4 no-print" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)' }}>
       <div className="flex-between" style={{ gap: '16px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
@@ -95,6 +95,22 @@ export const AnalyticFilters = ({ controls, hasMethodFilter, hasCategoryFilter, 
               <option value="ALL">All Categories</option>
               <option value="CLASSES">Classes</option>
               <option value="BOOKINGS">Bookings</option>
+            </select>
+          </div>
+        )}
+
+        {hasStatusFilter && (
+          /* narrows transaction reports by verification status */
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <select 
+              className="form-input" 
+              style={{ minWidth: '160px' }} 
+              value={controls.statusOptions} 
+              onChange={(e) => controls.setStatusOptions(e.target.value)}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="VERIFIED">Verified</option>
+              <option value="REJECTED">Rejected</option>
             </select>
           </div>
         )}

@@ -5,10 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 // create axios instance with base settings
 const api = axios.create({
-  baseURL: API_BASE,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: API_BASE
 });
 
 // add the auth token to every request if it exists

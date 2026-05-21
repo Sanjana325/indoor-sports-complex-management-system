@@ -28,7 +28,7 @@ const playerService = {
 
   // get all court bookings made by this player
   getMyBookings: async () => {
-    const response = await api.get("/api/player/my-bookings");
+    const response = await api.get("/api/player/bookings");
     return response.data;
   },
 

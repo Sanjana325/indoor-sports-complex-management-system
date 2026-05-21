@@ -5,26 +5,31 @@ const { generateTempPassword } = require("../../utils/randomPassword");
 const { pool } = require("../../config/db");
 const { sendAccountCreatedEmail } = require("../../services/email.service");
 
+// check for valid email format
 function isValidEmail(email) {
     return typeof email === "string" && email.includes("@") && email.includes(".");
 }
 
+// check if role can be managed by standard admin
 function canAdminManageTargetRole(targetRole) {
     return targetRole === "STAFF" || targetRole === "COACH" || targetRole === "PLAYER";
 }
 
+// filter and clean string arrays
 function uniqueNonEmptyStrings(list) {
     const arr = Array.isArray(list) ? list : [];
     const cleaned = arr.map((x) => String(x || "").trim()).filter(Boolean);
     return Array.from(new Set(cleaned));
 }
 
+// filter and clean integer arrays
 function uniquePositiveInts(list) {
     const arr = Array.isArray(list) ? list : [];
     const nums = arr.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0);
     return Array.from(new Set(nums));
 }
 
+// format coach specialization data
 function buildCoachSpecializationsPayload(body) {
     const sportIds = uniquePositiveInts(body.sportIds);
     const specializations = uniqueNonEmptyStrings(body.specializations);
@@ -37,12 +42,14 @@ function buildCoachSpecializationsPayload(body) {
     return { sportIds, specializations };
 }
 
+// format coach qualification data
 function buildCoachQualificationsPayload(body) {
     const qualificationIds = uniquePositiveInts(body.qualificationIds);
     const qualifications = uniqueNonEmptyStrings(body.qualifications);
     return { qualificationIds, qualifications };
 }
 
+// get all users for admin list
 exports.listUsers = async (req, res, next) => {
     try {
         const rows = await userModel.listAllForAdmin();
@@ -57,6 +64,7 @@ exports.listUsers = async (req, res, next) => {
     }
 };
 
+// register a new system user (admin, coach, staff, player)
 exports.createUser = async (req, res, next) => {
     const conn = await pool.getConnection();
     try {
@@ -101,6 +109,7 @@ exports.createUser = async (req, res, next) => {
         const tempPassword = generateTempPassword();
         const passwordHash = await hashPassword(tempPassword);
 
+        // start transaction to save user and coach details
         await conn.beginTransaction();
 
         const userId = await userModel.createUser(
@@ -163,6 +172,7 @@ exports.createUser = async (req, res, next) => {
     }
 };
 
+// edit user profile and handle role/coach logic changes
 exports.updateUser = async (req, res, next) => {
     const conn = await pool.getConnection();
     try {
@@ -271,6 +281,7 @@ exports.updateUser = async (req, res, next) => {
     }
 };
 
+// deactivate a user account
 exports.disableUser = async (req, res, next) => {
     try {
         const targetUserId = Number(req.params.userId);
@@ -305,6 +316,7 @@ exports.disableUser = async (req, res, next) => {
     }
 };
 
+// reactivate a user account
 exports.enableUser = async (req, res, next) => {
     try {
         const targetUserId = Number(req.params.userId);
@@ -328,6 +340,7 @@ exports.enableUser = async (req, res, next) => {
     }
 };
 
+// permanently remove a user from the system
 exports.deleteUser = async (req, res, next) => {
     try {
         const targetUserId = Number(req.params.userId);

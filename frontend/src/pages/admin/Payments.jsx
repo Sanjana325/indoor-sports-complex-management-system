@@ -30,12 +30,17 @@ export default function Payments() {
 
   // handles verifying or rejecting a payment, updating the UI state immediately
   const handleAction = async (endpoint, id, rawId, newStatus) => {
-    if (newStatus === "REJECTED" && !window.confirm("Are you sure you want to REJECT this payment? This will cancel the associated reservation.")) return;
+    let reason = null;
+    if (newStatus === "REJECTED") {
+      reason = window.prompt("Reason for rejection (this will be emailed to the student):", "Invalid or blurry bank slip image.");
+      if (reason === null) return; // user cancelled the prompt
+    }
+
     try {
       if (endpoint === "verify") {
         await adminService.verifyPayment(rawId);
       } else {
-        await adminService.rejectPayment(rawId);
+        await adminService.rejectPayment(rawId, reason);
       }
       setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
     } catch (e) {

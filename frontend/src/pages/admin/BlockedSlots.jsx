@@ -88,7 +88,9 @@ export default function BlockedSlots() {
       }
       setIsModalOpen(false); fetchBlockedSlots();
     } catch (err) { 
-      alert(err.response?.data?.message || "Failed to save"); 
+      const msg = err.response?.data?.message || "Failed to save";
+      const detail = err.response?.data?.conflictDetail;
+      alert(detail ? `${msg}\n\n${detail}` : msg); 
     } finally { 
       setSubmitting(false); 
     }

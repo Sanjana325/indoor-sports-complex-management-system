@@ -1,5 +1,6 @@
 const { pool } = require("../config/db");
 
+// store a new one-time password and clear any previous codes for the user
 async function saveOTP(userId, email, otpCode, expiresAt) {
     // Delete any existing OTPs for this user to avoid clutter
     await pool.query(`DELETE FROM OTPVerification WHERE UserID = ?`, [userId]);
@@ -12,6 +13,7 @@ async function saveOTP(userId, email, otpCode, expiresAt) {
     return result.insertId;
 }
 
+// validate the code, check expiry, and manage failed attempt limits
 async function verifyAndConsumeOTP(userId, otpCode) {
     // 1. Find the OTP record for this user
     const [rows] = await pool.query(
@@ -37,7 +39,7 @@ async function verifyAndConsumeOTP(userId, otpCode) {
 
     // 3. Validate Code
     if (otpData.OtpCode === otpCode) {
-        // Correct, consume it
+        // correct, delete the record after successful verification to prevent reuse
         await pool.query(`DELETE FROM OTPVerification WHERE OTPID = ?`, [otpData.OTPID]);
         return { valid: true };
     } else {
@@ -62,3 +64,4 @@ module.exports = {
     saveOTP,
     verifyAndConsumeOTP
 };
+

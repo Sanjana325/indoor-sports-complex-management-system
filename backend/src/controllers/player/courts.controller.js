@@ -1,5 +1,6 @@
 const { pool } = require("../../config/db");
 
+// get all courts that support a specific sport
 exports.getCourtsBySport = async (req, res, next) => {
     try {
         const sportId = Number(req.query.sportId);
@@ -21,6 +22,7 @@ exports.getCourtsBySport = async (req, res, next) => {
     }
 };
 
+// find busy times for a court on a given date (bookings, classes, maintenance)
 exports.getCourtAvailability = async (req, res, next) => {
     try {
         const courtId = Number(req.params.courtId);
@@ -36,12 +38,11 @@ exports.getCourtAvailability = async (req, res, next) => {
         const startOfDay = `${date} 00:00:00`;
         const endOfDay = `${date} 23:59:59`;
         
-        // Calculate weekday for recurring class checks (0=Sun, 1=Mon, ..., 6=Sat)
-        // Use UTC date to ensure the weekday matches the date string provided
+        // calculate weekday for recurring class checks (0=Sun, 1=Mon, ..., 6=Sat)
         const [y, m, d] = date.split('-').map(Number);
         const dayOfWeek = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 
-        // 1. Get bookings overlapping this date
+        // 1. check court bookings overlapping this date
         const [bookings] = await pool.query(
             `SELECT StartDateTime, EndDateTime 
              FROM booking 
@@ -50,7 +51,7 @@ exports.getCourtAvailability = async (req, res, next) => {
             [courtId, endOfDay, startOfDay]
         );
 
-        // 2. Get blocked slots overlapping this date
+        // 2. check administrative blocks (maintenance/blocked slots)
         const [blocked] = await pool.query(
             `SELECT StartDateTime, EndDateTime, Reason
              FROM blockedslot
@@ -59,7 +60,7 @@ exports.getCourtAvailability = async (req, res, next) => {
             [courtId, endOfDay, startOfDay]
         );
 
-        // 3. Get active classes scheduled for this court on this date
+        // 3. check recurring coaching classes scheduled for this court
         const [classSlots] = await pool.query(
             `SELECT sch.StartTime, sch.EndTime, c.Title AS Reason
              FROM class c
@@ -79,7 +80,7 @@ exports.getCourtAvailability = async (req, res, next) => {
             [date, courtId, date, date, dayOfWeek]
         );
 
-        // Map class slots to the same StartDateTime/EndDateTime format as bookings/blocked
+        // format class sessions to match booking/blocked structure
         const classExclusions = classSlots.map(cls => ({
             StartDateTime: `${date} ${cls.StartTime}`,
             EndDateTime: `${date} ${cls.EndTime}`,
@@ -95,3 +96,4 @@ exports.getCourtAvailability = async (req, res, next) => {
         next(err);
     }
 };
+

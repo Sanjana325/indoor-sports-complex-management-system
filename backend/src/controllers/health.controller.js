@@ -1,5 +1,6 @@
 const { testDbConnection } = require("../config/db");
 
+// check if the server and database are running correctly
 exports.checkHealth = async (req, res, next) => {
     try {
         await testDbConnection();
@@ -12,3 +13,4 @@ exports.checkHealth = async (req, res, next) => {
         next(err);
     }
 };
+

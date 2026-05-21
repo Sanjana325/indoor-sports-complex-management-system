@@ -66,6 +66,7 @@ export default function CancelledSessions() {
             <thead>
                 <tr>
                   <th>Session ID</th>
+                  <th>Class ID</th>
                   <th>Class Title</th>
                   <th>Sport</th>
                   <th>Date</th>
@@ -79,6 +80,9 @@ export default function CancelledSessions() {
                   <tr key={s.id}>
                     <td>
                       <span className="status-pill info">CS-{String(s.id).padStart(5, '0')}</span>
+                    </td>
+                    <td>
+                      <span className="table-id">CLS-{String(s.classId).padStart(6, '0')}</span>
                     </td>
                     <td style={{ fontWeight: 600 }}>{s.className}</td>
                     <td>{s.sport}</td>

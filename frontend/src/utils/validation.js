@@ -37,7 +37,7 @@ export function passwordPolicyMessage() {
 // remove spaces and formatting characters from phone strings
 export function normalizePhone(phone) {
   if (typeof phone !== "string") return "";
-  return phone.replace(/\s+/g, "").trim();
+  return phone.replace(/[^\d+]/g, "").trim();
 }
 
 // validate phone numbers (supports local 07... and international 94... formats)

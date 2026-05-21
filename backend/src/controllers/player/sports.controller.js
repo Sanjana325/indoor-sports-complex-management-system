@@ -1,5 +1,6 @@
 const { pool } = require("../../config/db");
 
+// get list of all active sports for booking
 exports.getActiveSports = async (req, res, next) => {
     try {
         const [rows] = await pool.query(
@@ -10,3 +11,4 @@ exports.getActiveSports = async (req, res, next) => {
         next(err);
     }
 };
+

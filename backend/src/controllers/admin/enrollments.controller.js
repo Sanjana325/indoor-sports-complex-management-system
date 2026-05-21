@@ -1,34 +1,18 @@
-const { pool } = require("../../config/db");
+const enrollmentModel = require("../../models/enrollment.model");
 const emailService = require("../../services/email.service");
 
-// Get all enrollments for admin
+// get all class enrollments for administrative dashboard
 exports.listEnrollments = async (req, res, next) => {
     try {
-        const [rows] = await pool.query(
-            `SELECT e.EnrollmentID, e.Status AS EnrollmentStatus, e.EnrolledAt,
-                    u.FirstName, u.LastName,
-                    c.Title AS ClassName, c.BillingType,
-                    em.PeriodMonth, em.Status AS FeeStatus
-             FROM enrollment e
-             JOIN useraccount u ON e.UserID = u.UserID
-             JOIN class c ON e.ClassID = c.ClassID
-             LEFT JOIN (
-                 SELECT EnrollmentID, PeriodMonth, Status
-                 FROM enrollmentmonth em1
-                 WHERE EnrollmentMonthID = (
-                     SELECT MAX(EnrollmentMonthID)
-                     FROM enrollmentmonth em2
-                     WHERE em2.EnrollmentID = em1.EnrollmentID
-                 )
-             ) em ON e.EnrollmentID = em.EnrollmentID
-             ORDER BY e.EnrolledAt DESC`
-        );
+        // fetch enrollment data from database
+        const rows = await enrollmentModel.findAll();
 
+        // format data for frontend display
         const enrollments = rows.map(r => {
-            const dateStr = r.EnrolledAt
-                ? new Date(r.EnrolledAt).toISOString().slice(0, 10)
-                : "—";
+            // format enrollment date
+            const dateStr = r.EnrolledAt ? new Date(r.EnrolledAt).toISOString().slice(0, 10) : "—";
 
+            // determine current billing period
             let currentPeriod = "—";
             if (r.BillingType === 'ONE_TIME') {
                 currentPeriod = "One-time";
@@ -52,53 +36,39 @@ exports.listEnrollments = async (req, res, next) => {
             };
         });
 
+        // send response with formatted data
         res.json({ enrollments });
     } catch (err) {
         next(err);
     }
 };
 
-// Cancel an enrollment
+// cancel a student's enrollment in a class
 exports.cancelEnrollment = async (req, res, next) => {
     try {
+        // extract parameters from request
         const enrollmentId = req.params.id;
         const { reason } = req.body;
 
-        // 1. Fetch student and class details for the email
-        const [enrRes] = await pool.query(`
-            SELECT 
-                u.Email, 
-                u.FirstName, 
-                u.LastName,
-                c.Title as ClassName
-            FROM enrollment e
-            JOIN useraccount u ON e.UserID = u.UserID
-            JOIN class c ON e.ClassID = c.ClassID
-            WHERE e.EnrollmentID = ?
-        `, [enrollmentId]);
+        // check if enrollment exists
+        const enrollment = await enrollmentModel.findById(enrollmentId);
+        if (!enrollment) return res.status(404).json({ message: "Enrollment not found" });
 
-        if (enrRes.length === 0) {
-            return res.status(404).json({ message: "Enrollment not found" });
-        }
+        // update enrollment status to cancelled
+        await enrollmentModel.updateStatus(enrollmentId, 'CANCELLED');
 
-        const student = enrRes[0];
-        
-        // 2. Perform the cancellation
-        await pool.query(
-            "UPDATE enrollment SET Status = 'CANCELLED' WHERE EnrollmentID = ?",
-            [enrollmentId]
-        );
-
-        // 3. Send the notification email asynchronously
+        // send cancellation notification email
         emailService.sendEnrollmentCancelledEmail({
-            toEmail: student.Email,
-            toName: `${student.FirstName} ${student.LastName}`,
-            className: student.ClassName,
+            toEmail: enrollment.Email,
+            toName: `${enrollment.FirstName} ${enrollment.LastName}`,
+            className: enrollment.ClassName,
             reason: reason || "Administrative decision"
         }).catch(err => console.error("Failed to send cancellation email:", err));
 
+        // send success response
         res.json({ message: "Enrollment cancelled successfully" });
     } catch (err) {
         next(err);
     }
 };
+

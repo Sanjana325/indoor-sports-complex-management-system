@@ -1,17 +1,20 @@
 const nodemailer = require("nodemailer");
 
+// setup email transport using brevo smtp
 function getTransporter() {
   const host = process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com";
   const port = Number(process.env.BREVO_SMTP_PORT || 587);
   const user = process.env.BREVO_SMTP_USER;
   const pass = process.env.BREVO_SMTP_PASS;
 
+  // check for credentials
   if (!user || !pass) {
     throw new Error("Brevo SMTP credentials missing. Set BREVO_SMTP_USER and BREVO_SMTP_PASS in .env");
   }
 
   const secure = port === 465;
 
+  // create transporter object
   return nodemailer.createTransport({
     host,
     port,
@@ -24,6 +27,7 @@ function getTransporter() {
   });
 }
 
+// check if a string is a valid http/https url
 function isValidHttpUrl(url) {
   if (typeof url !== "string") return false;
   try {
@@ -34,7 +38,9 @@ function isValidHttpUrl(url) {
   }
 }
 
+// send password reset link to user
 async function sendPasswordResetEmail({ toEmail, toName, resetLink }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") {
     throw new Error("Missing toEmail");
   }
@@ -42,11 +48,13 @@ async function sendPasswordResetEmail({ toEmail, toName, resetLink }) {
     throw new Error("Invalid reset link");
   }
 
+  // initialize email transporter
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = "Reset your password";
   const text =
     `You requested a password reset. Use this link to reset your password:\n\n${resetLink}\n\n` +
@@ -69,6 +77,7 @@ async function sendPasswordResetEmail({ toEmail, toName, resetLink }) {
     </div>
   `;
 
+  // send email and return result
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: safeName ? `"${safeName}" <${toEmail}>` : toEmail,
@@ -80,16 +89,20 @@ async function sendPasswordResetEmail({ toEmail, toName, resetLink }) {
   return info;
 }
 
+// send welcome email to new players
 async function sendWelcomeEmail({ toEmail, toName }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") {
     throw new Error("Missing toEmail");
   }
 
+  // initialize email transporter
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = "Welcome to ArenaPro - Indoor Sports Complex";
   const safeName = typeof toName === "string" ? toName.trim() : "";
   const greetingName = safeName ? safeName : "Player";
@@ -120,6 +133,7 @@ async function sendWelcomeEmail({ toEmail, toName }) {
     </div>
   `;
 
+  // send email and return result
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: safeName ? `"${safeName}" <${toEmail}>` : toEmail,
@@ -131,16 +145,20 @@ async function sendWelcomeEmail({ toEmail, toName }) {
   return info;
 }
 
+// send login details to new staff or coaches
 async function sendAccountCreatedEmail({ toEmail, toName, role, tempPassword }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") {
     throw new Error("Missing toEmail");
   }
 
+  // initialize email transporter
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = "Your new account has been created";
   const safeName = typeof toName === "string" ? toName.trim() : "";
   const greetingName = safeName ? safeName : "User";
@@ -176,6 +194,7 @@ async function sendAccountCreatedEmail({ toEmail, toName, role, tempPassword }) 
     </div>
   `;
 
+  // send email and return result
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: safeName ? `"${safeName}" <${toEmail}>` : toEmail,
@@ -187,16 +206,20 @@ async function sendAccountCreatedEmail({ toEmail, toName, role, tempPassword }) 
   return info;
 }
 
+// send otp code for booking verification
 async function sendBookingOtpEmail({ toEmail, toName, otpCode }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") {
     throw new Error("Missing toEmail");
   }
 
+  // initialize email transporter
   const transporter = getTransporter();
 
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = "Your Secure Booking OTP";
   const safeName = typeof toName === "string" ? toName.trim() : "";
   const greetingName = safeName ? safeName : "Player";
@@ -229,6 +252,7 @@ async function sendBookingOtpEmail({ toEmail, toName, otpCode }) {
     </div>
   `;
 
+  // send email and return result
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: safeName ? `"${safeName}" <${toEmail}>` : toEmail,
@@ -240,13 +264,17 @@ async function sendBookingOtpEmail({ toEmail, toName, otpCode }) {
   return info;
 }
 
+// send confirmation after successful payment
 async function sendPaymentConfirmationEmail({ toEmail, toName, targetName, amount, isClass }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const typeStr = isClass ? "Coaching Class Enrollment" : "Court Booking";
   const subject = `Confirmed: Your ${typeStr}`;
   const safeName = typeof toName === "string" ? toName.trim() : "Player";
@@ -286,6 +314,7 @@ async function sendPaymentConfirmationEmail({ toEmail, toName, targetName, amoun
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -295,13 +324,17 @@ async function sendPaymentConfirmationEmail({ toEmail, toName, targetName, amoun
   });
 }
 
+// notify user that their bank slip is being reviewed
 async function sendSlipPendingEmail({ toEmail, toName, targetName, amount, isClass }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const typeStr = isClass ? "Coaching Class Enrollment" : "Court Booking";
   const subject = `Pending Verification: Your ${typeStr}`;
   const safeName = typeof toName === "string" ? toName.trim() : "Player";
@@ -341,6 +374,7 @@ async function sendSlipPendingEmail({ toEmail, toName, targetName, amount, isCla
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -350,13 +384,17 @@ async function sendSlipPendingEmail({ toEmail, toName, targetName, amount, isCla
   });
 }
 
+// notify students when a class session is cancelled
 async function sendSessionCancelledEmail({ toEmail, toName, className, sessionDate, startTime, endTime }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = `URGENT: Class Cancellation - ${className}`;
   const safeName = typeof toName === "string" ? toName.trim() : "Player";
 
@@ -392,6 +430,7 @@ async function sendSessionCancelledEmail({ toEmail, toName, className, sessionDa
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -401,13 +440,17 @@ async function sendSessionCancelledEmail({ toEmail, toName, className, sessionDa
   });
 }
 
+// send 1-hour reminder for court bookings
 async function sendCourtBookingReminder({ toEmail, toName, sportName, startTime, endTime }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = `Reminder: Your ${sportName} booking starts in 1 Hour`;
   const safeName = typeof toName === "string" ? toName.trim() : "Player";
 
@@ -443,6 +486,7 @@ async function sendCourtBookingReminder({ toEmail, toName, sportName, startTime,
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -452,13 +496,17 @@ async function sendCourtBookingReminder({ toEmail, toName, sportName, startTime,
   });
 }
 
+// send 1-hour reminder for class sessions
 async function sendClassSessionReminder({ toEmail, toName, className, sportName, startTime, endTime }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = `Reminder: Your ${sportName} class starts in 1 Hour`;
   const safeName = typeof toName === "string" ? toName.trim() : "Player";
 
@@ -496,6 +544,7 @@ async function sendClassSessionReminder({ toEmail, toName, className, sportName,
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -505,13 +554,17 @@ async function sendClassSessionReminder({ toEmail, toName, className, sportName,
   });
 }
 
+// send 1-hour reminder to coaches for their classes
 async function sendCoachClassSessionReminder({ toEmail, toName, className, sportName, startTime, endTime }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = `Urgent Reminder: Conducting your ${sportName} class in 1 Hour`;
   const safeName = typeof toName === "string" ? toName.trim() : "Coach";
 
@@ -548,6 +601,7 @@ async function sendCoachClassSessionReminder({ toEmail, toName, className, sport
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -557,13 +611,17 @@ async function sendCoachClassSessionReminder({ toEmail, toName, className, sport
   });
 }
 
+// notify user if their bank slip was rejected
 async function sendPaymentRejectionEmail({ toEmail, toName, targetName, amount, isClass }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const typeStr = isClass ? "Coaching Class Enrollment" : "Court Booking";
   const subject = `Update: Your Payment for ${targetName}`;
   const safeName = typeof toName === "string" ? toName.trim() : "Player";
@@ -610,6 +668,7 @@ async function sendPaymentRejectionEmail({ toEmail, toName, targetName, amount, 
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -619,13 +678,17 @@ async function sendPaymentRejectionEmail({ toEmail, toName, targetName, amount, 
   });
 }
 
+// notify student if their class enrollment was cancelled
 async function sendEnrollmentCancelledEmail({ toEmail, toName, className, reason }) {
+  // validate input data
   if (!toEmail || typeof toEmail !== "string") throw new Error("Missing toEmail");
 
+  // initialize email transporter
   const transporter = getTransporter();
   const fromEmail = process.env.BREVO_FROM_EMAIL || "no-reply@example.com";
   const fromName = process.env.BREVO_FROM_NAME || "ArenaPro";
 
+  // configure email content
   const subject = `Enrollment Update: ${className}`;
   const safeName = typeof toName === "string" ? toName.trim() : "Player";
 
@@ -672,6 +735,7 @@ async function sendEnrollmentCancelledEmail({ toEmail, toName, className, reason
     </div>
   `;
 
+  // send email and return result
   return await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
     to: `"${safeName}" <${toEmail}>`,
@@ -695,3 +759,4 @@ module.exports = {
   sendPaymentRejectionEmail,
   sendEnrollmentCancelledEmail
 };
+

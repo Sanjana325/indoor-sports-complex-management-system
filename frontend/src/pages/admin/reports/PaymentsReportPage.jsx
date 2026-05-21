@@ -16,7 +16,7 @@ export default function PaymentsReportPage() {
       />
 
       {/* filtering options to switch between booking fees and class memberships */}
-      <AnalyticFilters controls={controls} hasCategoryFilter={true} />
+      <AnalyticFilters controls={controls} hasCategoryFilter={true} hasStatusFilter={true} />
 
       <div style={{ marginBottom: '24px' }}>
         {/* key financial indicators like total revenue and pending balance */}

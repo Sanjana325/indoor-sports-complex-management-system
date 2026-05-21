@@ -110,7 +110,27 @@ export default function PlayerBookCourt() {
       }
     }
     fetchBankDetails();
-  }, []);
+
+    // define payhere global callbacks
+    if (window.payhere) {
+      window.payhere.onCompleted = (orderId) => {
+        console.log("Payment completed. OrderID:" + orderId);
+        // show success and redirect
+        alert("Payment successful! Your booking is now confirmed.");
+        navigate("/player/my-bookings", { replace: true });
+      };
+
+      window.payhere.onDismissed = () => {
+        console.log("Payment dismissed");
+        alert("Payment window closed. Please complete the payment to confirm your booking.");
+      };
+
+      window.payhere.onError = (error) => {
+        console.error("Payment Error:", error);
+        alert("Payment failed: " + error);
+      };
+    }
+  }, [navigate]);
 
   useEffect(() => {
     let interval;

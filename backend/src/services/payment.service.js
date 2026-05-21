@@ -1,259 +1,175 @@
 const { pool } = require("../config/db");
 const { generatePaymentHash, verifyNotificationHash } = require("./paymentGateway.service");
+const paymentModel = require("../models/payment.model");
+const bookingModel = require("../models/booking.model");
+const classModel = require("../models/class.model");
+const enrollmentModel = require("../models/enrollment.model");
+const userModel = require("../models/user.model");
+const emailService = require("./email.service");
 
-// Get user payments
+// get all payments for a specific user
 exports.getUserPayments = async (userId) => {
-    const [rows] = await pool.query(
-        `SELECT p.PaymentID, p.Amount, p.Method, p.Status, p.PaidAt, p.VerifiedAt, p.SlipPath,
-                bp.BookingID,
-                c.Title as ClassTitle
-         FROM payment p
-         LEFT JOIN bookingpayment bp ON p.PaymentID = bp.PaymentID
-         LEFT JOIN enrollmentmonthpayment emp ON p.PaymentID = emp.PaymentID
-         LEFT JOIN enrollmentmonth em ON emp.EnrollmentMonthID = em.EnrollmentMonthID
-         LEFT JOIN enrollment e ON em.EnrollmentID = e.EnrollmentID
-         LEFT JOIN class c ON e.ClassID = c.ClassID
-         WHERE p.UserID = ?
-         ORDER BY p.PaidAt DESC`,
-        [userId]
-    );
-    return rows;
+    // fetch payments from database
+    return await paymentModel.findByUserId(userId);
 };
 
-// Initiate booking online payment
+// start online payment process for a booking
 exports.createOnlinePayment = async (userId, bookingId, userDetails) => {
-    try {
-        const [bookings] = await pool.query(
-            `SELECT b.BookingID, b.StartDateTime, b.EndDateTime, c.PricePerHour
-             FROM booking b
-             JOIN court c ON b.CourtID = c.CourtID
-             WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING_PAYMENT'`,
-            [bookingId, userId]
-        );
-
-        if (bookings.length === 0) {
-            throw new Error("Booking not found or not pending payment");
-        }
-
-        const booking = bookings[0];
-
-        const start = new Date(booking.StartDateTime);
-        const end = new Date(booking.EndDateTime);
-        const durationHours = (end - start) / (1000 * 60 * 60);
-        const amount = Number(booking.PricePerHour) * durationHours;
-
-        const formattedAmount = amount.toFixed(2);
-        const hash = generatePaymentHash(String(bookingId), formattedAmount, "LKR");
-
-        return {
-            merchant_id: process.env.PAYHERE_MERCHANT_ID,
-            order_id: String(bookingId),
-            amount: formattedAmount,
-            currency: "LKR",
-            hash,
-            items: `Booking #${bookingId}`,
-            customer_details: {
-                first_name: userDetails.FirstName || "Player",
-                last_name: userDetails.LastName || "",
-                email: userDetails.Email || "",
-                phone: userDetails.PhoneNumber || ""
-            }
-        };
-
-    } catch (err) {
-        throw err;
+    // check if booking exists and needs payment
+    const booking = await bookingModel.getBookingWithPrice(bookingId, userId);
+    if (!booking || booking.Status !== 'PENDING_PAYMENT') {
+        throw new Error("Booking not found or not pending payment");
     }
+
+    // calculate total amount based on duration
+    const start = new Date(booking.StartDateTime);
+    const end = new Date(booking.EndDateTime);
+    const durationHours = (end - start) / (1000 * 60 * 60);
+    const amount = Number(booking.PricePerHour) * durationHours;
+
+    // generate secure hash for payment gateway
+    const formattedAmount = amount.toFixed(2);
+    const hash = generatePaymentHash(String(bookingId), formattedAmount, "LKR");
+
+    // return payment parameters for frontend
+    return {
+        merchant_id: process.env.PAYHERE_MERCHANT_ID,
+        order_id: String(bookingId),
+        amount: formattedAmount,
+        currency: "LKR",
+        hash,
+        items: `Booking #${bookingId}`,
+        customer_details: {
+            first_name: userDetails.FirstName || "Player",
+            last_name: userDetails.LastName || "",
+            email: userDetails.Email || "",
+            phone: userDetails.PhoneNumber || ""
+        }
+    };
 };
 
-// Initiate class enrollment online payment
+// start online payment process for a class enrollment
 exports.createEnrollmentPayment = async (userId, classId, userDetails) => {
-    try {
-        const [classes] = await pool.query(
-            `SELECT ClassID, Title, Fee FROM class WHERE ClassID = ? AND Status = 'ACTIVE'`,
-            [classId]
-        );
-
-        if (classes.length === 0) {
-            throw new Error("Class not found or not active");
-        }
-
-        const cls = classes[0];
-        const formattedAmount = Number(cls.Fee).toFixed(2);
-
-        // Generate a unique order_id for enrollment
-        const orderId = `ENR-${cls.ClassID}-${userId}-${Date.now()}`;
-        const hash = generatePaymentHash(orderId, formattedAmount, "LKR");
-
-        return {
-            merchant_id: process.env.PAYHERE_MERCHANT_ID,
-            order_id: orderId,
-            amount: formattedAmount,
-            currency: "LKR",
-            hash,
-            items: `Enrollment: ${cls.Title}`,
-            customer_details: {
-                first_name: userDetails.FirstName || "Player",
-                last_name: userDetails.LastName || "",
-                email: userDetails.Email || "",
-                phone: userDetails.PhoneNumber || ""
-            },
-            custom_1: String(cls.ClassID),
-            custom_2: String(userId)
-        };
-    } catch (err) {
-        throw err;
+    // check if class exists and is active
+    const cls = await classModel.findById(classId);
+    if (!cls || cls.Status !== 'ACTIVE') {
+        throw new Error("Class not found or not active");
     }
+
+    // generate unique order id and hash
+    const formattedAmount = Number(cls.Fee).toFixed(2);
+    const orderId = `ENR-${cls.ClassID}-${userId}-${Date.now()}`;
+    const hash = generatePaymentHash(orderId, formattedAmount, "LKR");
+
+    // return payment parameters for frontend
+    return {
+        merchant_id: process.env.PAYHERE_MERCHANT_ID,
+        order_id: orderId,
+        amount: formattedAmount,
+        currency: "LKR",
+        hash,
+        items: `Enrollment: ${cls.Title}`,
+        customer_details: {
+            first_name: userDetails.FirstName || "Player",
+            last_name: userDetails.LastName || "",
+            email: userDetails.Email || "",
+            phone: userDetails.PhoneNumber || ""
+        },
+        custom_1: String(cls.ClassID),
+        custom_2: String(userId)
+    };
 };
 
-// Verify PayHere notification
+// handle payment notification from payhere gateway
 exports.verifyPayHerePayment = async (body) => {
     let connection;
     try {
         const { order_id, status_code, payhere_amount } = body;
         console.log(`[PayHere Notify] Received for Order: ${order_id}, Status: ${status_code}`);
 
+        // validate hash signature
         const isValid = verifyNotificationHash(body);
         if (!isValid) {
             console.error(`[PayHere Notify] Invalid hash signature for Order: ${order_id}`);
             throw new Error("Invalid signature");
         }
 
-        if (status_code === '2') {
-            console.log(`[PayHere Notify] Success! Processing enrollment for: ${order_id}`);
+        // status '2' means payment is successful (PayHere sends it as a string or number)
+        if (String(status_code) === '2') {
+            // start database transaction
             connection = await pool.getConnection();
             await connection.beginTransaction();
 
             if (order_id.startsWith('ENR-')) {
-                // CLASS ENROLLMENT PAYMENT
+                // handle class enrollment payment
                 const parts = order_id.split('-');
                 const classId = Number(parts[1]);
                 const userId = Number(parts[2]);
                 const amount = Number(payhere_amount);
 
-                // 1. Double check class exists
-                const [cls] = await connection.query("SELECT Title, Fee FROM class WHERE ClassID = ?", [classId]);
-                if (cls.length > 0) {
-                    // 2. Create enrollment
-                    const [enrRes] = await connection.query(
-                        `INSERT INTO enrollment (ClassID, UserID, Status) 
-                         VALUES (?, ?, 'ENROLLED') 
-                         ON DUPLICATE KEY UPDATE Status = 'ENROLLED'`,
-                        [classId, userId]
-                    );
+                const cls = await classModel.findById(classId, connection);
+                if (cls) {
+                    // update enrollment and payment records
+                    const enrollmentId = await enrollmentModel.create({ classId, userId, status: 'ENROLLED' }, connection);
+                    const paymentId = await paymentModel.create({ userId, amount, method: 'ONLINE', status: 'VERIFIED', verifiedAt: new Date() }, connection);
+                    const monthId = await enrollmentModel.createMonth({ enrollmentId, periodMonth: new Date(), feeAmount: amount, status: 'PAID' }, connection);
+                    await paymentModel.linkEnrollmentMonth(paymentId, monthId, connection);
 
-                    // Get the enrollment ID (either from insert or existing)
-                    let enrollmentId;
-                    if (enrRes.insertId) {
-                        enrollmentId = enrRes.insertId;
-                    } else {
-                        const [existingEnr] = await connection.query(
-                            "SELECT EnrollmentID FROM enrollment WHERE ClassID = ? AND UserID = ?",
-                            [classId, userId]
-                        );
-                        enrollmentId = existingEnr[0].EnrollmentID;
-                    }
-
-                    // 3. Create payment record
-                    const [payRes] = await connection.query(
-                        "INSERT INTO payment (UserID, Amount, Method, Status, PaidAt, VerifiedAt) VALUES (?, ?, 'ONLINE', 'VERIFIED', NOW(), NOW())",
-                        [userId, amount]
-                    );
-
-                    // 4. Create cycle (enrollmentmonth)
-                    const [enmRes] = await connection.query(
-                        "INSERT INTO enrollmentmonth (EnrollmentID, PeriodMonth, FeeAmount, Status) VALUES (?, CURDATE(), ?, 'PAID')",
-                        [enrollmentId, amount]
-                    );
-
-                    // 5. Link them
-                    await connection.query(
-                        "INSERT INTO enrollmentmonthpayment (PaymentID, EnrollmentMonthID) VALUES (?, ?)",
-                        [payRes.insertId, enmRes.insertId]
-                    );
-
-                    // Send email
-                    const [users] = await connection.query("SELECT Email, FirstName, LastName FROM useraccount WHERE UserID = ?", [userId]);
-                    if (users.length > 0 && users[0].Email) {
-                        try {
-                            const emailService = require("./email.service");
-                            await emailService.sendPaymentConfirmationEmail({
-                                toEmail: users[0].Email,
-                                toName: `${users[0].FirstName} ${users[0].LastName}`.trim(),
-                                targetName: cls[0].Title,
-                                amount: amount,
-                                isClass: true
-                            });
-                        } catch (err) {
-                            console.error("Failed to send class payment email:", err);
-                        }
+                    // send confirmation email
+                    const user = await userModel.findById(userId);
+                    if (user && user.Email) {
+                        emailService.sendPaymentConfirmationEmail({
+                            toEmail: user.Email,
+                            toName: `${user.FirstName} ${user.LastName}`.trim(),
+                            targetName: cls.Title,
+                            amount: amount,
+                            isClass: true
+                        }).catch(e => console.error("Email failed:", e));
                     }
                 }
-
             } else {
-                // COURT BOOKING PAYMENT
-                const [bookings] = await connection.query(
-                    `SELECT b.UserID, b.StartDateTime, b.EndDateTime, c.PricePerHour, c.CourtName, b.Status 
-                     FROM booking b 
-                     JOIN court c ON b.CourtID = c.CourtID 
-                     WHERE b.BookingID = ?`,
-                    [order_id]
-                );
-
-                if (bookings.length > 0 && bookings[0].Status === 'PENDING_PAYMENT') {
-                    const booking = bookings[0];
+                // handle court booking payment
+                const booking = await bookingModel.getBookingWithPrice(order_id, null, connection);
+                if (booking && booking.Status === 'PENDING_PAYMENT') {
                     const start = new Date(booking.StartDateTime);
                     const end = new Date(booking.EndDateTime);
                     const durationHours = (end - start) / (1000 * 60 * 60);
                     const amount = Number(booking.PricePerHour) * durationHours;
 
-                    const [payRes] = await connection.query(
-                        "INSERT INTO payment (UserID, Amount, Method, Status, PaidAt, VerifiedAt) VALUES (?, ?, 'ONLINE', 'VERIFIED', NOW(), NOW())",
-                        [booking.UserID, amount]
-                    );
+                    // update booking and payment records
+                    const paymentId = await paymentModel.create({ userId: booking.UserID, amount, method: 'ONLINE', status: 'VERIFIED', verifiedAt: new Date() }, connection);
+                    await paymentModel.linkBooking(paymentId, order_id, connection);
+                    await bookingModel.updateStatus(order_id, 'CONFIRMED', null, connection);
 
-                    await connection.query(
-                        "INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)",
-                        [payRes.insertId, order_id]
-                    );
-
-                    await connection.query(
-                        "UPDATE booking SET Status = 'CONFIRMED' WHERE BookingID = ?",
-                        [order_id]
-                    );
-
-                    const [users] = await connection.query("SELECT Email, FirstName, LastName FROM useraccount WHERE UserID = ?", [booking.UserID]);
-                    if (users.length > 0 && users[0].Email) {
-                        try {
-                            const emailService = require("./email.service");
-                            await emailService.sendPaymentConfirmationEmail({
-                                toEmail: users[0].Email,
-                                toName: `${users[0].FirstName} ${users[0].LastName}`.trim(),
-                                targetName: booking.CourtName,
-                                amount: amount,
-                                isClass: false
-                            });
-                        } catch (err) {
-                            console.error("Failed to send booking payment email:", err);
-                        }
+                    // send confirmation email
+                    const user = await userModel.findById(booking.UserID);
+                    if (user && user.Email) {
+                        emailService.sendPaymentConfirmationEmail({
+                            toEmail: user.Email,
+                            toName: `${user.FirstName} ${user.LastName}`.trim(),
+                            targetName: booking.CourtName,
+                            amount: amount,
+                            isClass: false
+                        }).catch(e => console.error("Email failed:", e));
                     }
                 }
             }
 
+            // commit database changes
             await connection.commit();
         }
-        
         return "OK";
     } catch (err) {
+        // rollback on error
         if (connection) await connection.rollback();
         throw err;
     } finally {
-        if (connection && connection.release) {
-            connection.release();
-        }
+        // release connection
+        if (connection) connection.release();
     }
 };
 
-// Process bank slip upload
+// handle manual bank slip upload for verification
 exports.processBankSlip = async (userId, targetId, slipUrl, type = "BOOKING") => {
     let connection;
     try {
@@ -261,89 +177,60 @@ exports.processBankSlip = async (userId, targetId, slipUrl, type = "BOOKING") =>
         let amount = 0;
         let itemName = "";
 
+        // check target record and get amount
         if (type === "CLASS") {
-            const [classes] = await connection.query("SELECT Title, Fee FROM class WHERE ClassID = ? AND Status = 'ACTIVE'", [targetId]);
-            if (classes.length === 0) throw new Error("Class not found or not active");
-            amount = Number(classes[0].Fee);
-            itemName = classes[0].Title;
+            const cls = await classModel.findById(targetId, connection);
+            if (!cls || cls.Status !== 'ACTIVE') throw new Error("Class not found or not active");
+            amount = Number(cls.Fee);
+            itemName = cls.Title;
         } else {
-            const [bookings] = await connection.query(
-                `SELECT b.StartDateTime, b.EndDateTime, c.PricePerHour, c.CourtName
-                 FROM booking b
-                 JOIN court c ON b.CourtID = c.CourtID
-                 WHERE b.BookingID = ? AND b.UserID = ? AND b.Status = 'PENDING_PAYMENT'`,
-                [targetId, userId]
-            );
-            if (bookings.length === 0) throw new Error("Booking not found or not pending payment");
+            const booking = await bookingModel.getBookingWithPrice(targetId, userId, connection);
+            if (!booking || booking.Status !== 'PENDING_PAYMENT') throw new Error("Booking not found or not pending payment");
             
-            const booking = bookings[0];
             const durationHours = (new Date(booking.EndDateTime) - new Date(booking.StartDateTime)) / (1000 * 60 * 60);
             amount = Number(booking.PricePerHour) * durationHours;
             itemName = booking.CourtName;
         }
 
+        // start database transaction
         await connection.beginTransaction();
 
-        const [payRes] = await connection.query(
-            "INSERT INTO payment (UserID, Amount, Method, SlipPath, Status, PaidAt) VALUES (?, ?, 'BANK_SLIP', ?, 'PENDING', NOW())",
-            [userId, amount, slipUrl]
-        );
-        const paymentId = payRes.insertId;
+        // create pending payment record
+        const paymentId = await paymentModel.create({ userId, amount, method: 'BANK_SLIP', slipPath: slipUrl, status: 'PENDING' }, connection);
 
+        // link payment to target record
         if (type === "CLASS") {
-            // Create enrollment with WAITING_VERIFICATION equivalent? 
-            // The plan says "PENDING if waiting on admin slip verification"
-            const [enrRes] = await connection.query(
-                "INSERT INTO enrollment (ClassID, UserID, Status) VALUES (?, ?, 'ENROLLED') ON DUPLICATE KEY UPDATE Status = 'ENROLLED'",
-                [targetId, userId]
-            );
-            
-            let enrollmentId;
-            if (enrRes.insertId) {
-                enrollmentId = enrRes.insertId;
-            } else {
-                const [[exist]] = await connection.query("SELECT EnrollmentID FROM enrollment WHERE ClassID = ? AND UserID = ?", [targetId, userId]);
-                enrollmentId = exist.EnrollmentID;
-            }
-
-            const [enmRes] = await connection.query(
-                "INSERT INTO enrollmentmonth (EnrollmentID, PeriodMonth, FeeAmount, Status) VALUES (?, CURDATE(), ?, 'DUE')",
-                [enrollmentId, amount]
-            );
-
-            await connection.query(
-                "INSERT INTO enrollmentmonthpayment (PaymentID, EnrollmentMonthID) VALUES (?, ?)",
-                [paymentId, enmRes.insertId]
-            );
+            const enrollmentId = await enrollmentModel.create({ classId: targetId, userId, status: 'PENDING' }, connection);
+            const monthId = await enrollmentModel.createMonth({ enrollmentId, periodMonth: new Date(), feeAmount: amount, status: 'DUE' }, connection);
+            await paymentModel.linkEnrollmentMonth(paymentId, monthId, connection);
         } else {
-            await connection.query("INSERT INTO bookingpayment (PaymentID, BookingID) VALUES (?, ?)", [paymentId, targetId]);
-            await connection.query("UPDATE booking SET Status = 'WAITING_VERIFICATION' WHERE BookingID = ?", [targetId]);
+            await paymentModel.linkBooking(paymentId, targetId, connection);
+            await bookingModel.updateStatus(targetId, 'WAITING_VERIFICATION');
         }
 
+        // commit database changes
         await connection.commit();
 
-        try {
-            const [users] = await pool.query("SELECT Email, FirstName, LastName FROM useraccount WHERE UserID = ?", [userId]);
-            if (users.length > 0 && users[0].Email) {
-                const emailService = require("./email.service");
-                await emailService.sendSlipPendingEmail({
-                    toEmail: users[0].Email,
-                    toName: `${users[0].FirstName} ${users[0].LastName}`.trim(),
-                    targetName: itemName,
-                    amount: amount,
-                    isClass: type === "CLASS"
-                });
-            }
-        } catch (err) {
-            console.error("Failed to send slip pending email:", err);
+        // send notification email
+        const user = await userModel.findById(userId);
+        if (user && user.Email) {
+            emailService.sendSlipPendingEmail({
+                toEmail: user.Email,
+                toName: `${user.FirstName} ${user.LastName}`.trim(),
+                targetName: itemName,
+                amount: amount,
+                isClass: type === "CLASS"
+            }).catch(e => console.error("Email failed:", e));
         }
 
         return { message: "Bank slip uploaded successfully", paymentId };
 
     } catch (err) {
+        // rollback on error
         if (connection) await connection.rollback();
         throw err;
     } finally {
+        // release connection
         if (connection) connection.release();
     }
 };
